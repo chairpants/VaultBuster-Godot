@@ -26,6 +26,7 @@ var _hold := -1.0  # how long E's been held on something that lifts (-1: it isn'
 @onready var tapes: Node = $"../Tapes"
 @onready var fixtures: Node = $"../Fixtures"
 @onready var things: Node = $"../Things"
+@onready var shoppers: Node = $"../Shoppers"
 
 
 func _ready() -> void:
@@ -103,7 +104,7 @@ func _front_door(dt: float) -> void:  # anyone right at the door: it swings open
 	if front.is_empty():
 		return
 	var p := player.global_position
-	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5 and not things.locked
+	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5 and not things.locked or shoppers.at_the_door()
 	if near:
 		front.open = true
 		front.hold = 0.7
@@ -153,6 +154,12 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
 		return
+	var cust_tip: String = shoppers.take_aim(from, dir, hit_d)  # a customer (see shoppers.gd)
+	if cust_tip != "" and not things.carrying:
+		tapes.clear_aim()
+		hud.tip(cust_tip)
+		return
+	shoppers.aim = null
 	var thing_tip: String = things.take_aim(from, dir, hit, hit_d)  # the stool, the standee, the cooler, the deadbolt... (see things.gd)
 	if thing_tip != "":
 		tapes.clear_aim()
@@ -200,6 +207,8 @@ func on_e() -> void:
 		player.stand(stood_at.at, stood_at.yaw)
 	elif aim_door != null:
 		toggle_door(aim_door)
+	elif shoppers.on_e():
+		pass
 	elif things.on_e():
 		pass
 	elif fixtures.on_e():

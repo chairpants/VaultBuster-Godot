@@ -258,6 +258,45 @@ func _check() -> void:
 		if hip == null or head == null or absf(hip.rotation.x) < 0.01 or absf(head.position.y - 1.63 * someone.height) > 0.2:
 			bad.append("a person isn't walking right (hip %.2f, head at %.2f)" % [hip.rotation.x, head.position.y])
 		someone.queue_free()
+	var S := $Shoppers
+	if S._spots.size() < 20:
+		bad.append("only %d stretches of shelf for customers to browse" % S._spots.size())
+	else:
+		var way: Array = S._nav.path(S._door.x, S._door.y, S._spots[0].x, S._spots[0].z)
+		var far: Array = S._nav.path(S._door.x, S._door.y, S._counter.x, S._counter.z)
+		if way.size() < 2 or far.size() < 2:
+			bad.append("no way from the door to a shelf (%d) or the counter (%d)" % [way.size(), far.size()])
+		var cu: Dictionary = S.spawn()  # a visit, hurried along: in the door, to a shelf, a tape, the counter, rung up, out
+		cu.c.position = Vector3(S._door.x, 0, S._door.y)
+		cu.path = []
+		cu.state = "boot"
+		cu.t = 0.0
+		cu.who.speed = 9.0
+		cu.who.dwell = 0.05
+		cu.who.stops = 1
+		cu.stops_left = 1
+		cu.who.picky = 5.0
+		cu.who.cats = [S._spots[0].copies[0].c]
+		var t0 := Time.get_ticks_msec()
+		while cu.state != "wait" and S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
+			await get_tree().process_frame
+		if cu.state != "wait" or cu.holding < 1:
+			bad.append("a customer didn't get to the counter with a tape (%s, holding %d)" % [cu.state, cu.holding])
+		else:
+			var took: Dictionary = cu.tapes[0]
+			S.aim = cu
+			S.on_e()
+			t0 = Time.get_ticks_msec()
+			while S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
+				await get_tree().process_frame
+			if S.custs.has(cu) or not took.off or S.rented.is_empty():
+				bad.append("a rung-up customer didn't leave with their tape")
+			Clock.day += 1
+			await get_tree().process_frame
+			await get_tree().process_frame
+			if took.off:
+				bad.append("yesterday's rental didn't come back in the morning")
+			Clock.day -= 1
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

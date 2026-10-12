@@ -6,7 +6,8 @@ the numbers and the behaviour are the same. So far: the clock, the sky through t
 doors and seats, tapes (off the shelf, into the VCR, playing on every screen), the counter's pass-through, both
 ladders to the roof, the light switches and lamps, the lighting itself, and the loose things (the stool, the
 standee, the cooler, the deadbolt, the toilet, the cardboard bed, the movie on the roof), the weather, and the people
-themselves: so far only walking past out front. No customers, no staff, no register yet.
+themselves: passers-by out front, and customers, who come in, browse, take tapes and queue at the counter (E on
+whoever's at the front rings them up, till there's a register). No staff, no register yet.
 
 Open `project.godot` in Godot 4.6 or later and press F5.
 
@@ -68,6 +69,8 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `things.gd` | The loose things: the stool (E sits, E again spins, WASD gets up), carrying it and the standee, the cooler's door, the front doors' deadbolt, the flush and the paper towels, sleeping on the cardboard bed (3 hours, or after close through to morning), the roof's projector, VCR and bedsheet (web: `store/player.js`, `store/tv.js`, `store/staff.js`, `store/chores.js`, `store/customer-mode.js`, `store/roof.js`) |
 | `person.gd` | One of the TV-head people, posed every frame: the walk (feet that stay planted, a run over ~2 m/s, nine gaits), sitting, crouching, the arms' poses, the head, breathing, a face for every mood (web: `customers.js`). Not over: reaching, props, what the weather does to them, blinking |
 | `people.gd` | The cast, and the people going by on the walk out front (web: `store/shoppers.js`, walkerTick) |
+| `shoppers.gd` | Customers: who each one is (taste, patience, pace), how busy the day is, the visit: in the door, shelves looked over, a tape taken or put back, the line, the wait, out (web: `store/shoppers.js`). Not over: the register (E rings them up), members, snacks, questions, kids, shoplifters, cars |
+| `nav.gd` | Finding a way round the store: the web game's grid and A* over its own floor boxes (web: `store/shoppers.js`, navGrid, navPath) |
 | `people/` | The cast: 24 people as the web game builds them (`people.glb`), a face sheet each, and who they are. `node tests/export-glb.mjs --people ../VaultBusterGodot/people` |
 | `lights.gd` | The nine light zones and their switches, fluorescents stuttering as they strike; the side lamps (web: `store/lounge.js`) |
 | `room.gd` | The lighting: a surface is lit by which room it's in and whether that room's switch is on, daylight through the glass, sun and moon outside. The web game's room shader, put into every lit material as the game starts (web: `store/core.js` ROOM_FRAG) |
