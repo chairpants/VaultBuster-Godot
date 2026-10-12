@@ -222,6 +222,8 @@ func on_e() -> void:
 		pass
 	elif fixtures.on_e():
 		pass
+	elif tapes.aim_returns and tapes.held != null:
+		tapes.drop_in_returns()
 	elif tapes.aim_tv != null:
 		tapes.vcr_use()
 	elif aim_seat != null:

@@ -7,8 +7,9 @@ extends Node
 ## custDwell, custDecide, custPickCopy, custDone, the line (custToLine, custLeaveLine), and the visit itself (custStep).
 ##
 ## Not over yet, and so different here:
-## - What they rent is off the shelf till the next morning (there are no returns yet); left waiting too long they
-##   walk out and it goes back. (Ringing them up: checkout.gd.)
+## - What they rent comes back when it's due (two nights a new release, five the rest): somebody walks in with it and
+##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd). Nobody's late, so no fees.
+## - Left waiting too long at the counter they walk out, and their tapes go back on the shelf (the web game: gone).
 ## - Nobody's a member: each is a new face (the web game's are its 150 members, the same person every visit).
 ## - They reach with a fixed arm, not to the tape itself; they don't step round you or each other; no snacks, no
 ##   questions at the counter, no kids or company, no shoplifters, no cars, nobody going to the theater.
@@ -28,7 +29,8 @@ const GAIT_ODDS := [["plain", 30.0], ["brisk", 14.0], ["stroll", 10.0], ["bouncy
 var custs: Array[Dictionary] = []
 var line: Array[Dictionary] = []  # the checkout line: line[0] is the one at the counter
 var aim = null  # the customer the crosshair's on
-var rented: Array = []  # [tape, the day it went out]
+var rented: Array = []  # what's out: [tape, the day it went out, the day it's due]
+var _slot := {}  # in the lane, facing the drop slot
 
 var _nav: RefCounted
 var _spots: Array = []  # where they browse: { x, z, ry, n, cats, copies }
@@ -55,6 +57,8 @@ func _ready() -> void:
 	_outside = Vector2(d.outside[0], d.outside[1])
 	_inside = Vector2(d.inside[0], d.inside[1])
 	_counter = d.counter
+	var sl: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.returns.slot
+	_slot = { "x": sl[0] + 0.6, "z": sl[2], "ry": -PI / 2.0 }
 	call_deferred("_browse_spots")  # (once the tapes have found themselves)
 
 
@@ -156,6 +160,16 @@ func spawn() -> Dictionary:
 	c.set_mood("on")
 	var cust := { "who": who, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null }
+	# about half the time it's someone with tapes out, bringing them back: what's due (or late), and half the time what's due tomorrow
+	var due := rented.filter(func(r: Array) -> bool: return r[2] <= Clock.day or (r[2] == Clock.day + 1 and randf() < 0.5))
+	cust.returning = []
+	if not due.is_empty() and randf() < 0.5:
+		due.shuffle()
+		for r: Array in due.slice(0, 1 + randi() % 3):
+			rented.erase(r)
+			cust.returning.append(r[0])
+		c.set_pose("hold")
+		c.hold_tape(mini(3, cust.returning.size()))
 	custs.append(cust)
 	return cust
 
@@ -163,10 +177,6 @@ func spawn() -> Dictionary:
 # ---- the visit
 
 func _process(dt: float) -> void:
-	for r: Array in rented.duplicate():  # (no returns yet: what went out comes back in the morning)
-		if Clock.day > r[1]:
-			tapes.set_on_shelf(r[0], true)
-			rented.erase(r)
 	var cap := mini(6, roundi(2.0 + 2.0 * rush_level()))
 	var open := Clock.h >= Clock.OPEN and Clock.h < Clock.LAST_IN
 	if custs.size() < cap and not things.locked and open and not people._templates.is_empty():  # locked: whoever's inside finishes up; nobody new
@@ -323,7 +333,7 @@ func _gone(cust: Dictionary) -> void:
 	leave_line(cust)
 	for t: Dictionary in cust.tapes:
 		if cust.paid:
-			rented.append([t, Clock.day])
+			rented.append([t, Clock.day, Clock.day + (2 if t.n else 5)])  # a new release is out two nights, the rest five
 		else:  # (the web game: walked out with, gone for good, and the gates go off. Here, for now, back on the shelf)
 			tapes.set_on_shelf(t, true)
 		t.desens = false  # (its tag's armed again when it's next on the shelf)
@@ -370,7 +380,30 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			"boot":
 				if cust.t <= 0.0:
 					c.set_mood("neutral")
-					_next_stop(cust)
+					if not cust.returning.is_empty():
+						go(cust, "dropoff", _slot)
+					else:
+						_next_stop(cust)
+			"dropoff":  # at the slot: a hand out to it
+				c.set_pose("reach")
+				cust.state = "dropping"
+				cust.t = 1.2
+			"dropping":
+				if cust.t <= 0.0:
+					var n: int = cust.returning.size()
+					for t: Dictionary in cust.returning:
+						tapes.return_bin.append(t)
+					hud.toast("A customer returned %s" % (cust.returning[0].t if n == 1 else "%d tapes" % n))
+					if tapes.return_bin.size() >= 15 and tapes.return_bin.size() - n < 15:
+						hud.toast("Returns are piling up: %d in the bin" % tapes.return_bin.size())
+					cust.returning = []
+					c.hold_tape(0)
+					c.set_pose("idle")
+					c.set_mood("happy")
+					if randf() < 0.5:
+						_next_stop(cust)
+					else:
+						go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"stop":
 				c.set_mood("browse")
 				cust.state = "browse"

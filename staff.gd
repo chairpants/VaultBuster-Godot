@@ -3,7 +3,8 @@ extends Node
 ## step at a time: a hand out, then the step happens, a beat, the next.
 ## From the web game's store/staff.js (EMP_POST; the "post" state: her turn after a second and a half, the reach before
 ## each step, 0.9 s to the customer and 0.7 otherwise, quicker with her DEX of 3; chatting while she works).
-## Not over yet: everything else she does (the job board, restocking, cleaning, lunch, the stool, going home),
+## Not over yet: everything else she does (the job board, cleaning, lunch, the stool, going home; restocking, but for
+## a stand-in: returns find their own way back to the shelf while she's idle),
 ## skills, hiring, the others. She's at her post all day.
 
 const DEX := 3
@@ -14,7 +15,9 @@ var _co_t := 0.0
 var _reached := false
 var _chat_t := 0.0
 var _post := {}
+var _restock_t := 0.0
 
+@onready var tapes: Node = $"../Tapes"
 @onready var people: Node3D = $"../People"
 @onready var shoppers: Node = $"../Shoppers"
 @onready var checkout: Node = $"../Checkout"
@@ -78,4 +81,10 @@ func _process(dt: float) -> void:
 		dana.set_pose("idle")
 		if waiting == null:
 			dana.set_mood("neutral")
+			# restocking: with nobody to ring up, a return goes back on its shelf every so often. (The web game walks her
+			# to the bin and round the shelves with them; that's not over, so here they just get there)
+			_restock_t = _restock_t + dt if not tapes.return_bin.is_empty() else 0.0  # (25 s from when there's something to put away)
+			if _restock_t > 25.0:
+				_restock_t = 0.0
+				tapes.set_on_shelf(tapes.return_bin.pop_front(), true)
 	dana.tick(dt, 0.0)

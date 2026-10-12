@@ -316,12 +316,39 @@ func _check() -> void:
 				await get_tree().process_frame
 			if $Staff.dana == null or not c2.paid or C.served != 2:
 				bad.append("Dana didn't ring the next one up (she's %s, served %d)" % ["there" if $Staff.dana else "not there", C.served])
-			Clock.day += 1
-			await get_tree().process_frame
-			await get_tree().process_frame
-			if took.off:
-				bad.append("yesterday's rental didn't come back in the morning")
-			Clock.day -= 1
+			Clock.day += 6  # past due: somebody brings it back, through the slot, into the bin
+			var back := false
+			for n in 40:
+				var r: Dictionary = S.spawn()
+				if r.returning.has(took):
+					back = true
+					r.c.position = Vector3(S._door.x, 0, S._door.y)
+					r.path = []
+					r.state = "boot"
+					r.t = 0.0
+					r.who.speed = 9.0
+					t0 = Time.get_ticks_msec()
+					while not $Tapes.return_bin.has(took) and Time.get_ticks_msec() - t0 < 25000:
+						await get_tree().process_frame
+					break
+				S._gone(r)
+			Clock.day -= 6
+			if not back or not $Tapes.return_bin.has(took):
+				bad.append("a rental past due didn't come back through the Returns slot (found one bringing it: %s; out: %d; states: %s)" % [back, S.rented.size(), S.custs.map(func(k: Dictionary) -> String: return "%s/%d/%.1f,%.1f" % [k.state, k.returning.size(), k.c.position.x, k.c.position.z])])
+			else:
+				$Tapes.aim_returns = true
+				var click := InputEventMouseButton.new()
+				click.button_index = MOUSE_BUTTON_LEFT
+				click.pressed = true
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+				$Tapes._unhandled_input(click)
+				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+				if $Tapes.held == null or $Tapes.return_bin.has($Tapes.held):
+					bad.append("a click on Returns didn't take a tape out of the bin")
+				else:
+					$Tapes.put_back()
+					if took.off and $Tapes.held == null and not $Tapes.return_bin.has(took) and $Tapes.inv.is_empty():
+						bad.append("the returned tape didn't go back on the shelf")
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

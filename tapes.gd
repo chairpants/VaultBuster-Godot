@@ -17,7 +17,7 @@ extends Node
 ## - The inventory (the web game's, store/chores.js: up to 9 carried, one of them in hand; 1-9 or the wheel swap which)
 ##   holds tapes only so far, and its slots are a line of names, not pictures.
 ## - A tape goes on from where it was wound to, to the second (the web game can't seek, so it restarts the episode).
-## - No case on the coffee table, no picture settings.
+## - No case on the coffee table, no picture settings; the tapes in the Returns bin aren't drawn (the tip counts them).
 
 const REACH := 3.4
 const INV_MAX := 9
@@ -37,6 +37,10 @@ var aim_slot := false
 var aim_tv = null  # the screen the crosshair's on
 var playing = null  # { tape, idx }
 var inv: Array = []  # the tapes you're carrying, the one in hand among them
+var return_bin: Array = []  # tapes customers have dropped back, waiting to be put away
+var aim_returns := false
+var _returns_at := Vector3.ZERO
+var _peek_bin := false  # the tape you're looking at came out of the bin: right-click puts it back there
 var inv_sel := -1  # which of them is in hand (-1: empty-handed)
 
 var _grid := {}  # cell -> [tape index]
@@ -60,6 +64,8 @@ func _ready() -> void:
 	size = Vector3(data.size.w, data.size.h, data.size.d)
 	tapes = data.tapes
 	screens = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).get("screens", [])
+	var rb: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.returns.bin
+	_returns_at = Vector3(rb[0], rb[1], rb[2])
 	var near := {}  # every cell a slot reaches into
 	var region := AABB(_pos(tapes[0]), Vector3.ZERO)
 	for i in tapes.size():
@@ -386,25 +392,44 @@ func _unhandled_input(e: InputEvent) -> void:
 		return
 	if e.button_index == MOUSE_BUTTON_RIGHT:  # right click puts down what's in hand, if it's only being looked at
 		if held != null and held == peek:
-			put_back()
+			if _peek_bin:  # (out of Returns: back into Returns)
+				return_bin.append(held)
+				release()
+			else:
+				put_back()
 	elif e.button_index == MOUSE_BUTTON_LEFT:
 		if held != null and inspecting:  # tuck the held-up tape back in hand (it's yours now)
 			inspecting = false
 			peek = null
 		elif aim_slot:  # slotted back into its own spot on the shelf
 			put_back()
+		elif aim_returns and not return_bin.is_empty():  # Returns works like a shelf: click to look, click again to take, right-click to put it back
+			if inv_make_room():
+				var t: Dictionary = return_bin.pop_back()
+				_take(t)
+				inspecting = true
+				peek = t
+				_peek_bin = true
 		elif hovered != null:  # another one: whatever's in hand goes into the inventory
 			var t: Dictionary = hovered
 			pickup(t)
 			if held == t:
 				peek = t
+				_peek_bin = false
 		elif held != null:  # hold it up to look at it
 			inspecting = true
 
 
 # ---- what the crosshair's on (called from interact.gd, after the doors); returns the tip, "" if it's nothing of ours
 
+func drop_in_returns() -> void:  # E at Returns with a tape in hand
+	if held != null:
+		return_bin.append(held)
+		release()
+
+
 func clear_aim() -> void:
+	aim_returns = false
 	hovered = null
 	aim_slot = false
 	aim_tv = null
@@ -422,6 +447,14 @@ func aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> String:
 		if aim_slot:
 			_show_box(held)
 			return "Click — put %s back" % held.t
+	if hit and hit_d < 2.4 and hit.position.distance_to(_returns_at) < 0.55 and (held != null or not return_bin.is_empty()):  # Returns: the bin behind the slot
+		aim_returns = true
+		var lines := PackedStringArray()
+		if held != null:
+			lines.append("E — drop tape in Returns")
+		if not return_bin.is_empty():
+			lines.append("Click — take a tape (%d in the bin)" % return_bin.size())
+		return "\n".join(lines)
 	if hit and hit_d < REACH:  # a tape: the one whose slot the crosshair lands in (and that's really there)
 		var best := INF
 		var c := _cell(hit.position)
