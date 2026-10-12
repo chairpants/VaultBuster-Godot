@@ -1063,6 +1063,10330 @@
     "ry": 3.141592653589793
    }
   },
+  "snacks": [
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.546
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-30",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.472
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-22",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.398
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-15",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-7",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|0",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|7",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.102
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|15",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     5.028
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|22",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.023,
+     0.11,
+     4.954
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|30",
+    "lz": 0.237,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.546
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-30",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.472
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-22",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.398
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-15",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-7",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|0",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|7",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.102
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|15",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     5.028
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|22",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.101,
+     0.11,
+     4.954
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|30",
+    "lz": 0.159,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.546
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-30",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.472
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-22",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.398
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-15",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|-7",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|0",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|7",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.102
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|15",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     5.028
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|22",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "AQUA VAULT",
+    "k": "Water",
+    "at": [
+     -7.179,
+     0.11,
+     4.954
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|AQUA VAULT|30",
+    "lz": 0.081,
+    "ly": 0.11
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.534
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-28",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.458
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-21",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.382
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-13",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.306
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-6",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.534
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-28",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.458
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-21",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.382
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-13",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.306
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-6",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.534
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-28",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.458
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-21",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.382
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-13",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.306
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-6",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.194
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|6",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.118
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|13",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     5.042
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|21",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.024,
+     0.46,
+     4.966
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|28",
+    "lz": 0.236,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.194
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|6",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.118
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|13",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     5.042
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|21",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.104,
+     0.46,
+     4.966
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|28",
+    "lz": 0.156,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.194
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|6",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.118
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|13",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     5.042
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|21",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "LEMON FIZZ",
+    "k": "Soda",
+    "at": [
+     -7.184,
+     0.46,
+     4.966
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|LEMON FIZZ|28",
+    "lz": 0.076,
+    "ly": 0.46
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.525
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-28",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.455
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-20",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.385
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-13",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.315
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-6",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.525
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-28",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.455
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-20",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.385
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-13",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.315
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-6",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.525
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-28",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.455
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-20",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.385
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-13",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "GOLD CROWN",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.315
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|GOLD CROWN|-6",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.185
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|6",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.115
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|13",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     5.045
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|21",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.021,
+     0.8,
+     4.975
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|28",
+    "lz": 0.239,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.185
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|6",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.115
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|13",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     5.045
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|21",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.095,
+     0.8,
+     4.975
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|28",
+    "lz": 0.165,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.185
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|6",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.115
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|13",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     5.045
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|21",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "VALLEY PILS",
+    "k": "Beer",
+    "at": [
+     -7.169,
+     0.8,
+     4.975
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VALLEY PILS|28",
+    "lz": 0.091,
+    "ly": 0.8
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.552
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-30",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.486
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-24",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.42
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-17",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.354
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-10",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.288
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-4",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.552
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-30",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.486
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-24",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.42
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-17",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.354
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-10",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.288
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-4",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.552
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-30",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.486
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-24",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.42
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-17",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.354
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-10",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "VOLT",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.288
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VOLT|-4",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.212
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|4",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.146
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|10",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.08
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|17",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     5.014
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|24",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.019,
+     1.14,
+     4.948
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|30",
+    "lz": 0.241,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.212
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|4",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.146
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|10",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.08
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|17",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     5.014
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|24",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.089,
+     1.14,
+     4.948
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|30",
+    "lz": 0.171,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.212
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|4",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.146
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|10",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.08
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|17",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     5.014
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|24",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "RUSH",
+    "k": "Energy drink",
+    "at": [
+     -7.159,
+     1.14,
+     4.948
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|RUSH|30",
+    "lz": 0.101,
+    "ly": 1.14
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.5507
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-30",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.5507
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-30",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.4767
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-23",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.4767
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-23",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.4027
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-15",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.4027
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-15",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.5507
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-30",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.5507
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-30",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.4767
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-23",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.4767
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-23",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.4027
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-15",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.4027
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-15",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.5507
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-30",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.5507
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-30",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.4767
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-23",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.4767
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-23",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.4027
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-15",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "VAULT COLA",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.4027
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|VAULT COLA|-15",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|-7",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|-7",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|0",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|0",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|7",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|7",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|-7",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|-7",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|0",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|0",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|7",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|7",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|-7",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.324
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|-7",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|0",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.25
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|0",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|7",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "ORANGE BLAST",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.176
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ORANGE BLAST|7",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.0973
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|15",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.0973
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|15",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     5.0233
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|23",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     5.0233
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|23",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.48,
+     4.9493
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|30",
+    "lz": 0.237,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.023,
+     1.602,
+     4.9493
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|30",
+    "lz": 0.237,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.0973
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|15",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.0973
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|15",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     5.0233
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|23",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     5.0233
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|23",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.48,
+     4.9493
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|30",
+    "lz": 0.159,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.101,
+     1.602,
+     4.9493
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|30",
+    "lz": 0.159,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.0973
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|15",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.0973
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|15",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     5.0233
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|23",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     5.0233
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|23",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.48,
+     4.9493
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|30",
+    "lz": 0.081,
+    "ly": 1.48
+   },
+   {
+    "n": "ROOT BEER",
+    "k": "Soda",
+    "at": [
+     -7.179,
+     1.602,
+     4.9493
+    ],
+    "f": [
+     1,
+     0
+    ],
+    "lane": "babfa6f7|ROOT BEER|30",
+    "lz": 0.081,
+    "ly": 1.602
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -3.7925,
+     0.2919,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|FRUIT POP|-39",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -3.6075,
+     0.2919,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|FRUIT POP|-21",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -3.7925,
+     0.3064,
+     28.29
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|FRUIT POP|-39",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -3.6075,
+     0.3064,
+     28.29
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|FRUIT POP|-21",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.255,
+     0.2769,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|BLUE RAZZ|14",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.1,
+     0.2769,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|BLUE RAZZ|30",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -2.945,
+     0.2769,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|BLUE RAZZ|46",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.255,
+     0.2902,
+     28.3
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|BLUE RAZZ|14",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.1,
+     0.2902,
+     28.3
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|BLUE RAZZ|30",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -2.945,
+     0.2902,
+     28.3
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|BLUE RAZZ|46",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.925,
+     0.6019,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-52",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.835,
+     0.6019,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-43",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.745,
+     0.6019,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-34",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.655,
+     0.6019,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-25",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.565,
+     0.6019,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-16",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.475,
+     0.6019,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-7",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.925,
+     0.617,
+     28.285
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-52",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.835,
+     0.617,
+     28.285
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-43",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.745,
+     0.617,
+     28.285
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-34",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.655,
+     0.617,
+     28.285
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-25",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.565,
+     0.617,
+     28.285
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-16",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.475,
+     0.617,
+     28.285
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|GRAPE ZAP|-7",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.31,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|9",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.24,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|16",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.17,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|23",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.1,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|30",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.03,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|37",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -2.96,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|44",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -2.89,
+     0.6069,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|51",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.31,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|9",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.24,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|16",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.17,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|23",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.1,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|30",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.03,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|37",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -2.96,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|44",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -2.89,
+     0.6166,
+     28.33
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|LICORICE|51",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.8725,
+     0.8669,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-47",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.7575,
+     0.8669,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-36",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.6425,
+     0.8669,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-24",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.5275,
+     0.8669,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-13",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.8725,
+     0.8772,
+     28.325
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-47",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.7575,
+     0.8772,
+     28.325
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-36",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.6425,
+     0.8772,
+     28.325
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-24",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -3.5275,
+     0.8772,
+     28.325
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|CHOC BOMB|-13",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.3125,
+     0.8469,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|9",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.2275,
+     0.8469,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|17",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.1425,
+     0.8469,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|26",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.0575,
+     0.8469,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|34",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -2.9725,
+     0.8469,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|43",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -2.8875,
+     0.8469,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|51",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.3125,
+     0.8563,
+     28.332
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|9",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.2275,
+     0.8563,
+     28.332
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|17",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.1425,
+     0.8563,
+     28.332
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|26",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.0575,
+     0.8563,
+     28.332
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|34",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -2.9725,
+     0.8563,
+     28.332
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|43",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -2.8875,
+     0.8563,
+     28.332
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|RED HOTZ|51",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.875,
+     1.0894,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-47",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.875,
+     1.1344,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-47",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.875,
+     1.1794,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-47",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.7,
+     1.0894,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-30",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.7,
+     1.1344,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-30",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.7,
+     1.1794,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-30",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.525,
+     1.0894,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-12",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.525,
+     1.1344,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-12",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.525,
+     1.1794,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-12",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.875,
+     1.0974,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-47",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.875,
+     1.1424,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-47",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.875,
+     1.1874,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-47",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.7,
+     1.0974,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-30",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.7,
+     1.1424,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-30",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.7,
+     1.1874,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-30",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.525,
+     1.0974,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-12",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.525,
+     1.1424,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-12",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -3.525,
+     1.1874,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|STARBITES|-12",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.0809,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.1089,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.1369,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.1649,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.0809,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.1089,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.1369,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.1649,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.0809,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.1089,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.1369,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.1649,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.0809,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.1089,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.1369,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.1649,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.0809,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.1089,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.1369,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.1649,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.0809,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.1089,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.1369,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.1649,
+     28.41
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.0889,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.1169,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.1449,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.325,
+     1.1729,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.0889,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.1169,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.1449,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.235,
+     1.1729,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.0889,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.1169,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.1449,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.145,
+     1.1729,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.0889,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.1169,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.1449,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.055,
+     1.1729,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.0889,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.1169,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.1449,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.965,
+     1.1729,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.0889,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.1169,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.1449,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -2.875,
+     1.1729,
+     28.344
+    ],
+    "f": [
+     0,
+     1
+    ],
+    "lane": "89f24070|MINT CHILL|52",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -1.6525,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-145",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -1.8375,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-126",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.0225,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-108",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.2075,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-89",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.3925,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-71",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.5775,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-52",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.7625,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-34",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.9475,
+     0.2919,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-15",
+    "lz": 0.1,
+    "ly": 0.2919
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -1.6525,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-145",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -1.8375,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-126",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.0225,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-108",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.2075,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-89",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.3925,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-71",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.5775,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-52",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.7625,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-34",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "FRUIT POP",
+    "k": "",
+    "at": [
+     -2.9475,
+     0.3064,
+     12.06
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|FRUIT POP|-15",
+    "lz": -0.02,
+    "ly": 0.3064
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.28,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|18",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.435,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|34",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.59,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|49",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.745,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|65",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.9,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|80",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.055,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|96",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.21,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|111",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.365,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|127",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.52,
+     0.2769,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|142",
+    "lz": 0.1,
+    "ly": 0.2769
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.28,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|18",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.435,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|34",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.59,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|49",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.745,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|65",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -3.9,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|80",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.055,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|96",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.21,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|111",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.365,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|127",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "BLUE RAZZ",
+    "k": "",
+    "at": [
+     -4.52,
+     0.2902,
+     12.05
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|BLUE RAZZ|142",
+    "lz": -0.01,
+    "ly": 0.2902
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.58,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-152",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.67,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-143",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.76,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-134",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.85,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-125",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.94,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-116",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.03,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-107",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.12,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-98",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.21,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-89",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.3,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-80",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.39,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-71",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.48,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-62",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.57,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-53",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.66,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-44",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.75,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-35",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.84,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-26",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.93,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-17",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.02,
+     0.6019,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-8",
+    "lz": 0.1,
+    "ly": 0.6019
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.58,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-152",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.67,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-143",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.76,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-134",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.85,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-125",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -1.94,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-116",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.03,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-107",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.12,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-98",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.21,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-89",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.3,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-80",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.39,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-71",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.48,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-62",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.57,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-53",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.66,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-44",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.75,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-35",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.84,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-26",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -2.93,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-17",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "GRAPE ZAP",
+    "k": "",
+    "at": [
+     -3.02,
+     0.617,
+     12.065
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|GRAPE ZAP|-8",
+    "lz": -0.025,
+    "ly": 0.617
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.165,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|6",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.235,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|13",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.305,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|20",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.375,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|27",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.445,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|35",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.515,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|42",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.585,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|49",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.655,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|55",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.725,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|63",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.795,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|70",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.865,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|77",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.935,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|84",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.005,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|91",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.075,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|98",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.145,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|105",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.215,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|112",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.285,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|119",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.355,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|126",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.425,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|133",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.495,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|140",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.565,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|147",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.635,
+     0.6069,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|154",
+    "lz": 0.1,
+    "ly": 0.6069
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.165,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|6",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.235,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|13",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.305,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|20",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.375,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|27",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.445,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|35",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.515,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|42",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.585,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|49",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.655,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|55",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.725,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|63",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.795,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|70",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.865,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|77",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -3.935,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|84",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.005,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|91",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.075,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|98",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.145,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|105",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.215,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|112",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.285,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|119",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.355,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|126",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.425,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|133",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.495,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|140",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.565,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|147",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "LICORICE",
+    "k": "",
+    "at": [
+     -4.635,
+     0.6166,
+     12.02
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|LICORICE|154",
+    "lz": 0.02,
+    "ly": 0.6166
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.61,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-149",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.725,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-138",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.84,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-126",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.955,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-115",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.07,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-103",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.185,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-92",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.3,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-80",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.415,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-69",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.53,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-57",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.645,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-46",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.76,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-34",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.875,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-23",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.99,
+     0.8669,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-11",
+    "lz": 0.1,
+    "ly": 0.8669
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.61,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-149",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.725,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-138",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.84,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-126",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -1.955,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-115",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.07,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-103",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.185,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-92",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.3,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-80",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.415,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-69",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.53,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-57",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.645,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-46",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.76,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-34",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.875,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-23",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "CHOC BOMB",
+    "k": "",
+    "at": [
+     -2.99,
+     0.8772,
+     12.025
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|CHOC BOMB|-11",
+    "lz": 0.015,
+    "ly": 0.8772
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.1775,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|8",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.2625,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|16",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.3475,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|25",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.4325,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|33",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.5175,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|42",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.6025,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|50",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.6875,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|59",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.7725,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|67",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.8575,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|76",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.9425,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|84",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.0275,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|93",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.1125,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|101",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.1975,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|110",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.2825,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|118",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.3675,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|127",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.4525,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|135",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.5375,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|144",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.6225,
+     0.8469,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|152",
+    "lz": 0.1,
+    "ly": 0.8469
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.1775,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|8",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.2625,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|16",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.3475,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|25",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.4325,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|33",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.5175,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|42",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.6025,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|50",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.6875,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|59",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.7725,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|67",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.8575,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|76",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -3.9425,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|84",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.0275,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|93",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.1125,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|101",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.1975,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|110",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.2825,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|118",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.3675,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|127",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.4525,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|135",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.5375,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|144",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "RED HOTZ",
+    "k": "",
+    "at": [
+     -4.6225,
+     0.8563,
+     12.018
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|RED HOTZ|152",
+    "lz": 0.022,
+    "ly": 0.8563
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.6875,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-141",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.6875,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-141",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.6875,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-141",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.8625,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-124",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.8625,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-124",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.8625,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-124",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.0375,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-106",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.0375,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-106",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.0375,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-106",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.2125,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-89",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.2125,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-89",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.2125,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-89",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.3875,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-71",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.3875,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-71",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.3875,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-71",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.5625,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-54",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.5625,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-54",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.5625,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-54",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.7375,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-36",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.7375,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-36",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.7375,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-36",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.9125,
+     1.0894,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-19",
+    "lz": 0.1,
+    "ly": 1.0894
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.9125,
+     1.1344,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-19",
+    "lz": 0.1,
+    "ly": 1.1344
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.9125,
+     1.1794,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-19",
+    "lz": 0.1,
+    "ly": 1.1794
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.6875,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-141",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.6875,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-141",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.6875,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-141",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.8625,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-124",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.8625,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-124",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -1.8625,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-124",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.0375,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-106",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.0375,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-106",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.0375,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-106",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.2125,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-89",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.2125,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-89",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.2125,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-89",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.3875,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-71",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.3875,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-71",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.3875,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-71",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.5625,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-54",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.5625,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-54",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.5625,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-54",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.7375,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-36",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.7375,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-36",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.7375,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-36",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.9125,
+     1.0974,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-19",
+    "lz": 0.034,
+    "ly": 1.0974
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.9125,
+     1.1424,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-19",
+    "lz": 0.034,
+    "ly": 1.1424
+   },
+   {
+    "n": "STARBITES",
+    "k": "",
+    "at": [
+     -2.9125,
+     1.1874,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|STARBITES|-19",
+    "lz": 0.034,
+    "ly": 1.1874
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.0809,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.1,
+    "ly": 1.0809
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.1089,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.1,
+    "ly": 1.1089
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.1369,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.1,
+    "ly": 1.1369
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.1649,
+     11.94
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.1,
+    "ly": 1.1649
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.18,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|8",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.27,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|17",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.36,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|26",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.45,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|35",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.54,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|44",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.63,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|53",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.72,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|62",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.81,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|71",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.9,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|80",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -3.99,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|89",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.08,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|98",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.17,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|107",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.26,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|116",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.35,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|125",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.44,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|134",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.53,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|143",
+    "lz": 0.034,
+    "ly": 1.1729
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.0889,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.034,
+    "ly": 1.0889
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.1169,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.034,
+    "ly": 1.1169
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.1449,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.034,
+    "ly": 1.1449
+   },
+   {
+    "n": "MINT CHILL",
+    "k": "",
+    "at": [
+     -4.62,
+     1.1729,
+     12.006
+    ],
+    "f": [
+     0,
+     -1
+    ],
+    "lane": "40d17fcc|MINT CHILL|152",
+    "lz": 0.034,
+    "ly": 1.1729
+   }
+  ],
+  "cupboards": [
+   {
+    "kind": "drinks",
+    "at": [
+     -2.598,
+     0.59,
+     3.35
+    ]
+   },
+   {
+    "kind": "drinks",
+    "at": [
+     -2.61,
+     0.86,
+     3.17
+    ]
+   },
+   {
+    "kind": "drinks",
+    "at": [
+     -2.608,
+     0.9,
+     3.38
+    ]
+   },
+   {
+    "kind": "drinks",
+    "at": [
+     -2.598,
+     0.59,
+     1.79
+    ]
+   },
+   {
+    "kind": "drinks",
+    "at": [
+     -2.61,
+     0.86,
+     1.61
+    ]
+   },
+   {
+    "kind": "drinks",
+    "at": [
+     -2.608,
+     0.9,
+     1.82
+    ]
+   },
+   {
+    "kind": "food",
+    "at": [
+     -2.598,
+     0.59,
+     1.27
+    ]
+   },
+   {
+    "kind": "food",
+    "at": [
+     -2.61,
+     0.86,
+     1.09
+    ]
+   },
+   {
+    "kind": "food",
+    "at": [
+     -2.608,
+     0.9,
+     1.3
+    ]
+   },
+   {
+    "kind": "food",
+    "at": [
+     -2.598,
+     0.59,
+     0.75
+    ]
+   },
+   {
+    "kind": "food",
+    "at": [
+     -2.61,
+     0.86,
+     0.57
+    ]
+   },
+   {
+    "kind": "food",
+    "at": [
+     -2.608,
+     0.9,
+     0.78
+    ]
+   }
+  ],
   "phone": [
    -6.4,
    0.8999999999999999,

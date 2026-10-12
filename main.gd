@@ -15,6 +15,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var phone: Node = preload("res://phone.gd").new()  # (and the phone and the holds: phone.gd)
 	phone.name = "Phone"
 	add_child(phone)
+	var snacks: Node = preload("res://snacks.gd").new()  # (and the candy racks and the cooler: snacks.gd)
+	snacks.name = "Snacks"
+	add_child(snacks)
 
 
 func _ready() -> void:
@@ -294,6 +297,7 @@ func _check() -> void:
 		cu.who.picky = 5.0
 		cu.who.cats = [S._spots[0].copies[0].c]
 		cu.returning = []
+		cu.snack_done = true
 		S._next_stop(cu)  # (straight to a shelf: nothing to drop off, nothing to ask at the counter)
 		t0 = Time.get_ticks_msec()
 		while cu.state != "wait" and S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
@@ -505,6 +509,44 @@ func _check() -> void:
 		await get_tree().process_frame
 	if St.dana == null or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
 		bad.append("Dana didn't come in for her shift and get to her post")
+	# snacks: one off the rack with a customer, rung up by itself; the spot restocked from the cupboard
+	var Sn := $Snacks
+	if Sn.units.size() < 100 or Sn.spots.is_empty() or Sn.units.any(func(u: Dictionary) -> bool: return u.node == null):
+		bad.append("the snacks aren't all found in the level (%d of %d; %d places to stand)" % [Sn.units.filter(func(u: Dictionary) -> bool: return u.node != null).size(), Sn.units.size(), Sn.spots.size()])
+	else:
+		$Staff._ring_t = -999.0  # (by hand, this one)
+		var sc: Dictionary = S.spawn()
+		sc.c.position = Vector3(Sn.spots[0].x, 0, Sn.spots[0].z)
+		sc.path = []
+		sc.spot = Sn.spots[0]
+		sc.state = "snack"
+		sc.snack_done = true
+		sc.returning = []
+		sc.thief = false
+		sc.who.speed = 9.0
+		t0 = Time.get_ticks_msec()
+		while sc.state != "wait" and S.custs.has(sc) and Time.get_ticks_msec() - t0 < 30000:
+			await get_tree().process_frame
+		if sc.state != "wait" or sc.snacks.size() != 1 or not sc.snacks[0].out or sc.snacks[0].node.visible:
+			bad.append("a customer didn't bring a snack to the counter (%s, %d)" % [sc.state, sc.snacks.size()])
+		else:
+			var bar: Dictionary = sc.snacks[0]
+			S.aim = sc
+			S.on_e()
+			$Checkout.act("register")
+			await get_tree().create_timer(2.6).timeout
+			for where in ["printer", "customer", "customer", "customer"]:
+				$Checkout.act(where)
+			if not sc.paid or $Shift.stats.snack_take < 0.9:
+				bad.append("a snack didn't ring up by itself (step %s, $%.2f)" % [$Checkout.step(), $Shift.stats.snack_take])
+			Sn.aim = { "cupboard": "drinks" if bar.k != "" else "food" }
+			Sn.on_e()
+			var carried: int = Sn.carry.size()
+			Sn.aim = { "spot": bar }
+			Sn.on_e()
+			if carried != 1 or not Sn.carry.is_empty() or not Sn.empty_spots().is_empty() or Sn.backstock[bar.n] != 11:
+				bad.append("the empty spot didn't get restocked from the cupboard (carried %d, %d empty)" % [carried, Sn.empty_spots().size()])
+		$Staff._ring_t = 0.0
 	# the phone: a call answered right; a hold promised, set aside, and handed over when they come in for it
 	var Ph := $Phone
 	var caller: Dictionary = S.members.all[5]

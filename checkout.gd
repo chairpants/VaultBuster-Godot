@@ -7,7 +7,8 @@ extends Node
 ## Where the register, the pad and the printer are: data/interact.json.
 ## Members' accounts are in (members.gd): what's rung up goes on theirs, late fees are charged at the counter (or
 ## waived, with Q), and how it went is how they feel about the place after.
-## Not over yet: sign-ups, snacks and the snack offer, show
+## Snacks and drinks off the racks are rung up with the tapes, or by themselves (no card, then: just the cash).
+## Not over yet: sign-ups, the snack offer and the snack offer, show
 ## tickets, the drawer opening, the receipt coming out of the printer, the terminal's own screens.
 ## E on the register shuts the gate alarm off (the web game: logging in to its terminal does).
 
@@ -88,7 +89,7 @@ func tip() -> String:  # what the step in hand wants doing
 		"tear": return "wait for the receipt to print" if _printing > 0.0 else "tear off the receipt"
 		"change": return "give $%.2f change" % co.change
 		"receipt": return "hand them the receipt"
-		"handback": return "hand over %s" % what
+		"handback": return "hand over %s" % (what if n > 0 else "their snacks")
 	return ""
 
 
@@ -96,6 +97,8 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 	var total := 0.0
 	for t: Dictionary in cust.tapes:
 		total += price(t)
+	for u: Dictionary in cust.snacks:
+		total += $"../Snacks".price(u)
 	var bill := 50.0
 	for b in [1.0, 5.0, 10.0, 20.0, 50.0]:
 		if b >= total:
@@ -112,7 +115,7 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 
 
 func _skip() -> void:  # past any step this sale doesn't need
-	while co != null and co.i < STEPS.size() and ((STEPS[co.i][0] == "change" and co.change <= 0.0) or (STEPS[co.i][0] == "fees" and co.cust.member.owed <= 0.0)):
+	while co != null and co.i < STEPS.size() and ((STEPS[co.i][0] == "change" and co.change <= 0.0) or (STEPS[co.i][0] == "fees" and co.cust.member.owed <= 0.0) or (STEPS[co.i][0] in ["card", "tap", "cardBack", "fees", "tapes", "desens"] and co.cust.tapes.is_empty())):  # (just snacks: no card, no tapes)
 		co.i += 1
 	if co != null:  # what they're holding out for this one
 		var id: String = step()[0] if not step().is_empty() else ""
@@ -156,6 +159,8 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			served += 1
 			rentals += k.tapes.size()
 			take += co.total
+			for u: Dictionary in k.snacks:
+				$"../Shift".stats.snack_take += $"../Snacks".price(u)
 			$"../Shift".budget += co.total
 			for t: Dictionary in k.tapes:  # on their account: a new release is out two nights, the rest five
 				shoppers.rented.append([t, Clock.day, Clock.day + (2 if t.n else 5), k.member.num])
@@ -169,7 +174,8 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			k.c.hold_tape(k.tapes.size())
 			k.tagged = missed > 0  # anything still tagged sets the gates off
 			k.paid = true
-			hud.toast("%s %s: %s, $%.2f%s (+%d)" % ["Dana rang up" if co.by == "dana" else "Rang up", k.name, "1 tape" if k.tapes.size() == 1 else "%d tapes" % k.tapes.size(), co.total, ", %d tag%s missed" % [missed, "" if missed == 1 else "s"] if missed else "", got])
+			hud.toast("%s %s: %s, $%.2f%s (+%d)" % ["Dana rang up" if co.by == "dana" else "Rang up", k.name, _bought(k), co.total, ", %d tag%s missed" % [missed, "" if missed == 1 else "s"] if missed else "", got])
+			k.snacks = []
 			k.c.hold_prop("receipt")
 			k.c.set_mood("thanks")
 			k.c.set_pose("hold")
@@ -181,6 +187,15 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 		co.i += 1
 		_skip()
 	return true
+
+
+func _bought(k: Dictionary) -> String:
+	var parts := PackedStringArray()
+	if not k.tapes.is_empty():
+		parts.append("1 tape" if k.tapes.size() == 1 else "%d tapes" % k.tapes.size())
+	if not k.snacks.is_empty():
+		parts.append("1 snack" if k.snacks.size() == 1 else "%d snacks" % k.snacks.size())
+	return ", ".join(parts)
 
 
 func fees(charge: bool) -> void:  # late fees on their account: charge them (money, a grumpier customer) or waive them (goodwill) (coFees)

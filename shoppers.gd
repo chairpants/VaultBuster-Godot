@@ -206,7 +206,7 @@ func spawn(member = null) -> Dictionary:  # custSpawn
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
-	var cust := { "who": who, "member": member, "name": members.name_of(member), "said": {}, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
+	var cust := { "who": who, "member": member, "name": members.name_of(member), "said": {}, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
 		"thief": randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
@@ -681,7 +681,13 @@ func _done(cust: Dictionary) -> void:  # out of shelves to look at: to the regis
 	if cust.thief and cust.holding > 0 and not (cust.known and randf() < 0.35):  # (you've had an eye on them: maybe not today)
 		_sneak(cust)
 		return
-	if cust.holding > 0:
+	if not cust.snack_done:  # a snack on the way, maybe
+		cust.snack_done = true
+		var racks: Array = $"../Snacks".spots
+		if not racks.is_empty() and randf() < (0.4 if cust.holding > 0 else 0.25):
+			go(cust, "snack", racks.pick_random())
+			return
+	if cust.holding > 0 or not cust.snacks.is_empty():
 		cust.c.set_mood("happy")
 		line.append(cust)
 		to_line(cust)
@@ -697,6 +703,8 @@ func waiting():  # whoever's at the counter, waiting to be rung up (or null)
 func _gone(cust: Dictionary) -> void:
 	leave_line(cust)
 	asks.erase(cust)
+	if cust.snack_unit != null:
+		cust.snack_unit.claim = null
 	if catch_call == cust:
 		catch_call = null
 		hud.call_box("")
@@ -835,7 +843,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0 and c.mood != "impatient":
 					c.set_mood("impatient")
 			"counter":
-				c.hold_prop("card")
+				c.hold_prop("card" if not cust.tapes.is_empty() else "cash")
 				c.set_pose("wait")
 				c.set_mood("wait")
 				cust.state = "wait"
@@ -867,6 +875,34 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					c.set_mood("happy")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"snack":  # at the rack: a hand to the one they want
+				cust.snack_unit = $"../Snacks".pick(cust.spot)
+				if cust.snack_unit != null:
+					cust.snack_unit.claim = cust
+					c.reach_to(cust.snack_unit.at)
+				else:
+					c.set_pose("reach")
+				c.set_mood("happy")
+				cust.state = "snacking"
+				cust.t = 1.4
+				if cust.spot.drinks and not things.cooler_open:
+					things.cooler_open = true
+					cust.opened_cooler = true
+			"snacking":
+				if cust.t <= 0.0:
+					var u = cust.snack_unit
+					cust.snack_unit = null
+					if u != null:
+						u.claim = null
+						if not u.out:  # in hand, for real
+							$"../Snacks".set_out(u, true)
+							cust.snacks.append(u)
+					c.reach_to(null)
+					if cust.opened_cooler:
+						things.cooler_open = false
+						cust.opened_cooler = false
+					c.set_pose("hold" if cust.holding > 0 else "idle")
+					_done(cust)
 			"toAsk":  # at the counter: "excuse me..."
 				cust.state = "asking"
 				cust.t = 75.0 * who.patience
