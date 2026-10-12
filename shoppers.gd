@@ -177,14 +177,15 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 	return r * $"../Shift".rep_mult()  # (a better name brings more people in)
 
 
-func spawn(member = null) -> Dictionary:  # custSpawn
+func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a parent's kid tagging along (not a member: on their parent's number)
 	if member == null:
 		member = _pick_member(true)
-	var female: bool = member.female
-	var who := customer_for(_imul(member.num, 2654435761), female)  # member # -> the same person every time
-	_last_member = member
-	$"../Shift".stats.visitors += 1
-	member.last_visit = Clock.day + Clock.h / 24.0
+	var who := customer_for(_imul(member.num, 2654435761), member.female) if kid_of == null else _kid_for(kid_of)  # member # -> the same person every time
+	var female: bool = who.female
+	if kid_of == null:
+		_last_member = member
+		$"../Shift".stats.visitors += 1
+		member.last_visit = Clock.day + Clock.h / 24.0
 	who.patience *= 1.0 + member.loyalty / 200.0  # regulars will wait a bit longer; the fed-up, less
 	if Clock.h >= 23.0 and randf() < 0.5:  # the 11:30 walk-in, in no hurry at all
 		who.stops = 7 + randi() % 4
@@ -195,25 +196,29 @@ func spawn(member = null) -> Dictionary:  # custSpawn
 		if chores._t - chores._mess_note > 120.0:
 			chores._mess_note = chores._t
 			hud.toast("Customers are noticing the mess (%d spots to clean%s)" % [chores.messes.size(), ", the trash overflowing" if chores.bins.any(func(b: Dictionary) -> bool: return b.n >= b.cap) else ""])
-	if member.loyalty >= 40.0:
+	if member.loyalty >= 40.0 and kid_of == null:
 		hud.toast("%s, one of the regulars, came in" % members.name_of(member))
 	var out := rentals_of(member)
 	var back: Array = out.filter(func(r: Array) -> bool: return r[2] <= Clock.day or (r[2] == Clock.day + 1 and randf() < 0.5)).map(func(r: Array) -> Dictionary: return r[0])  # what's due (or late) comes back; the rest stays out
 	who.max_tapes = mini(who.max_tapes, maxi(0, members.RENT_MAX - (out.size() - back.size())))  # 3 out at a time, counting what they're keeping
+	if kid_of != null:
+		back = []
 	var cast: Array = range(people.cast.who.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == female and not people.cast.who[i].has("staff"))
 	var c: Node3D = people.spawn(cast[who.seed % cast.size()])
 	c.gait = who.gait
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
-	var cust := { "who": who, "member": member, "name": members.name_of(member), "said": {}, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
+	var cust := { "who": who, "member": member, "name": members.name_of(member) if kid_of == null else "%s's kid" % members.name_of(member), "kid": kid_of != null, "party": [], "tag_t": 0.0, "said": {}, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
-		"thief": randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
+		"thief": kid_of == null and randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
 		"squeeze": 0.0, "stuck": 0.0, "detour": false, "bump_t": 0.0, "bump_detour": false, "wait_for": null }
 	if not back.is_empty():
 		c.set_pose("hold")
 		c.hold_tape(mini(3, back.size()))
+	if kid_of != null:  # small
+		c.scale = Vector3.ONE * (0.6 + randf() * 0.08)
 	custs.append(cust)
 	return cust
 
@@ -231,7 +236,7 @@ func _process(dt: float) -> void:
 			else:
 				var m = _pick_member()
 				if m != null:  # (nobody due in: a quiet spell)
-					spawn(m)
+					_bring_along(spawn(m))
 				_arrive = (6.0 + randf() * 20.0) / rush_level()
 	var you: Vector3 = player.global_position
 	if you.y < 2.0 and absf(you.z - _you_z) < 1.0 and absf(you.x) < 2.0 and (_you_z - GATE_Z) * (you.z - GATE_Z) < 0.0 and tapes.inv.any(func(t: Dictionary) -> bool: return not t.get("desens", false)):
@@ -678,6 +683,9 @@ func _decide(cust: Dictionary) -> void:  # done browsing this shelf: take one, p
 
 
 func _done(cust: Dictionary) -> void:  # out of shelves to look at: to the register, or out
+	if cust.kid:  # (kids don't pay: they go find their parent)
+		_tag_along(cust)
+		return
 	if cust.thief and cust.holding > 0 and not (cust.known and randf() < 0.35):  # (you've had an eye on them: maybe not today)
 		_sneak(cust)
 		return
@@ -691,6 +699,8 @@ func _done(cust: Dictionary) -> void:  # out of shelves to look at: to the regis
 		cust.c.set_mood("happy")
 		line.append(cust)
 		to_line(cust)
+	elif not _partners(cust).is_empty():  # nothing for them: they wait on whoever they came with
+		_tag_along(cust)
 	else:
 		cust.c.set_mood("meh")
 		go(cust, "leave", { "x": _door.x, "z": _door.y })
@@ -783,7 +793,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					elif cust.pickup != null:  # here for their hold: they ask at the counter
 						cust.want = { "kind": "hold", "title": cust.pickup.title, "hold": cust.pickup }
 						_ask_go(cust)
-					elif _want(cust):
+					elif not cust.kid and _want(cust):
 						_ask_go(cust)
 					else:
 						_next_stop(cust)
@@ -875,6 +885,8 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					c.set_mood("happy")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"tagAlong":
+				_tag_tick(cust)
 			"snack":  # at the rack: a hand to the one they want
 				cust.snack_unit = $"../Snacks".pick(cust.spot)
 				if cust.snack_unit != null:
@@ -1173,3 +1185,131 @@ func all_out(cust: Dictionary) -> void:  # Q: "sorry, all our copies are out"
 	members.loyal(cust.member, 2)
 	hud.toast("Told %s %s is all out (+10)" % [cust.name, cust.want.title])
 	ask_done(cust, "leave" if randf() < 0.5 else "")
+
+
+# ---- not alone: a parent's kid, a friend (kidFor, custBringAlong, custRideWith, custTagAlong, custTagAlongTick)
+
+const LEAVING := ["leave", "outside"]
+
+
+func _kid_for(parent: Dictionary) -> Dictionary:  # a kid: small, their own taste; a fresh face each visit
+	var who := customer_for(randi(), randf() < 0.5)
+	who.taste = "kid"
+	who.cats = ["Family & Kids", "Kids & Educational", "Animation"]
+	who.stops = 1 + randi() % 3
+	who.speed = parent.who.speed
+	who.picky = 0.8
+	who.max_tapes = 1
+	who.dwell = 0.8
+	who.gait = "bouncy"
+	return who
+
+
+func _beside(cust: Dictionary, lead: Dictionary) -> void:  # walking up beside them (a step further out along the sidewalk)
+	var lp: Vector3 = lead.c.position
+	cust.c.position = lp + Vector3((1.0 if lp.x > 0.0 else -1.0) * 0.8, 0.0, -0.35)
+	cust.from = Vector2(cust.c.position.x, cust.c.position.z)
+	cust.path = [_outside, _inside, _door]
+	cust.state = "arrive"
+	lead.party = [lead, cust]
+	cust.party = lead.party
+
+
+func _bring_along(lead: Dictionary) -> void:  # a regular arrival might not be alone
+	if lead.pickup != null or custs.size() >= mini(6, roundi(2.0 + 2.0 * rush_level())):
+		return
+	var parent: bool = lead.who.taste == "parent"
+	var r := randf()
+	if r < (0.5 if parent else 0.05):
+		_beside(spawn(lead.member, lead), lead)
+		if lead.member.loyalty >= 40.0:
+			hud.toast("%s brought their kid" % lead.name)
+	elif r < (0.62 if parent else 0.24):
+		var ms: Array = members.all.filter(func(m: Dictionary) -> bool: return m != lead.member and not custs.any(func(k: Dictionary) -> bool: return k.member == m) and members.can_visit(m) and m.loyalty > -60.0)
+		if ms.is_empty():
+			return
+		var k := spawn(ms.pick_random())
+		_beside(k, lead)
+		k.thief = false  # (nobody shoplifts with a friend watching)
+		lead.thief = false
+		k.who.speed = lead.who.speed
+
+
+func _partners(cust: Dictionary) -> Array:  # whoever they came with that's still busy in the store
+	return cust.party.filter(func(k: Dictionary) -> bool: return k != cust and custs.has(k) and not k.state in LEAVING and k.state != "tagAlong")
+
+
+func _tag_along(cust: Dictionary) -> void:  # done: go wait by whoever they came with
+	var kids: Array = cust.party.filter(func(k: Dictionary) -> bool: return k.kid and k != cust and custs.has(k) and k.state != "tagAlong" and not k.state in LEAVING)
+	if not cust.kid and not kids.is_empty():  # a parent: "come on, we're going"
+		var kid: Dictionary = kids[0]
+		cust.c.set_mood("impatient")
+		cust.hi = 2.0
+		kid.stops_left = 0
+		kid.c.set_mood("meh")
+		kid.hi = 1.5
+		if kid.state in ["stop", "browse", "reach"] or not kid.path.is_empty():
+			kid.c.reach_to(null)
+			_tag_along(kid)
+		if not kid.get("hurried", false):  # (and they hurry)
+			kid.hurried = true
+			kid.who.speed *= 1.35
+	cust.state = "tagAlong"
+	cust.t = 0.0
+	cust.path = []
+	cust.tag_t = 0.0
+	cust.c.set_pose("hold" if cust.holding > 0 else "idle")
+
+
+func _tag_tick(cust: Dictionary) -> void:  # standing by: near whoever's still going; when nobody is, out together
+	var c: Node3D = cust.c
+	var busy := _partners(cust)
+	if cust.kid and not cust.tapes.is_empty():  # a kid with a tape: "can we get this one?"
+		var par: Dictionary = cust.party[0]
+		if custs.has(par) and par.state in ["stop", "browse", "reach", "tagAlong"] and par.c.position.distance_to(c.position) < 1.6:
+			var t: Dictionary = cust.tapes.pop_back()
+			cust.holding = 0
+			c.hold_tape(0)
+			c.set_mood("ask")
+			cust.hi = 2.0
+			par.tapes.append(t)  # (they cave)
+			par.holding += 1
+			par.c.hold_tape(mini(3, par.holding))
+			par.c.set_pose("hold")
+			par.c.set_mood("meh")
+			par.hi = 1.5
+			if par.state == "tagAlong":  # that's one more to pay for
+				par.state = "browse"
+				par.t = 0.5
+				par.stops_left = 0
+		elif not custs.has(par) or par.state in LEAVING or par.state in ["queue", "inLine", "counter", "wait", "impatient", "angry", "checkout", "paid"]:  # too late (they're paying, or going): back it goes
+			tapes.set_on_shelf(cust.tapes.pop_back(), true)
+			cust.holding = 0
+			c.hold_tape(0)
+	var others: Array = cust.party.filter(func(k: Dictionary) -> bool: return k != cust and custs.has(k) and not k.state in LEAVING)
+	if busy.is_empty() and (others.is_empty() or others[0].state == "tagAlong" or cust.kid):  # everyone's done: out the door together
+		c.set_mood("happy" if cust.holding > 0 or cust.paid else "neutral")
+		c.talking = false
+		go(cust, "leave", { "x": _door.x, "z": _door.y })
+		return
+	if cust.t > 0.0:
+		return
+	var k: Dictionary = busy[0] if not busy.is_empty() else others[0]
+	var q: Vector3 = k.c.position
+	cust.tag_t += 2.0
+	if cust.tag_t > 90.0 and not busy.is_empty() and not k.kid:  # "come on..."
+		k.stops_left = mini(k.stops_left, 0)
+		k.c.set_mood("meh")
+		k.hi = 1.0
+	if q.distance_to(c.position) > 1.8:  # go stand beside them (by the line, not in it)
+		var a := randf() * TAU
+		var spot := { "x": q.x + cos(a) * 0.9, "z": q.z + sin(a) * 0.9 + (0.6 if k.state in ["inLine", "queue", "counter", "wait", "checkout"] else 0.0) }
+		spot.ry = atan2(q.x - spot.x, q.z - spot.z)
+		go(cust, "tagAlong", spot)
+		cust.t = 2.5
+		return
+	cust.ry = atan2(q.x - c.position.x, q.z - c.position.z)
+	c.talking = randf() < 0.5
+	c.set_mood("browse" if randf() < 0.3 else "neutral")
+	cust.state = "tagAlong"
+	cust.t = 2.0 + randf() * 2.0

@@ -562,6 +562,26 @@ func _check() -> void:
 				Sn.aim = { "spot": u }
 				Sn.on_e()
 		$Staff._ring_t = 0.0
+	# a parent and their kid: in together, out together
+	var mum: Dictionary = S.spawn()
+	var kid: Dictionary = S.spawn(mum.member, mum)
+	S._beside(kid, mum)
+	for k: Dictionary in [mum, kid]:
+		k.who.speed = 9.0
+		k.who.dwell = 0.05
+		k.stops_left = 1
+		k.thief = false
+		k.returning = []
+		k.snack_done = true
+	if not kid.kid or kid.c.scale.y > 0.8 or mum.party != kid.party or mum.party.size() != 2:
+		bad.append("a kid didn't come in with their parent")
+	t0 = Time.get_ticks_msec()
+	var tagged := false
+	while (S.custs.has(mum) or S.custs.has(kid)) and Time.get_ticks_msec() - t0 < 120000:
+		tagged = tagged or kid.state == "tagAlong"
+		await get_tree().process_frame
+	if S.custs.has(mum) or S.custs.has(kid) or not tagged:
+		bad.append("a parent and kid didn't see their visit through together (parent %s, kid %s, tagged along %s)" % [mum.state, kid.state, tagged])
 	# the phone: a call answered right; a hold promised, set aside, and handed over when they come in for it
 	var Ph := $Phone
 	var caller: Dictionary = S.members.all[5]
