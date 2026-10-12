@@ -815,6 +815,30 @@ func _check() -> void:
 	Tp.drop_in_returns()
 	if Cu.rec.is_empty() or not Cu.rec.done or not Cu.day.goals[0].done or Cu.day.goals[1].done or not "☐" in Cu.list_line():
 		bad.append("the staff's pick, rented, didn't come off the day's list (%s)" % [Cu.rec])
+	# the crew as people: known a few days, a favor; done, something for it. And a yes to an application puts you on staff
+	Cu.wary.clear()
+	Cu._knows(St).k = 3
+	Cu._knows(St).day = 0
+	Cu._knows(St).named = true
+	Cu.rec = { "day": Clock.day, "title": "x", "cat": "y", "done": true }
+	Cu.fav = {}
+	Cu._fav_day = 0
+	Cu.talk(St)
+	var asked: Dictionary = Cu.fav.duplicate()
+	Cu.fav.done = true
+	var trust0: float = Cu.trust
+	Cu.talk(St)
+	if asked.is_empty() or not Cu.fav.get("paid", false) or Cu.trust <= trust0 or Cu._hint() == "" or Cu.staff_tip(St) == "":
+		bad.append("a favor for one of the staff didn't get asked and thanked (%s)" % [asked])
+	for stray: Dictionary in Ch.strays.duplicate():
+		Ch.stray_take(stray)
+		Tp.set_on_shelf(stray.copy, true)
+	Cu.app = { "day": Clock.day - 1, "strikes": Cu.strikes, "ans": "yes", "told": true }
+	Cu.talk(St)
+	if $Shift.mode != "sandbox" or not Cu.rented.is_empty():
+		bad.append("taking the job didn't put you on staff")
+	$Shift.mode = "customer"
+	Cu.fav = {}
 	Cu.banned = Clock.day
 	if not "YOUR DAY" in "\n".join(Cu.slip()) or not "YOUR RECORD" in "\n".join(Cu.slip()):
 		bad.append("a customer's day didn't make a slip")
