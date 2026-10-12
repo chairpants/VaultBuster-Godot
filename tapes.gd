@@ -7,7 +7,8 @@ extends Node
 ##
 ## Click a tape: it comes off the shelf, held up to look at. Click again: it's in your hand. Right-click while you're
 ## still looking: back it goes. Click its empty slot: back it goes. Click with one in hand: held up again.
-## E at the TV (within 4.5 m) or the theater's screen (9 m): in it goes, and plays on both; E again: out it comes.
+## E at the TV (within 4.5 m) or the theater's screen (9 m): in it goes, and plays on every screen (those two, and
+## the monitors hung over the aisles); E again: out it comes.
 ##
 ## Different here:
 ## - The shelves are whole meshes, as in the web game, and a tape leaves one the same way (its corners pulled out of
@@ -97,7 +98,9 @@ func _ready() -> void:
 	cam.add_child(_hand)
 	_hand.add_child(_hand_mesh)
 	_hand.visible = false
-	for sc: Dictionary in screens:  # the picture, a hair in front of each screen: there while a tape's playing
+	var every: Array = screens.duplicate()
+	every.append_array(JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).get("minis", []))  # ...and the monitors hung over the aisles
+	for sc: Dictionary in every:  # the picture, a hair in front of each screen: there while a tape's playing
 		var q := MeshInstance3D.new()
 		var quad := QuadMesh.new()
 		quad.size = Vector2(sc.w, sc.h)
@@ -107,8 +110,12 @@ func _ready() -> void:
 		m.albedo_color = Color(0.85, 0.85, 0.85)  # (the web game's -15%: blown-out whites were blinding)
 		quad.material = m
 		q.mesh = quad
-		q.position = Vector3(sc.x, sc.y, sc.z) + Vector3(sin(sc.ry), 0, cos(sc.ry)) * 0.006
-		q.rotation.y = sc.ry
+		if sc.has("q"):
+			q.basis = Basis(Quaternion(sc.q[0], sc.q[1], sc.q[2], sc.q[3]))
+			q.position = Vector3(sc.p[0], sc.p[1], sc.p[2]) + q.basis.z * 0.006
+		else:
+			q.position = Vector3(sc.x, sc.y, sc.z) + Vector3(sin(sc.ry), 0, cos(sc.ry)) * 0.006
+			q.rotation.y = sc.ry
 		q.visible = false
 		add_child(q)
 		_quads.append(q)

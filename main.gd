@@ -120,6 +120,39 @@ func _check() -> void:
 	I.on_e()
 	if P.seat != null:
 		bad.append("E didn't stand you up")
+	var F := $Fixtures
+	if F._flap_pivot == null or F._flap_gate == null or F._lid == null or F._slide == null:
+		bad.append("not every fixture was found in the level")
+	else:
+		P.global_position = Vector3(0, 0, 10)
+		F.aim = "flap"
+		F.on_e()
+		await get_tree().create_timer(1.2).timeout
+		if absf(F._flap_pivot.rotation.z - F.flap.openA) > 0.1:
+			bad.append("the counter's leaf didn't lift")
+		F.aim = "hatch"
+		F.on_e()
+		await get_tree().create_timer(F.ladders.dur + 0.6).timeout
+		if not F.on_roof() or P.climb != null:
+			bad.append("the closet ladder didn't get you onto the roof (y %.1f)" % P.global_position.y)
+		F.aim = "back"
+		F.on_e()
+		await get_tree().create_timer(1.2).timeout
+		if not F.back_down or F._slide.position.y > 0.0:
+			bad.append("the back ladder didn't come down when kicked")
+		F.aim = "back"
+		F.on_e()
+		await get_tree().create_timer(F.ladders.dur + 0.6).timeout
+		if F.on_roof() or absf(P.global_position.x - F.ladders.back.climb.down.x) > 0.5:
+			bad.append("the back ladder didn't get you down (at %s)" % P.global_position)
+	var Li := $Lights
+	Li.flip_switch("front")
+	if Li.zone_on.front or Li.zone_lvl.front > 0.0:
+		bad.append("the front lights didn't go off")
+	Li.flip_switch("front")
+	await get_tree().create_timer(2.0).timeout
+	if Li.zone_lvl.front < 1.0:
+		bad.append("the front lights didn't come back on")
 	var T := $Tapes
 	var tape: Dictionary = T.tapes[0]
 	var n: int = T._corners(tape).size()

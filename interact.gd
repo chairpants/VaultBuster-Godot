@@ -23,6 +23,7 @@ var stood_at := {}
 @onready var cam: Camera3D = $"../Player/Camera"
 @onready var hud: CanvasLayer = $"../HUD"
 @onready var tapes: Node = $"../Tapes"
+@onready var fixtures: Node = $"../Fixtures"
 
 
 func _ready() -> void:
@@ -107,6 +108,11 @@ func _front_door(dt: float) -> void:  # anyone right at the door: it swings open
 func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	aim_door = null
 	aim_seat = null
+	fixtures.aim = ""
+	if player.climb != null:
+		tapes.clear_aim()
+		hud.tip("")
+		return
 	if player.seat != null:
 		tapes.clear_aim()
 		hud.tip("Press E to stand up (and pull your pants up)" if player.seat.kind == "toilet" else "Press E to stand up")
@@ -131,6 +137,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	if aim_door != null:
 		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
+		return
+	var fix_tip: String = fixtures.take_aim(from, dir, hit, hit_d)  # the flap, switches, lamps, ladders (see fixtures.gd)
+	if fix_tip != "":
+		tapes.clear_aim()
+		hud.tip(fix_tip)
 		return
 	var tape_tip: String = tapes.aim(from, dir, hit, hit_d)  # tapes, your tape's slot, a screen (see tapes.gd)
 	if tape_tip != "":
@@ -159,6 +170,8 @@ func on_e() -> void:
 		player.stand(stood_at.at, stood_at.yaw)
 	elif aim_door != null:
 		toggle_door(aim_door)
+	elif fixtures.on_e():
+		pass
 	elif tapes.aim_tv != null:
 		tapes.vcr_use()
 	elif aim_seat != null:

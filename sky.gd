@@ -4,8 +4,7 @@ extends Node3D
 ## are its numbers. Not here yet: rain, snow and fog (so WX.k and WX.fog are 0 throughout), and gusts.
 ##
 ## Godot's own, where the web game does it in its material shaders: the sun as a DirectionalLight3D (the moon after
-## dark), the outdoors' ambient light following the daylight, and inside the buildings a grid of plain lights under the
-## ceiling (the store's lights are on, whatever the hour).
+## dark), the outdoors' ambient light following the daylight, (Indoors: lights.gd.)
 
 const SKY_KEYS := [  # [hour, daylight 0..1, sky]: everything eases between neighbours
 	[0.0, 0.0, 0x0e1a38], [4.8, 0.0, 0x0e1a38],
@@ -27,7 +26,6 @@ const X0 := -110.0
 const X1 := 120.0
 const Z0 := -95.0
 const Z1 := 135.0
-const BUILDINGS := [[-7.84, 11.1, -0.1, 33.1], [11.1, 12.7, 27.9, 29.9], [-7.07, 1.33, 33.1, 46.6], [13.0, 21.0, 0.0, 14.0]]  # the store's footprint (ROOF.rects) and Tony's
 
 var level := 1.0  # daylight, 0..1 (tod.level)
 var sky_color := Color()  # tod.sky
@@ -41,7 +39,6 @@ var _puffs: Array[Dictionary] = []
 var _mm := MultiMesh.new()
 var _cloud_mat := StandardMaterial3D.new()
 var _t := 0.0
-var _indoors: Array[OmniLight3D] = []
 
 @onready var sun: DirectionalLight3D = $"../Sun"
 @onready var env: Environment = $"../WorldEnvironment".environment
@@ -74,18 +71,6 @@ func _ready() -> void:
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mmi.custom_aabb = AABB(Vector3(X0 - 20, 0, Z0 - 20), Vector3(X1 - X0 + 40, 50, Z1 - Z0 + 40))
 	add_child(mmi)
-	for b in BUILDINGS:  # indoors the lights are on, whatever the hour: a grid of them under each ceiling
-		var nx := maxi(1, roundi((b[1] - b[0]) / 5.0))
-		var nz := maxi(1, roundi((b[3] - b[2]) / 5.0))
-		for ix in nx:
-			for iz in nz:
-				var l := OmniLight3D.new()
-				l.position = Vector3(b[0] + (ix + 0.5) * (b[1] - b[0]) / nx, 3.0, b[2] + (iz + 0.5) * (b[3] - b[2]) / nz)
-				l.omni_range = 8.0
-				l.light_color = Color(1, 0.98, 0.94)
-				l.light_specular = 0.0
-				add_child(l)
-				_indoors.append(l)
 	_tick(0.0)
 
 
@@ -131,8 +116,6 @@ func _tod() -> void:  # sample the sky for the clock's hour (todTick)
 		sun.light_energy = 0.15 * (1.0 - 0.9 * over)
 	env.ambient_light_color = Color(0.10, 0.12, 0.2).lerp(Color(1, 0.98, 0.94), level)
 	env.ambient_light_energy = lerpf(0.45, 0.9, level)
-	for l in _indoors:  # (by day the daylight's in there with them already)
-		l.light_energy = lerpf(0.7, 0.25, level)
 
 
 func _bump(h: float, a: float, b: float, c: float, d: float) -> float:  # 0 up to a, 1 from b to c, 0 again by d (wxBump)

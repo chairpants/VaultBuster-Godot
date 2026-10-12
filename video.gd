@@ -17,7 +17,7 @@ signal started  # the first frame's up
 signal ended
 signal failed(why: String)
 
-const RES := Vector2i(640, 352)  # raw frames, so this is the disk-bandwidth knob
+const RES := Vector2i(528, 352)  # 3:2, the shape of the web game's screens. Raw frames, so this is the disk-bandwidth knob
 const FPS := 15
 const FRAME_BYTES := RES.x * RES.y * 3  # rgb24
 const CHUNK_SEC := 10  # fetch granularity
@@ -201,7 +201,8 @@ func _start_chunk() -> bool:
 		# archive.org drops connections mid-transfer; without this the tail of a chunk is whatever arrived before the socket died
 		"-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
 		"-ss", str(_src_pos), "-t", str(CHUNK_SEC), "-i", url,  # -t before -i bounds the input, so it covers both outputs
-		"-vf", "scale=%d:%d,fps=%d" % [RES.x, RES.y, FPS],  # the picture: uncompressed rgb24, byte for byte what Image.FORMAT_RGB8 wants
+		# fitted inside the frame at its own shape, black round it (never stretched)
+		"-vf", "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,fps=%d" % [RES.x, RES.y, RES.x, RES.y, FPS],  # the picture: uncompressed rgb24, byte for byte what Image.FORMAT_RGB8 wants
 		"-f", "rawvideo", "-pix_fmt", "rgb24", "-y", ProjectSettings.globalize_path(file),
 		"-vn", "-c:a", "libvorbis", "-q:a", "3", "-y", ProjectSettings.globalize_path(_ogg(_slot)),  # the sound: a second output of the same process
 	])
