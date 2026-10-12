@@ -278,6 +278,8 @@ func _unhandled_input(e: InputEvent) -> void:  # Q at the counter: waive their l
 
 func take_aim(hit: Dictionary, hit_d: float) -> String:
 	aim = ""
+	if $"../Shift".mode == "customer":
+		return ""  # (not yours to work)
 	if not hit or hit_d > 2.4:
 		return ""
 	var at: Vector3 = hit.position

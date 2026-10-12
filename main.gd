@@ -18,6 +18,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var snacks: Node = preload("res://snacks.gd").new()  # (and the candy racks and the cooler: snacks.gd)
 	snacks.name = "Snacks"
 	add_child(snacks)
+	var customer: Node = preload("res://customer.gd").new()  # (and the other side of the counter: customer.gd)
+	customer.name = "Customer"
+	add_child(customer)
 	var menu: Node = preload("res://menu.gd").new()  # (and the main menu, which is also the pause screen: menu.gd)
 	menu.name = "Menu"
 	add_child(menu)
@@ -714,9 +717,9 @@ func _check() -> void:
 			bad.append("nobody got to a seat in the theater (%s at %s)" % [goer.state, goer.c.position])
 		goer.t = 0.0
 		t0 = Time.get_ticks_msec()
-		while S.custs.has(goer) and Time.get_ticks_msec() - t0 < 40000:
+		while S.custs.has(goer) and goer.state in ["thWatch", "thRowOut"] and Time.get_ticks_msec() - t0 < 40000:
 			await get_tree().process_frame
-		if S.custs.has(goer):
+		if S.custs.has(goer) and goer.state in ["thWatch", "thRowOut"]:
 			bad.append("the moviegoer didn't find their way back out (%s at %s)" % [goer.state, goer.c.position])
 	var noon_was := Clock.h
 	Clock.h = 12.0
@@ -748,6 +751,14 @@ func _check() -> void:
 	if $People.tony == null or $People.tony.position.distance_to(Vector3(16.2, 0, 8.3)) > 0.1:
 		bad.append("Tony isn't behind his counter")
 	# somebody new signs up at the counter: their form, into the computer, their card
+	for k: Dictionary in S.custs.duplicate():  # (the counter to ourselves)
+		if not k.paid:
+			for t: Dictionary in k.tapes:
+				Tp.set_on_shelf(t, true)
+			k.tapes = []
+		k.tagged = false
+		S._gone(k)
+	$Checkout.co = null
 	var newbie: Dictionary = S.members.all[9]
 	newbie.active = false
 	$Staff._ring_t = -999.0
@@ -767,6 +778,34 @@ func _check() -> void:
 		bad.append("signing somebody up didn't go through (%s, active %s)" % [pr.state, newbie.active])
 	$Staff._ring_t = 0.0
 	S._gone(pr)
+	# the other side of the counter: pay the clerk for a tape, bring it back; get caught behind the counter
+	var Cu := $Customer
+	$Shift.mode = "customer"
+	Tp.pickup(loot)
+	var owe: float = Cu.total()
+	Cu.pay()
+	if owe < 1.9 or not Cu.rented.has(loot.k) or absf(Cu.wallet - (40.0 - owe)) > 0.01 or not loot.get("desens", false):
+		bad.append("paying the clerk for a tape didn't take ($%.2f, wallet $%.2f)" % [owe, Cu.wallet])
+	Tp.drop_in_returns()
+	Cu._check_t = 0.0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if Cu.rented.has(loot.k) or Cu.day.returned != 1:
+		bad.append("a rental dropped in Returns didn't count as back")
+	Cu.caught("staff")
+	if Cu.today != 1 or $Player.global_position.distance_to(Cu.FLOOR) > 1.0 or Cu.banned == Clock.day:
+		bad.append("being caught in back the first time wasn't a warning and a walk to the floor")
+	Cu.caught("staff")
+	if Cu.banned != Clock.day:
+		bad.append("being caught again didn't get you thrown out")
+	if not "YOUR DAY" in "\n".join(Cu.slip()):
+		bad.append("a customer's day didn't make a slip")
+	Cu.banned = 0
+	$Shift.mode = "sandbox"
+	$HUD.call_box("")
+	$Things._block.get_child(0).disabled = not $Things.locked
+	Tp.return_bin.erase(loot)
+	Tp.set_on_shelf(loot, true)
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

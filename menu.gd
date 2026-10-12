@@ -5,7 +5,7 @@ extends CanvasLayer
 ## inversion, smooth edges, how long a shift is.
 ## From the web game's store/title.js (slotInfo, titleMenu and its settings). The game holds one store at a time,
 ## so playing another file reloads into it.
-## A new store's a sandbox or a simulation (shift.gd). Not over yet: the customer mode. Not up at all when the game's run
+## A new store's a sandbox or a simulation (shift.gd). Or you're a customer (customer.gd). Not up at all when the game's run
 ## with arguments (--check, --shot).
 
 const SLOTS := 3
@@ -109,6 +109,8 @@ func info(n: int) -> String:  # what's in a store file, for the menu ("" for an 
 		return ""
 	var rep: float = d.get("shift", {}).get("rep", 50.0)
 	var stars := clampi(roundi(1.0 + rep / 25.0), 1, 5)
+	if d.get("shift", {}).get("mode", "") == "customer":
+		return "Customer · day %d · $%.2f on you" % [int(d.clock.day), d.get("customer", {}).get("wallet", 40.0)]
 	return ("Simulation" if d.get("shift", {}).get("mode", "") == "simulation" else "Sandbox") + " · day %d · $%d · %s" % [int(d.clock.day), roundi(d.get("shift", {}).get("budget", 10000.0)), "★".repeat(stars) + "☆".repeat(5 - stars)]
 
 
@@ -201,6 +203,7 @@ func _render() -> void:
 		else:
 			row.add_child(_btn("SANDBOX\nDana on staff, $10,000 in the budget:\nbuy whatever you like and just play store", _new.bind(n, "sandbox")))
 			row.add_child(_btn("SIMULATION\nA bare-bones store: no staff, the theater\nlocked up, part of the library. Build it up", _new.bind(n, "simulation")))
+			row.add_child(_btn("CUSTOMER\nYou don't work here. The store runs itself;\nyou come in off the lot with your own wallet", _new.bind(n, "customer")))
 	_box.add_child(_btn("SETTINGS", func() -> void:
 		_page = "settings"
 		_render()))

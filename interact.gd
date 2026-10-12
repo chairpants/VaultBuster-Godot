@@ -115,7 +115,7 @@ func _front_door(dt: float) -> void:  # anyone right at the door: it swings open
 	if front.is_empty():
 		return
 	var p := player.global_position
-	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5 and not things.locked or shoppers.at_the_door()
+	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5 and not things.locked and $"../Customer".banned != Clock.day or shoppers.at_the_door()
 	if near:
 		if not front.open:  # (the chime rings)
 			$"../Ambience".door("push", "open", Vector3(0.9, 1.1, 0.1))
@@ -174,6 +174,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	if aim_door != null:
 		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
+		return
+	var clerk_tip: String = $"../Customer".take_aim(from, dir, hit_d)  # as a customer: whoever's on the register (see customer.gd)
+	if clerk_tip != "":
+		tapes.clear_aim()
+		hud.tip(clerk_tip)
 		return
 	var cust_tip: String = shoppers.take_aim(from, dir, hit_d)  # a customer (see shoppers.gd)
 	if cust_tip != "" and not things.carrying:
@@ -257,6 +262,8 @@ func on_e() -> void:
 		player.stand(stood_at.at, stood_at.yaw)
 	elif aim_door != null:
 		toggle_door(aim_door)
+	elif $"../Customer".on_e():
+		pass
 	elif shoppers.on_e():
 		pass
 	elif checkout.on_e():

@@ -89,6 +89,7 @@ func snapshot() -> Dictionary:
 		"phone": main.get_node("Phone").snapshot(),
 		"snacks": main.get_node("Snacks").snapshot(),
 		"pos": main.get_node("POS").snapshot(),
+		"customer": main.get_node("Customer").snapshot(),
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
 
@@ -203,6 +204,7 @@ func apply(d: Dictionary) -> void:
 	main.get_node("Phone").restore(d.get("phone", {}))
 	main.get_node("Snacks").restore(d.get("snacks", {}))
 	main.get_node("POS").restore(d.get("pos", {}))
+	main.get_node("Customer").restore(d.get("customer", {}))
 	C.served = int(d.till.served)
 	C.rentals = int(d.till.rentals)
 	C.take = d.till.take

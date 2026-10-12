@@ -267,6 +267,8 @@ func _render() -> void:  # the held tapes, stacked in the tray with a yellow sli
 
 func take_aim(hit: Dictionary, hit_d: float) -> String:
 	aim = ""
+	if shift.mode == "customer":
+		return ""  # (not yours to answer)
 	if not hit or hit_d > 2.4:
 		return ""
 	if hit.position.distance_to(_at) < 0.28:

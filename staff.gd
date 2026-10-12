@@ -73,6 +73,8 @@ func _ready() -> void:
 func on_duty() -> bool:  # should she be in the store right now? Five 5-hour shifts: Wednesday to Sunday, 5 to 10 PM
 	if _on_always:
 		return true
+	if $"../Shift".mode == "customer":  # (the store's never short-handed: she stands in for its whole crew)
+		return Clock.h >= 9.0 and Clock.h < Clock.CLOSE + 0.2
 	var n := int(Clock.h) - 9
 	return $"../Shift".owned("hire") and n >= 8 and n <= 12 and Clock.date().weekday in [3, 4, 5, 6, 0]
 

@@ -10,7 +10,7 @@ extends Node
 ## Different here: sleeping it off on the cardboard after close ends the day the same way.
 ## And the two ways to run a store (title.js's modes): a sandbox, or a simulation, which starts with $300, forty
 ## members and nobody on staff, pays wages, grows by word of mouth (people coming in to sign up), and fires you
-## after three nights in the red.
+## after three nights in the red (and then you're a customer: customer.gd, the third way).
 ## And the theater's show (SHOW, showTick, showSet, ticketChance): the theater's an upgrade.
 ## Not over yet: what isn't here to count (snack upsells, burnt-out lights, empty rack
 ## spots, wages), whose points were whose.
@@ -92,6 +92,9 @@ func sim() -> bool:
 
 func start(m: String) -> void:  # a new store, in this mode
 	mode = m
+	if m == "customer":  # (you don't work here: customer.gd)
+		mode = "sandbox"
+		main.get_node("Customer").become.call_deferred()
 	if not sim():
 		upg.hire = true  # (Dana's on staff)
 		return
@@ -287,6 +290,8 @@ func goal_state(g: Dictionary, chk = null) -> Dictionary:  # -> { text, mark: "�
 
 
 func goal_line() -> String:  # for the HUD
+	if mode == "customer":
+		return main.get_node("Customer").status()
 	return "   ".join(goals.map(func(g: Dictionary) -> String:
 		var s := goal_state(g)
 		return "%s %s%s" % [s.mark, s.text, " " + s.have if s.have != "" else ""]))
@@ -300,6 +305,10 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 	report = true
 	_t = 0.0
 	player.set_physics_process(false)
+	if mode == "customer":  # (your own day's slip)
+		_slip.text = "\n".join(main.get_node("Customer").slip())
+		_layer.visible = true
+		return
 	var chk := { "bin": tapes.return_bin.size(), "strays": chores.strays.size(), "messes": chores.messes.size(),
 		"trash": chores.bins.filter(func(b: Dictionary) -> bool: return b.n >= b.cap * 0.75).size() + chores.bags_down.size() + chores.bag_carry.size() }  # the closing walk-through
 	chk.empty = main.get_node("Snacks").empty_spots().size()
@@ -401,18 +410,22 @@ func begin_shift() -> void:  # first thing in the morning: 9:00, doors locked, y
 		th.aim = ""
 	player.global_position = Vector3(0.0, 0.1, 1.4)
 	player.rotation.y = PI
-	hud.toast("%s · day %d. Doors open at 10 — unlock them when you're ready" % [Clock.weekday(), Clock.day])
+	if mode != "customer":
+		hud.toast("%s · day %d. Doors open at 10 — unlock them when you're ready" % [Clock.weekday(), Clock.day])
 
 
 func next_shift() -> void:
 	report = false
 	_layer.visible = false
 	player.set_physics_process(true)
-	if red_nights >= 3:  # fired. (The web game: tomorrow you're back as a customer. That mode isn't here yet: the owner relents)
-		red_nights = 0
-		hud.toast("The owner let you go: three nights in the red. (One more chance, till there's a customer's side to the counter)")
+	var fired := red_nights >= 3  # tomorrow you're back, on the other side of the counter
+	red_nights = 0 if fired else red_nights
 	Clock.day += 1
 	begin_shift()
+	if fired:
+		main.get_node("Customer").become("The owner let you go: three nights in the red.")
+	elif mode == "customer":
+		main.get_node("Customer").morning()
 	var sv: Node = main.get_node("Save")
 	if sv._live:
 		sv.save_store()
@@ -447,6 +460,8 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func take_aim(hit: Dictionary, hit_d: float) -> String:
 	aim = false
+	if mode == "customer":
+		return ""  # (you don't clock out: your day ends when you sleep)
 	var f: Dictionary = main.get_node("Interact").front
 	if not hit or hit_d > 2.4 or f.is_empty() or Clock.h < 23.0 or player.global_position.z < 0.0:  # near close: the way home
 		return ""
