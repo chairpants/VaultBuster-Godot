@@ -16,8 +16,8 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 ## The level
 
 `world/world.scn` is the level: open it and every wall, shelf, chair and sign is a node of its own, under the room
-it's in (`out`, `store`, `boh`, `lobby`, `theater`, `roof`, and `between_rooms` for what sits across two, walls
-mostly). Click something in the 3D view to select it; move it, hide it, delete it, save. Things are named for their
+it's in (`out`, `store`, `boh`, `lobby`, `theater`, and `between_rooms` for what sits across two, walls mostly; the
+roof and everything on it is `out/roof`). Click something in the 3D view to select it; move it, hide it, delete it, save. Things are named for their
 shape and size ("box 1.20 x 0.90 x 0.05"), since the web game never named them. Whatever's there when the game
 starts is made solid then, so there's no collision to keep in step.
 
