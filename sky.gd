@@ -3,20 +3,23 @@ extends Node3D
 ## From the web game: store/shift.js (SKY_KEYS, todTick) and exterior/sky.js (wxPlan, wxSky, wxClouds). The numbers
 ## are its numbers. Not here yet: rain, snow and fog (so WX.k and WX.fog are 0 throughout), and gusts.
 ##
-## Godot's own, where the web game does it in its material shaders: the sun as a DirectionalLight3D (the moon after
-## dark), the outdoors' ambient light following the daylight, (Indoors: lights.gd.)
+## The light it throws is room.gd's business (the sun's direction and colour, and the daylight through the glass, are
+## worked out here for it).
 
-const SKY_KEYS := [  # [hour, daylight 0..1, sky]: everything eases between neighbours
-	[0.0, 0.0, 0x0e1a38], [4.8, 0.0, 0x0e1a38],
-	[5.6, 0.12, 0x2d3564],  # first light
-	[6.3, 0.45, 0x9b8cb4],  # dawn
-	[7.4, 0.85, 0x8fb0d8], [8.6, 1.0, 0x4f8fd6], [17.4, 1.0, 0x4f8fd6],
-	[18.8, 0.8, 0x9ea9bd],  # golden hour
-	[19.6, 0.45, 0xc9794f],  # sunset
-	[20.3, 0.12, 0x39406e],  # the blue hour
-	[21.1, 0.0, 0x0e1a38], [24.0, 0.0, 0x0e1a38],  # night
+const GLASS := {  # daylight's colour through the storefront glass (linear)
+	"day": [0.95, 0.97, 1.0], "morning": [1.0, 0.9, 0.8], "gold": [1.0, 0.74, 0.45], "sunset": [1.0, 0.55, 0.34], "blue": [0.55, 0.65, 1.0],
+}
+const SKY_KEYS := [  # [hour, daylight 0..1, sky, daylight through the glass]: everything eases between neighbours
+	[0.0, 0.0, 0x0e1a38, "blue"], [4.8, 0.0, 0x0e1a38, "blue"],
+	[5.6, 0.12, 0x2d3564, "blue"],  # first light
+	[6.3, 0.45, 0x9b8cb4, "sunset"],  # dawn
+	[7.4, 0.85, 0x8fb0d8, "morning"], [8.6, 1.0, 0x4f8fd6, "day"], [17.4, 1.0, 0x4f8fd6, "day"],
+	[18.8, 0.8, 0x9ea9bd, "gold"],  # golden hour
+	[19.6, 0.45, 0xc9794f, "sunset"],  # sunset
+	[20.3, 0.12, 0x39406e, "blue"],  # the blue hour
+	[21.1, 0.0, 0x0e1a38, "blue"], [24.0, 0.0, 0x0e1a38, "blue"],  # night
 ]
-const SUN_C := Color(1, 1, 1)  # noon sun
+const SUN_C := Color(0.95, 0.8539, 0.6584)  # noon sun: the web game's lin(0xfff3d9, 0.95)
 const SUN_LOW := Color(0.95, 0.475, 0.209)  # sun on the horizon
 const CITY := Color(0.035, 0.024, 0.012)  # the town's glow on the low sky at night
 const CLOUD_LOW := Color(0.5, 0.52, 0.56)
@@ -29,6 +32,9 @@ const Z1 := 135.0
 
 var level := 1.0  # daylight, 0..1 (tod.level)
 var sky_color := Color()  # tod.sky
+var sun_dir := Vector3.UP  # where the sun's light comes from (room.gd)
+var sun_c := SUN_C
+var day_c := Vector3.ONE
 var plan := {}
 var clouds := 0.0  # WX.clouds
 var wind := 0.0  # WX.wind
@@ -40,7 +46,6 @@ var _mm := MultiMesh.new()
 var _cloud_mat := StandardMaterial3D.new()
 var _t := 0.0
 
-@onready var sun: DirectionalLight3D = $"../Sun"
 @onready var env: Environment = $"../WorldEnvironment".environment
 
 
@@ -60,7 +65,7 @@ func _ready() -> void:
 	puff.height = 2.0
 	puff.radial_segments = 6
 	puff.rings = 3
-	_cloud_mat.emission_enabled = true
+	_cloud_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # (lit as room.gd lights the outdoors: worked out in _sky)
 	_cloud_mat.disable_fog = true
 	puff.material = _cloud_mat
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -103,19 +108,14 @@ func _tod() -> void:  # sample the sky for the clock's hour (todTick)
 	var k := t * t * (3.0 - 2.0 * t)
 	level = lerpf(a[1], b[1], k)
 	sky_color = _lin(a[2]).lerp(_lin(b[2]), k)
+	var ga: Array = GLASS[a[3]]
+	var gb: Array = GLASS[b[3]]
+	day_c = Vector3(lerpf(ga[0], gb[0], k), lerpf(ga[1], gb[1], k), lerpf(ga[2], gb[2], k))  # daylight through the glass
 	var arc := clampf((h - 5.9) / 14.2, 0.0, 1.0) * PI  # the sun: up in the east about 6, across, down in the west about 8
 	var up := sin(arc)
-	var over := maxf(0.0, clouds - 0.65) / 0.35
-	if level > 0.02:
-		sun.global_basis = Basis.looking_at(-Vector3(-16.0 * cos(arc), 3.0 + 30.0 * up, -8.0).normalized())
-		sun.light_color = SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))  # warm and low at either end of the day
-		sun.light_energy = 1.2 * level * (1.0 - 0.6 * over)
-	else:  # the moon's turn
-		sun.global_basis = Basis.looking_at(-Vector3(-0.5, 0.3, -0.8).normalized())
-		sun.light_color = Color(0.45, 0.52, 0.68)
-		sun.light_energy = 0.15 * (1.0 - 0.9 * over)
-	env.ambient_light_color = Color(0.10, 0.12, 0.2).lerp(Color(1, 0.98, 0.94), level)
-	env.ambient_light_energy = lerpf(0.45, 0.9, level)
+	sun_dir = Vector3(-16.0 * cos(arc), 3.0 + 30.0 * up, -8.0).normalized()
+	sun_c = SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))  # warm and low at either end of the day
+	env.ambient_light_energy = 0.0  # (the light's in the materials: see room.gd)
 
 
 func _bump(h: float, a: float, b: float, c: float, d: float) -> float:  # 0 up to a, 1 from b to c, 0 again by d (wxBump)
@@ -153,9 +153,11 @@ func _sky(dt: float) -> void:  # wxSky.tick
 	_mat.set_shader_parameter("uMoonK", pow(1.0 - L, 1.5) * (1.0 - over * 0.9))
 	_mat.set_shader_parameter("uT", _t)
 	# the clouds: greyer under overcast, catching the glow; their own light the sky's, all round them
-	_cloud_mat.albedo_color = Color.WHITE.lerp(CLOUD_LOW, over * 0.8).lerp(glow_c, minf(0.6, glow * 0.8))
+	var cloud := Color.WHITE.lerp(CLOUD_LOW, over * 0.8).lerp(glow_c, minf(0.6, glow * 0.8))
 	var em := Color(0.3 * L + 0.03, 0.31 * L + 0.035, 0.34 * L + 0.05) * (1.0 - 0.35 * over)
-	_cloud_mat.emission = em.lerp(glow_hue, minf(1.0, glow * 1.4) * 0.6)
+	var lit := Color(0.036, 0.047, 0.076).lerp(Color(0.21, 0.23, 0.22), L)  # the moon's light on them, or the sun's (half sky, half ground, half the lamp, over pi)
+	var shown := cloud * lit + em.lerp(glow_hue, minf(1.0, glow * 1.4) * 0.6)
+	_cloud_mat.albedo_color = Color(shown.r, shown.g, shown.b).linear_to_srgb()
 
 
 func _drift(dt: float) -> void:  # wxClouds.tick: a few to a sky full, as the day has them, drifting with the wind up there

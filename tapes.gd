@@ -273,7 +273,7 @@ func _lift(t: Dictionary, corners: Array) -> ArrayMesh:  # the tape's own triang
 			mat = mat.duplicate()
 			mat.vertex_color_use_as_albedo = true
 		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
-		if mat is BaseMaterial3D and mat.albedo_texture != null and vs.size() <= 8:  # the cover: which face it's on, and how far it tips
+		if has_uv and vs.size() <= 8:  # the cover: which face it's on, and how far it tips
 			var top := Vector3.ZERO
 			var bottom := Vector3.ZERO
 			for v in vs:

@@ -7,8 +7,7 @@ extends Node
 ## house is the hall, the break room and the restroom, then the theater's lobby and its auditorium (both start off).
 ## The switches, the zones' rooms and the lamps are the web game's, from data/interact.json.
 ##
-## Godot's own: the web game lights by where a pixel is, in its materials' shader, with no light objects. Here each
-## zone is a grid of plain lights under its ceiling, so light crosses a wall where a room's dark next to a lit one.
+## What a zone's level does to the room is room.gd's business. The lamps are real lights.
 
 var zone_on := {}  # zone -> bool
 var zone_lvl := {}  # zone -> 0..1, flickering while the tubes warm up (what the lights get)
@@ -17,40 +16,16 @@ var switches: Array = []
 var lamps: Array = []
 
 var _warm := {}  # zone -> { t, duration, schedules } while its tubes restrike
-var _tubes := {}  # zone -> [OmniLight3D]
-
-@onready var sky: Node3D = $"../Sky"
+const TUBES := 8  # how many fixtures stutter on, a zone (the web game counts its ceiling panels)
 
 
 func _ready() -> void:
 	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).lights
 	names = d.names
 	switches = d.switches
-	var f: Array = d.boxes.floor  # x0, x1, back wall z, ceiling
-	var b: Array = d.boxes.boh  # x0, x1, hall | rooms z, z1
-	var rooms := {  # zone -> [x0, x1, z0, z1, the lights' height]
-		"front": [f[0], f[1], 0.0, 10.0, 3.0], "aisles": [f[0], f[1], 10.0, 19.0, 3.0], "lounge": [f[0], f[1], 19.0, f[2], 3.0],
-		"hall": [b[0], f[1], f[2], b[2], 2.4], "closet": [f[1], b[1], f[2], b[2], 2.2],
-		"breakroom": [b[0], d.boxes.bohSplit[0], b[2], b[3], 2.4], "restroom": [d.boxes.bohSplit[0], f[1], b[2], b[3], 2.4],
-		"lobby": [d.boxes.lobby[0], d.boxes.lobby[1], d.boxes.lobby[2], d.boxes.lobby[3], 2.6],
-		"theater": [d.boxes.theater[0], d.boxes.theater[1], d.boxes.theater[2], d.boxes.theater[3], 3.4],
-	}
 	for zone: String in d.zones:
 		zone_on[zone] = d.zones[zone]
 		zone_lvl[zone] = 1.0 if zone_on[zone] else 0.0
-		_tubes[zone] = []
-		var r: Array = rooms[zone]
-		var nx := maxi(1, roundi((r[1] - r[0]) / 4.5))
-		var nz := maxi(1, roundi((r[3] - r[2]) / 4.5))
-		for ix in nx:
-			for iz in nz:
-				var l := OmniLight3D.new()
-				l.position = Vector3(r[0] + (ix + 0.5) * (r[1] - r[0]) / nx, r[4], r[2] + (iz + 0.5) * (r[3] - r[2]) / nz)
-				l.omni_range = minf(8.0, maxf(3.5, maxf(r[1] - r[0], r[3] - r[2])))
-				l.light_color = Color(1.0, 0.82, 0.6) if zone == "closet" or zone == "theater" else Color(1, 0.98, 0.94)  # (one bare bulb; the house lights: warm)
-				l.light_specular = 0.0
-				add_child(l)
-				_tubes[zone].append(l)
 	for lp: Dictionary in d.lamps:  # the side lamps: mood lighting only, barely past their own pool
 		var l := OmniLight3D.new()
 		l.position = Vector3(lp.p[0], lp.p[1], lp.p[2])
@@ -58,8 +33,8 @@ func _ready() -> void:
 		l.light_color = Color.hex((int(lp.color) << 8) | 0xff)
 		l.light_specular = 0.0
 		add_child(l)
-		lamps.append({ "light": l, "on": lp.on, "at": l.position, "energy": lp.energy * 4.0 })
-		l.light_energy = lp.energy * 4.0 if lp.on else 0.0
+		lamps.append({ "light": l, "on": lp.on, "at": l.position, "energy": lp.energy * 1.6 })
+		l.light_energy = lp.energy * 1.6 if lp.on else 0.0
 
 
 func set_zone(zone: String, on: bool) -> void:
@@ -67,7 +42,7 @@ func set_zone(zone: String, on: bool) -> void:
 	if on:
 		var duration := 1.1 + randf() * 0.6
 		var schedules := []
-		for i in _tubes[zone].size():
+		for i in TUBES:
 			schedules.append(_flicker_schedule(duration))
 		_warm[zone] = { "t": 0.0, "duration": duration, "schedules": schedules }
 	else:
@@ -97,21 +72,15 @@ func _flicker_schedule(duration: float) -> Array:  # when one tube's lit while i
 	return pulses
 
 
-func _process(dt: float) -> void:
-	var base := lerpf(0.7, 0.25, sky.level)  # (by day the daylight's in there with them already)
-	for zone: String in _tubes:
-		var lit: Array = []
-		if _warm.has(zone):  # fluorescents restriking, tube by tube
-			var w: Dictionary = _warm[zone]
-			w.t += dt
-			var done: bool = w.t >= w.duration
-			var n := 0
-			for s: Array in w.schedules:
-				var on: bool = done or s.any(func(p: Array) -> bool: return w.t >= p[0] and w.t < p[1])
-				lit.append(on)
-				n += int(on)
-			zone_lvl[zone] = float(n) / maxi(1, w.schedules.size())
-			if done:
-				_warm.erase(zone)
-		for i in _tubes[zone].size():
-			_tubes[zone][i].light_energy = base * ((1.0 if lit[i] else 0.0) if lit.size() else zone_lvl[zone])
+func _process(dt: float) -> void:  # fluorescents restriking, tube by tube (lightingTick)
+	for zone: String in _warm.keys():
+		var w: Dictionary = _warm[zone]
+		w.t += dt
+		var done: bool = w.t >= w.duration
+		var lit := 0
+		for s: Array in w.schedules:
+			if done or s.any(func(p: Array) -> bool: return w.t >= p[0] and w.t < p[1]):
+				lit += 1
+		zone_lvl[zone] = float(lit) / w.schedules.size()
+		if done:
+			_warm.erase(zone)
