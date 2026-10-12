@@ -261,6 +261,45 @@ func _show_tick() -> void:  # showTick
 		hud.toast("%s let out: %d happy moviegoer%s (+%d)" % [show.title, goers.size(), "" if goers.size() == 1 else "s", 10 * goers.size()])
 
 
+# ---- the calendar: the days that matter in a video store, every year. Some busier (New Year's Eve), some dead (Super
+# Bowl Sunday), and some that pull people to one section for the weeks before (horror for Halloween, the holiday shelf
+# through December) (holidays, season)
+
+func _day_at(y: int, m: int, d: int) -> int:  # days since 1970
+	return int(Time.get_unix_time_from_datetime_dict({ "year": y, "month": m, "day": d, "hour": 12, "minute": 0, "second": 0 }) / 86400)
+
+
+func _nth_dow(y: int, m: int, dow: int, n: int) -> int:  # the nth such weekday of the month
+	var first: int = Time.get_datetime_dict_from_unix_time(_day_at(y, m, 1) * 86400).weekday
+	return _day_at(y, m, 1) + posmod(dow - first, 7) + 7 * (n - 1)
+
+
+func _holidays(y: int) -> Array:  # [day, label, rush, the sections it pulls toward, for how many days before]
+	var thanks := _nth_dow(y, 11, 4, 4)
+	var feb1: int = Time.get_datetime_dict_from_unix_time(_day_at(y, 2, 1) * 86400).weekday
+	return [[_day_at(y, 10, 31), "HALLOWEEN", 1.25, ["Horror", "Horror & Anthology"], 14], [thanks - 1, "LONG WKND", 1.25, [], 0], [thanks, "THANKSGIV.", 0.6, [], 0],
+		[_day_at(y, 12, 25), "CHRISTMAS", 0.5, ["Holiday", "Family & Kids"], 24], [_day_at(y, 12, 31), "NEW YEAR'S", 1.4, [], 0],
+		[_day_at(y, 2, 1) - 1 - posmod(feb1 - 1, 7), "SUPER BOWL", 0.6, [], 0], [_day_at(y, 2, 14), "VALENTINE", 1.2, ["Drama", "Comedy"], 3]]  # (the last Sunday of January)
+
+
+var _season := {}
+
+
+func season() -> Dictionary:  # today: { today: [labels], rush, lean: [sections] } (worked out once a day)
+	if _season.get("day", 0) == Clock.day:
+		return _season
+	var d := Clock.date()
+	var now := _day_at(d.year, d.month, d.day)
+	_season = { "day": Clock.day, "today": [], "rush": 1.0, "lean": [] }
+	for h: Array in _holidays(d.year - 1) + _holidays(d.year) + _holidays(d.year + 1):
+		if h[0] == now:
+			_season.today.append(h)
+			_season.rush *= h[2]
+		if not h[3].is_empty() and now <= h[0] and h[0] - now <= h[4]:
+			_season.lean.append_array(h[3])
+	return _season
+
+
 func rep_stars() -> int:
 	return clampi(roundi(1.0 + rep / 25.0), 1, 5)
 
@@ -401,6 +440,11 @@ func begin_shift() -> void:  # first thing in the morning: 9:00, doors locked, y
 	shoppers.silence_alarm()
 	main.get_node("Phone").new_day()
 	main.get_node("POS").deliver()  # yesterday's orders
+	var sn := season()
+	for h: Array in sn.today:
+		hud.toast("It's circled on the calendar: %s. %s" % [h[1], "Expect a crowd" if h[2] > 1.0 else "Expect a quiet one"])
+	if not sn.lean.is_empty():
+		hud.toast("Seasonal: %s is renting more than usual" % ("the holiday shelf" if sn.lean.has("Holiday") else "horror" if sn.lean.has("Horror") else " and ".join(sn.lean).to_lower()))
 	_morning()
 	var th: Node = main.get_node("Things")
 	if not th.locked:

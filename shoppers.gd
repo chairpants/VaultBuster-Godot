@@ -180,6 +180,7 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 	if k > 0.0:
 		r *= (1.0 - 0.4 * k if h < 17.0 else 1.0) if weather.kind == "snow" else (1.0 - 0.3 * k if h < 17.0 else 1.0 + 0.25 * k)
 	var sh: Node = $"../Shift"
+	r *= sh.season().rush  # a holiday (see the calendar)
 	if sh.sim():  # a small member base is a quiet store; and a gentle first week, 40% busy on day 1 up to full on day 5
 		r *= (0.45 + 0.55 * minf(1.0, members.all.filter(func(m: Dictionary) -> bool: return m.active).size() / 150.0)) * minf(1.0, 0.25 + 0.15 * Clock.day)
 	return r * sh.rep_mult()  # (a better name brings more people in)
@@ -628,12 +629,15 @@ func _likes(cust: Dictionary, spot) -> float:  # 0..1: how much of this shelf is
 	if spot == null or not spot.has("cats"):
 		return 0.0
 	var cats: Array = cust.who.cats
+	var extra := 0.0  # the season pulls everyone toward a section
+	for c: String in $"../Shift".season().lean:
+		extra += 0.5 * spot.cats.get(c, 0) / spot.n
 	if cats.is_empty():
-		return 0.3
+		return minf(1.0, 0.3 + extra)
 	var n := 0
 	for c: String in cats:
 		n += spot.cats.get(c, 0)
-	return minf(1.0, float(n) / spot.n)
+	return minf(1.0, float(n) / spot.n + extra)
 
 
 func _next_stop(cust: Dictionary) -> void:  # a shelf they haven't looked at yet (and nobody else is at), favoring their kind of thing
@@ -782,6 +786,17 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			pass
 		else:
 			speed = who.speed * (1.4 if cust.state == "outside" and not cust.paid and cust.holding > 0 else 1.0)  # storming out
+			cust.slip_cd = cust.get("slip_cd", 0.0) - dt
+			if cust.slip_cd <= 0.0 and c.position.z > 0.25:  # a wet floor: a puddle tracked in, nobody's mopped it
+				for m: Dictionary in $"../Chores".messes:
+					if m.kind == "puddle" and Vector2(m.x - c.position.x, m.z - c.position.z).length() < 0.4:
+						cust.slip_cd = 6.0
+						if randf() < 0.35:
+							c.set_mood("shock")
+							cust.hi = 1.6
+							checkout.score -= 10
+							hud.toast("%s slipped on the wet floor: mop that puddle (-10)" % cust.name)
+						break
 			var step := minf(d, speed * dt)
 			c.position += Vector3(to.x, 0.0, to.y) / d * step
 			cust.step_d = cust.get("step_d", 0.0) + step  # footsteps
@@ -816,6 +831,8 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			"arrive":  # in the door
 				cust.state = "boot"
 				cust.t = 0.0
+				if (weather.wet > 0.4 or weather.cover > 0.2) and randf() < 0.22:  # wet out: some of it comes in on their shoes
+					$"../Chores".mess_add("puddle", c.position.x + (randf() - 0.5) * 0.8, 1.4 + randf() * 1.6)
 			"outside":  # off up the sidewalk
 				c.set_mood("off")
 				_gone(cust)

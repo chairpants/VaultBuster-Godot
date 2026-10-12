@@ -920,6 +920,15 @@ func _check() -> void:
 		await get_tree().process_frame
 	if mine.out:
 		bad.append("nobody on staff restocked an empty rack spot (%s is %s)" % [St.first, St.state])
+	# the calendar: Halloween's a busy night, and the weeks before it pull people to the horror shelves
+	var day_was := Clock.day
+	Clock.day = 32  # (day 1 is September 30: this is October 31)
+	var hw: Dictionary = $Shift.season()
+	Clock.day = 20
+	var lead: Dictionary = $Shift.season()
+	Clock.day = day_was
+	if hw.today.size() != 1 or hw.today[0][1] != "HALLOWEEN" or absf(hw.rush - 1.25) > 0.01 or not lead.lean.has("Horror") or not lead.today.is_empty() or not $Shift.season().lean.is_empty():
+		bad.append("the calendar's wrong about Halloween (%s / %s)" % [hw, lead])
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

@@ -10,12 +10,11 @@ extends Node3D
 ## And tapes put back in the wrong place (misshelve, strayTake): crooked, half out of the row. E pulls one out;
 ## it wants putting back in its own slot.
 ## Not over yet: the mop's and sweeper's pose in your hands as you work (it stands in front of you, and sways), the
-## heap rising in a bin, the bags' look and sounds, the chute's door, the staff cleaning up, puddles by the door in
-## the rain and anyone slipping in them, the step ladder and the ceiling tubes that burn out.
+## heap rising in a bin, the bags' look and sounds, the chute's door, the step ladder and the ceiling tubes that burn out.
 
 const MESS := {  # kind -> [what it's called, the tool it wants]
 	"spill": ["spilled soda", "mop"], "wrapper": ["candy wrapper", ""], "popcorn": ["spilled popcorn", "sweeper"],
-	"towel": ["paper towel", ""], "cup": ["empty cup", ""],
+	"towel": ["paper towel", ""], "cup": ["empty cup", ""], "puddle": ["puddle by the door", "mop"],
 }
 
 var messes: Array = []  # { kind, node, x, z }
@@ -122,6 +121,13 @@ func mess_add(kind: String, x: float, z: float, y := 0.0) -> void:  # messAdd
 				d.bottom_radius = d.top_radius
 				d.height = 0.001
 				g.add_child(_blob(d, Color.hex(0x4a2410ff), Vector3((randf() - 0.5) * 0.25, 0.002 + i * 0.0005, (randf() - 0.5) * 0.25), 0.85))
+		"puddle":
+			for i in 5:
+				var d := CylinderMesh.new()
+				d.top_radius = 0.08 + randf() * 0.14
+				d.bottom_radius = d.top_radius
+				d.height = 0.001
+				g.add_child(_blob(d, Color.hex(0x9fb0c2ff), Vector3((randf() - 0.5) * 0.4, 0.002 + i * 0.0005, (randf() - 0.5) * 0.4), 0.5))
 		"wrapper":
 			var w := BoxMesh.new()
 			w.size = Vector3(0.1, 0.006, 0.05)
