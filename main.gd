@@ -21,6 +21,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var customer: Node = preload("res://customer.gd").new()  # (and the other side of the counter: customer.gd)
 	customer.name = "Customer"
 	add_child(customer)
+	var trail: Node = preload("res://trail.gd").new()  # (and what a customer can find: trail.gd)
+	trail.name = "Trail"
+	add_child(trail)
 	var menu: Node = preload("res://menu.gd").new()  # (and the main menu, which is also the pause screen: menu.gd)
 	menu.name = "Menu"
 	add_child(menu)
@@ -800,6 +803,45 @@ func _check() -> void:
 		bad.append("being caught again didn't get you thrown out")
 	if not "YOUR DAY" in "\n".join(Cu.slip()):
 		bad.append("a customer's day didn't make a slip")
+	# the trail: the note, the time card, the locker's padlock, the badge; the PIN, the register as Ray, the printout, the hatch
+	var Tr := $Trail
+	Tr.setup()
+	var hidden: Array = Tr._spots.keys().filter(func(k: String) -> bool: return Tr._spots[k][4].get("item", "") == "comboNote")
+	Tr.aim = { "spot": hidden[0] }
+	Tr.on_e()
+	Tr._typing = "locker"
+	for ch in Tr._codes.locker:
+		Tr._digit(ch)
+	Tr.aim = { "locker": true }
+	Tr.on_e()
+	if not Tr.has("badge") or Tr.has("comboNote") or not Tr.found.has("combo:locker"):
+		bad.append("Ray's locker didn't give up his badge (pockets: %s)" % [Tr.items])
+	$Player.global_position = Vector3(-5.4, 0.1, 2.6)
+	Tr.aim = { "register": true }
+	Tr.on_e()
+	for ch in Tr._codes.pin:
+		Tr._term_key(KEY_0 + int(ch))
+	Tr._term_key(KEY_1)
+	Tr._term_key(KEY_P)
+	Tr._term_key(KEY_B)
+	Tr._term_key(KEY_4)
+	Tr._term_key(KEY_K)
+	var screen: String = Tr._term_text()
+	Tr._term_key(KEY_E)
+	Tr._typing = "hatch"
+	for ch in Tr._codes.hatch:
+		Tr._digit(ch)
+	if not Tr.logged_in or not Tr.has("closetKey") or not Tr.hatch or Tr.has("printout") or Tr.term != null or not "NO SALE" in screen:
+		bad.append("the register as Ray didn't lead to the janitor's key and the roof hatch (in %s, pockets %s, hatch %s)" % [Tr.logged_in, Tr.items, Tr.hatch])
+	var keyed: Dictionary = Tr._keyed()
+	if keyed.size() != 2 or Tr.door(keyed.closetKey) or (not Tr.has("breakKey") and not keyed.breakKey.open and not Tr.door(keyed.breakKey)):
+		bad.append("the back rooms' doors don't answer to their keys (%d keyed)" % keyed.size())
+	Tr.items.clear()
+	Tr.found.clear()
+	Tr.hatch = false
+	Tr.logged_in = false
+	Tr._typing = ""
+	Cu.heat = 0.0
 	Cu.banned = 0
 	$Shift.mode = "sandbox"
 	$HUD.call_box("")

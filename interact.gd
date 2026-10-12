@@ -175,6 +175,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
 		return
+	var trail_tip: String = $"../Trail".take_aim(hit, hit_d)  # as a customer: somewhere to look, a padlock, the register with a badge (see trail.gd)
+	if trail_tip != "":
+		tapes.clear_aim()
+		hud.tip(trail_tip)
+		return
 	var clerk_tip: String = $"../Customer".take_aim(from, dir, hit_d)  # as a customer: whoever's on the register (see customer.gd)
 	if clerk_tip != "":
 		tapes.clear_aim()
@@ -260,8 +265,11 @@ func on_e() -> void:
 		return
 	if player.seat != null:  # E always stands you up
 		player.stand(stood_at.at, stood_at.yaw)
+	elif $"../Trail".on_e():
+		pass
 	elif aim_door != null:
-		toggle_door(aim_door)
+		if not $"../Trail".door(aim_door):
+			toggle_door(aim_door)
 	elif $"../Customer".on_e():
 		pass
 	elif shoppers.on_e():

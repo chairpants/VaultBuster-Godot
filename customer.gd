@@ -11,7 +11,7 @@ extends Node
 ## ends when you sleep, on the cardboard bed round the back: then it's your day's slip, and the morning.
 ## From the web game's store/customer-mode.js (cm, cmStaffOnly, cmSees, cmPay, cmCaught, cmGotAway, cmRentReturn,
 ## cmMorning, cmOpenUp, cmSlip, cmTick, becomeCustomer). A simulation's store that fires you turns into this.
-## Not over yet: the trail (keys, padlocks, notes, Ray's badge, money lying about, the bins worth a look), the crew
+## The trail (keys, padlocks, notes, Ray's badge, money lying about) is trail.gd. Not over yet: the crew
 ## as people (three of them, favors, gossip, their picks, getting hired), the day's list, run-ins with other
 ## customers, a ticket for the show, the night drop, a drink spilled on purpose, what you eat before you've paid,
 ## the roof as somewhere to get to. The crew's three (staff.gd), without the rest of what makes them people.
@@ -86,7 +86,7 @@ func regular() -> bool:  # they know your name, and knock 10% off
 
 
 func status() -> String:  # for the HUD
-	return "$%.2f on you · %s%s" % [wallet, "a regular" if regular() else "friendly" if trust >= 25.0 else "a new face", " · $%.2f owed" % owed if owed > 0.0 else ""]
+	return "$%.2f on you · %s%s" % [wallet, "a regular" if regular() else "friendly" if trust >= 25.0 else "a new face", " · $%.2f owed" % owed if owed > 0.0 else ""] + $"../Trail".status()
 
 
 func become(why := "") -> void:  # the store flips to this (a new customer-mode file; or fired from a simulation)
@@ -128,6 +128,7 @@ func morning() -> void:  # in off the lot just before ten (cmMorning)
 	player.global_position = LOT
 	player.rotation.y = PI
 	_inside = false
+	$"../Trail".morning()
 	hud.toast("%s · day %d. The store opens at 10. You've got $%.2f on you" % [Clock.weekday(), Clock.day, wallet])
 
 

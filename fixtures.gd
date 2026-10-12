@@ -155,7 +155,8 @@ func on_e() -> bool:  # true if E was ours
 		"lamp":
 			lights.set_lamp(aim_what, not aim_what.on)
 		"hatch":
-			player.start_climb(-1 if on_roof() else 1, ladders.hatch.climb, ladders)
+			if not $"../Trail".hatch_locked():
+				player.start_climb(-1 if on_roof() else 1, ladders.hatch.climb, ladders)
 		"back":
 			if on_roof():
 				if back_down:

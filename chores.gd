@@ -320,7 +320,7 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 	for b: Dictionary in bins:
 		if Vector2(at.x - b.x, at.z - b.z).length() < b.r + 0.2 and at.y < b.rimY + 0.35:
 			aim = { "bin": b }
-			return "E — tie off the bag · the %s (%d of %d)" % [b.name, b.n, b.cap]
+			return "E — dig through the %s" % b.name if $"../Shift".mode == "customer" else "E — tie off the bag · the %s (%d of %d)" % [b.name, b.n, b.cap]
 	return ""
 
 
@@ -357,6 +357,9 @@ func on_e() -> bool:
 			tool_take(aim.tool)
 	elif aim.has("bin"):  # binBag
 		var b: Dictionary = aim.bin
+		if $"../Shift".mode == "customer":  # (a customer digs through it)
+			$"../Trail".search_bin(b)
+			return true
 		if b.n == 0:
 			hud.toast("The %s is empty" % b.name)
 		elif bag_carry.size() >= _bag_max() or tool_held != "":
