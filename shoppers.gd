@@ -33,6 +33,8 @@ var line: Array[Dictionary] = []  # the checkout line: line[0] is the one at the
 var aim = null  # the customer the crosshair's on
 var rented: Array = []  # what's out: [tape, the day it went out, the day it's due, whose account it's on]
 var members := preload("res://members.gd").new()
+var asks: Array = []  # who's waiting at the counter for help, in order
+var _titles := {}  # title -> its copies
 var catch_call = null  # the shoplifter you've stopped, waiting on what happens to them
 var _last_member = null
 var _slot := {}  # in the lane, facing the drop slot
@@ -204,7 +206,7 @@ func spawn(member = null) -> Dictionary:  # custSpawn
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
-	var cust := { "who": who, "member": member, "name": members.name_of(member), "said": {}, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
+	var cust := { "who": who, "member": member, "name": members.name_of(member), "said": {}, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
 		"thief": randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
@@ -377,6 +379,8 @@ func catch_decide(key: int) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_Q and aim != null and aim.state == "asking":  # "sorry, all our copies are out"
+		all_out(aim)
 	if catch_call != null and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode >= KEY_1 and e.physical_keycode <= KEY_5:
 		catch_decide(e.physical_keycode - KEY_0)
 		get_viewport().set_input_as_handled()  # (not the tape in slot 1-5 as well)
@@ -692,6 +696,7 @@ func waiting():  # whoever's at the counter, waiting to be rung up (or null)
 
 func _gone(cust: Dictionary) -> void:
 	leave_line(cust)
+	asks.erase(cust)
 	if catch_call == cust:
 		catch_call = null
 		hud.call_box("")
@@ -767,6 +772,11 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					c.set_mood("neutral")
 					if not cust.returning.is_empty():
 						go(cust, "dropoff", _slot)
+					elif cust.pickup != null:  # here for their hold: they ask at the counter
+						cust.want = { "kind": "hold", "title": cust.pickup.title, "hold": cust.pickup }
+						_ask_go(cust)
+					elif _want(cust):
+						_ask_go(cust)
 					else:
 						_next_stop(cust)
 			"dropoff":  # at the slot: a hand out to it
@@ -857,6 +867,26 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					c.set_mood("happy")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"toAsk":  # at the counter: "excuse me..."
+				cust.state = "asking"
+				cust.t = 75.0 * who.patience
+				cust.ask_at = Time.get_ticks_msec() / 1000.0
+				c.set_mood("ask")
+				c.set_pose("idle")
+				var w: Dictionary = cust.want
+				hud.toast("%s is at the counter to pick up %s: it's on hold for them" % [cust.name, w.title] if w.kind == "hold" else "%s is at the counter looking for %s" % [cust.name, w.title] if w.kind == "title" else "%s is at the counter wanting %s" % [cust.name, TASTE_ASK.get(who.taste, "something good")])
+			"asking":
+				if cust.hi <= 0.0 and c.mood != "ask":
+					c.set_mood("ask")
+				if cust.t <= 0.0:  # gave up waiting for help
+					if cust.want.kind == "hold":
+						hold_out(cust)  # (standing at the counter that long for a hold: same scene)
+					else:
+						checkout.score -= 20
+						members.loyal(cust.member, -8)
+						c.set_mood("meh")
+						hud.toast("%s gave up waiting for help at the counter (-20)" % cust.name)
+						ask_done(cust)
 			"tagBack":  # at the end of the counter, tape held out
 				c.set_pose("hold")
 				c.set_mood("impatient")
@@ -880,7 +910,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 	if cust.hi > 0.0:
 		cust.hi -= dt
 		if cust.hi <= 0.0:
-			c.set_mood({ "browse": "browse", "wait": "wait", "inLine": "wait", "impatient": "impatient", "angry": "angry" }.get(cust.state, "happy" if cust.holding > 0 else "neutral"))
+			c.set_mood({ "browse": "browse", "wait": "wait", "inLine": "wait", "impatient": "impatient", "angry": "angry", "asking": "ask" }.get(cust.state, "happy" if cust.holding > 0 else "neutral"))
 	cust.last_z = c.position.z
 	cust.face += angle_difference(cust.face, cust.ry) * minf(1.0, dt * 8.0)
 	c.rotation.y = cust.face
@@ -903,6 +933,14 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 	aim.known = true  # (walking ones too: a shoplifter doesn't stop. You've had a look at them)
 	if aim.state == "tagWait":
 		return "Their tape set off the gates\nE — desensitize it"
+	if aim.state == "asking":
+		var w: Dictionary = aim.want
+		var give: String = "\nE — hand them %s" % tapes.held.t if tapes.held != null else ""
+		if w.kind == "hold":
+			return "%s\nHere to pick up %s (on hold)%s\nQ — tell them it's not here" % [aim.name, w.title, give if give != "" else "\nGet it from the holds shelf"]
+		if w.kind == "title":
+			return "%s\nLooking for %s (%s)%s\nQ — tell them it's all out" % [aim.name, w.title, w.cat, give]
+		return "%s\nWants %s%s" % [aim.name, TASTE_ASK.get(aim.who.taste, "something good"), give if give != "" else "\nBring them a tape"]
 	if aim.state in ["wait", "impatient", "angry"] and checkout.co == null:
 		return "E — ring them up"
 	if checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
@@ -917,6 +955,15 @@ func on_e() -> bool:
 		catch(aim, "you")
 	elif aim.state == "tagWait":
 		tag_fix(aim, "you")
+	elif aim.state == "asking":  # hand over what's in your hand, or just "be right with you"
+		if tapes.held != null:
+			hand_tape(aim, tapes.held)
+		else:
+			if not aim.acked:
+				aim.acked = true
+				aim.t += 30.0  # "I'll go look": they'll wait a bit longer
+			aim.hi = 1.2
+			aim.c.set_mood("happy")
 	elif aim.state in ["wait", "impatient", "angry"] and checkout.co == null:  # start ringing them up
 		checkout.start("player", aim)
 		checkout.act("customer")
@@ -931,3 +978,162 @@ func on_e() -> bool:
 			aim.thief = false  # a friendly hello: suddenly they'd rather just rent it
 		aim.greeted = true
 	return true
+
+
+# ---- help at the counter: a title they're after, something good, a hold they've come in for (custWant ... custAllOut)
+
+const TASTE_ASK := { "horror fan": "something scary", "parent": "something for the kids", "couch potato": "a show to binge",
+	"action junkie": "something with some action", "date night": "something for date night", "anime kid": "some anime" }
+
+
+func _copies(title: String) -> Array:
+	if _titles.is_empty():
+		for t: Dictionary in tapes.tapes:
+			_titles.get_or_add(t.t, []).append(t)
+	return _titles.get(title, [])
+
+
+func on_shelf_copy(title: String):  # a copy of it that's in (or null)
+	for t: Dictionary in _copies(title):
+		if not t.off and not t.get("lost", false):
+			return t
+	return null
+
+
+func a_title(cats: Array, in_odds: float):  # a title somebody might have in mind: usually one that's in, now and then one that's all out. -> one of its copies (or null)
+	_copies("")
+	var pool: Array = _titles.keys().filter(func(k: String) -> bool: return cats.is_empty() or cats.has(_titles[k][0].c))
+	var in_now := pool.filter(func(k: String) -> bool: return on_shelf_copy(k) != null)
+	var out := pool.filter(func(k: String) -> bool: return on_shelf_copy(k) == null)
+	var from := in_now if randf() < in_odds or out.is_empty() else out
+	return _titles[from.pick_random()][0] if not from.is_empty() else null
+
+
+func _want(cust: Dictionary) -> bool:
+	if asks.size() >= 3 or cust.who.max_tapes <= cust.holding:
+		return false  # (at their limit: nothing to ask for)
+	var r := randf()
+	if r < 0.16:
+		var t = a_title(cust.who.cats, 0.75)
+		if t == null:
+			return false
+		cust.want = { "kind": "title", "title": t.t, "cat": t.c }
+	elif r < 0.28 and not cust.who.cats.is_empty():
+		cust.want = { "kind": "rec" }
+	else:
+		return false
+	cust.tries = 0
+	return true
+
+
+func _ask_go(cust: Dictionary) -> void:
+	asks.append(cust)
+	go(cust, "toAsk", { "x": _counter.x + 1.2 + 0.7 * (asks.size() - 1), "z": _counter.z + 0.1, "ry": PI })
+
+
+func ask_done(cust: Dictionary, then := "") -> void:  # helped (or gave up): off the counter, and on with it
+	asks.erase(cust)
+	if then == "pay":
+		line.append(cust)
+		to_line(cust)
+	elif then == "leave":
+		go(cust, "leave", { "x": _door.x, "z": _door.y })
+	elif cust.stops_left > 0:
+		_next_stop(cust)
+	else:
+		_done(cust)
+
+
+func _takes(cust: Dictionary, tape: Dictionary) -> void:
+	if tape == tapes.held:
+		tapes.release()
+	cust.tapes.append(tape)
+	cust.holding = cust.tapes.size()
+	cust.c.hold_tape(mini(3, cust.holding))
+	cust.c.set_pose("hold")
+
+
+func hand_tape(cust: Dictionary, tape: Dictionary, by := "you") -> bool:  # -> true if they took it
+	var c: Node3D = cust.c
+	var w: Dictionary = cust.want
+	var Who := "Dana" if by == "dana" else "You"
+	if w.kind == "hold":  # their hold: only that title will do
+		var h: Dictionary = w.hold
+		if tape.t != w.title:
+			c.set_mood("meh")
+			cust.hi = 1.4
+			hud.toast("%s: “That's not what I had on hold. It's %s”" % [cust.name, w.title])
+			return false
+		var set_aside: bool = tape == h.pulled or tape == h.copy
+		if tape == h.copy:
+			h.copy = null
+		$"../Phone".hold_end(h)
+		_takes(cust, tape)
+		if set_aside:
+			c.set_mood("love")
+			cust.hi = 1.8
+			checkout.score += 40
+			members.loyal(cust.member, 8)
+			hud.toast("%s handed %s their hold: %s (+40)" % [Who, cust.name, tape.t])
+		else:  # it wasn't set aside: you scrambled and found one on the floor
+			c.set_mood("meh")
+			cust.hi = 1.6
+			checkout.score += 5
+			members.loyal(cust.member, -2)
+			hud.toast("%s's hold wasn't set aside. %s found a copy of %s on the shelf: awkward, but they got it (+5)" % [cust.name, Who, tape.t])
+		ask_done(cust, "pay")
+		return true
+	var likes: bool = cust.who.cats.has(tape.c)
+	var exact: bool = w.kind == "title" and tape.t == w.title
+	var odds: float = (0.6 if tape.c == w.cat else 0.4 if likes else 0.12) if w.kind == "title" else 0.85 if likes else 0.2
+	if not exact and randf() >= odds:
+		cust.tries += 1
+		c.set_mood("meh")
+		cust.hi = 1.6
+		hud.toast("%s offered %s %s: “Nah, not really my thing”" % [Who, cust.name, tape.t])
+		if cust.tries >= 2:  # they'll find something themselves
+			members.loyal(cust.member, -3)
+			ask_done(cust)
+		return false
+	_takes(cust, tape)
+	c.set_mood("love")
+	cust.hi = 1.8
+	var fast := maxi(0, roundi(60.0 - (Time.get_ticks_msec() / 1000.0 - cust.ask_at)))
+	var pts: int = 80 + fast if exact else 40 if w.kind == "title" else 80 + fast if likes else 30
+	checkout.score += pts
+	members.loyal(cust.member, 10 if exact else 4 if w.kind == "title" else 8 if likes else 2)
+	hud.toast(("%s found %s %s" % [Who, cust.name, tape.t] if exact else "%s took %s instead of %s" % [cust.name, tape.t, w.title] if w.kind == "title" else "%s recommended %s to %s%s" % [Who, tape.t, cust.name, ": right up their alley" if likes else ""]) + " (+%d)" % pts)
+	ask_done(cust, "pay")
+	return true
+
+
+func hold_out(cust: Dictionary) -> void:  # "you said you'd hold it!"
+	var w: Dictionary = cust.want
+	var had: bool = w.hold.copy != null or w.hold.pulled != null or on_shelf_copy(w.title) != null
+	checkout.score -= 50 if had else 30
+	members.loyal(cust.member, -12 if had else -8)
+	cust.c.set_mood("angry")
+	cust.hi = 3.0
+	hud.toast("Told %s their hold for %s wasn't there. There was a copy right there. They were not happy (-50)" % [cust.name, w.title] if had else "%s came in for %s on hold, and there wasn't one. “You SAID you'd hold it!” (-30)" % [cust.name, w.title])
+	$"../Phone".hold_end(w.hold)
+	ask_done(cust, "leave" if randf() < 0.6 else "")
+
+
+func all_out(cust: Dictionary) -> void:  # Q: "sorry, all our copies are out"
+	if cust.want.kind == "hold":
+		hold_out(cust)
+		return
+	if cust.want.kind != "title":
+		return
+	cust.c.set_mood("meh")
+	cust.hi = 1.5
+	if on_shelf_copy(cust.want.title) != null:  # ...it was right there
+		checkout.score -= 30
+		members.loyal(cust.member, -5)
+		hud.toast("Told %s %s was out, but there's one on the shelf (-30)" % [cust.name, cust.want.title])
+		ask_done(cust)  # they'll have a look themselves
+		return
+	checkout.score += 10
+	members.loyal(cust.member, 2)
+	hud.toast("Told %s %s is all out (+10)" % [cust.name, cust.want.title])
+	ask_done(cust, "leave" if randf() < 0.5 else "")

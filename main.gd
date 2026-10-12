@@ -12,6 +12,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var shift: Node = preload("res://shift.gd").new()  # (and the day's goals and its end: shift.gd)
 	shift.name = "Shift"
 	add_child(shift)
+	var phone: Node = preload("res://phone.gd").new()  # (and the phone and the holds: phone.gd)
+	phone.name = "Phone"
+	add_child(phone)
 
 
 func _ready() -> void:
@@ -290,6 +293,8 @@ func _check() -> void:
 		cu.stops_left = 1
 		cu.who.picky = 5.0
 		cu.who.cats = [S._spots[0].copies[0].c]
+		cu.returning = []
+		S._next_stop(cu)  # (straight to a shelf: nothing to drop off, nothing to ask at the counter)
 		t0 = Time.get_ticks_msec()
 		while cu.state != "wait" and S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
 			await get_tree().process_frame
@@ -392,6 +397,8 @@ func _check() -> void:
 	$Shoppers.rented.clear()
 	$Lights.set_zone("lounge", true)
 	$Fixtures.flap_open = false
+	S._arrive = 99999.0  # (nobody new in from here on, and no calls: what walk-ins do would muddy what's being checked)
+	$Phone.next = 99999.0
 	# the rewinder, and Dana's round of the shelves
 	var wound: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not Tp._corners(t).is_empty())[0]
 	Tp.pickup(wound)
@@ -430,10 +437,13 @@ func _check() -> void:
 				bad.append("E on a shoplifter didn't stop them (%s)" % th.state)
 			Tp.return_bin.erase(loot)
 		else:
+			var rang := false
 			t0 = Time.get_ticks_msec()
-			while S.custs.has(th) and Time.get_ticks_msec() - t0 < 20000:
+			while S.custs.has(th) and Time.get_ticks_msec() - t0 < 45000:
+				rang = rang or S.alarm_on  # (Dana shuts it off after a few seconds)
 				await get_tree().process_frame
-			if not S.alarm_on or not loot.get("lost", false) or not loot.off:
+			S.start_alarm()
+			if not rang or not loot.get("lost", false) or not loot.off:
 				bad.append("a shoplifter didn't set the gates off and get away with it (alarm %s, %s)" % [S.alarm_on, th.state])
 			$Checkout.aim = "register"
 			$Checkout.on_e()
@@ -495,6 +505,43 @@ func _check() -> void:
 		await get_tree().process_frame
 	if St.dana == null or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
 		bad.append("Dana didn't come in for her shift and get to her post")
+	# the phone: a call answered right; a hold promised, set aside, and handed over when they come in for it
+	var Ph := $Phone
+	var caller: Dictionary = S.members.all[5]
+	Ph.ring = { "kind": "hours", "member": caller, "film": [], "prank": "", "t": 0.0, "rang": 99.0 }
+	Ph.answer()
+	var pts0: int = $Checkout.score
+	Ph.call_answer(1)
+	if Ph.on_line != null or $Checkout.score != pts0 + 5:
+		bad.append("answering the phone right didn't count")
+	Ph.on_line = { "member": caller, "title": loot.t, "cat": loot.c, "t": 30.0 }
+	var held_for = Ph.call_answer(1)
+	Tp.pickup(loot)
+	Ph.aim = "holds"
+	Ph.on_e()
+	if held_for == null or held_for.copy != loot or Tp.held != null:
+		bad.append("a tape didn't go on the holds shelf for the caller")
+	else:
+		held_for.coming = true
+		var pk: Dictionary = S.spawn(caller)
+		pk.pickup = held_for
+		pk.returning = []
+		pk.c.position = Vector3(S._door.x, 0, S._door.y)
+		pk.path = []
+		pk.state = "boot"
+		pk.t = 0.0
+		pk.who.speed = 9.0
+		t0 = Time.get_ticks_msec()
+		while pk.state != "asking" and S.custs.has(pk) and Time.get_ticks_msec() - t0 < 25000:
+			await get_tree().process_frame
+		Ph.aim = "holds"
+		Ph.on_e()
+		S.aim = pk
+		S.on_e()
+		if pk.state == "asking" or not pk.tapes.has(loot) or Ph.holds.has(held_for) or not S.line.has(pk):
+			bad.append("the caller didn't get their hold at the counter (%s, %d holds)" % [pk.state, Ph.holds.size()])
+		S._gone(pk)
+	Tp.set_on_shelf(loot, true)
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

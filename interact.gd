@@ -138,6 +138,8 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	aim_seat = null
 	fixtures.aim = ""
 	$"../Chores".aim = {}
+	$"../Phone".aim = ""
+	$"../Shift".aim = false
 	if player.climb != null:
 		tapes.clear_aim()
 		hud.tip("")
@@ -194,6 +196,12 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip(fix_tip)
 		return
+	var phone_tip: String = $"../Phone".take_aim(hit, hit_d)  # the phone, the holds tray (see phone.gd)
+	if phone_tip != "" and not things.carrying:
+		tapes.clear_aim()
+		hud.tip(phone_tip)
+		return
+	$"../Phone".aim = ""
 	var home_tip: String = $"../Shift".take_aim(hit, hit_d)  # the front doors, near close: the way home (see shift.gd)
 	if home_tip != "" and not things.carrying:
 		tapes.clear_aim()
@@ -254,6 +262,8 @@ func on_e() -> void:
 	elif $"../Chores".on_e():
 		pass
 	elif $"../Shift".on_e():
+		pass
+	elif $"../Phone".on_e():
 		pass
 	elif tapes.aim_rewinder:
 		tapes.rewinder_use()

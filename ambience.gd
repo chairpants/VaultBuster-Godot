@@ -3,7 +3,7 @@ extends Node
 ## light zone (following its switch), the air from the vents, the road through the storefront glass and cars going by
 ## on it (their pitch bending as they pass), rain on the roof and the glass, wind, the murmur of a crowd; footsteps
 ## (soft on carpet, brighter on tile), doors (a latch, a panel meeting its frame, a hinge's creak, the cooler's
-## gasket and its bottles), the entry chime (two struck bars), the cooler's compressor, a flush, a running tap.
+## gasket and its bottles), the entry chime (two struck bars), the cooler's compressor, a flush, a running tap, the phone.
 ## M turns it off and on.
 ## From the web game's ambience.js (every recipe here is one of its: the same filters, modes and timings) and where
 ## store/main.js, player.js and shoppers.js set it off. The web game makes each sound as it's needed; here they're
@@ -76,6 +76,10 @@ func door(kind: String, action: String, at: Vector3) -> void:  # kind: "wood" | 
 
 func chime(at: Vector3) -> void:  # ding... dong
 	_shot("chime", at, 0.12, 2.0)
+
+
+func ring(at: Vector3) -> void:  # the phone
+	_shot("ring", at, 0.09, 3.0)
 
 
 func flush(at: Vector3) -> void:
@@ -278,6 +282,25 @@ func _bake() -> void:
 			ding = _ring(ding, bar[1], bar[0] * m[0], m[1], 0.003, m[2] * 5.0)
 	_baked.chime = [_wav(ding)]
 	_baked.flush = [_wav(_flush())]
+	var bell := _zeros(int(RATE * 2.6))  # the phone, a desk-set ringer: a clapper buzzing between two small gongs twenty times a second for two seconds
+	for gong: Array in [[1180.0, 0.0], [1390.0, 0.025]]:
+		for part: Array in [[1.0, 1.0], [2.32, 0.35], [4.1, 0.12]]:
+			var g := 0.0
+			var to := 0.0
+			var tau := 0.012
+			var struck: float = gong[1]
+			for i in bell.size():
+				var t := float(i) / RATE
+				if t >= 2.0:
+					to = 0.0
+					tau = 0.08
+				elif t >= struck:
+					struck += 0.05
+					g = part[1] * minf(1.0, minf(t / 0.08, (2.0 - t) / 0.15))
+					to = g * 0.25
+				g += (to - g) * (1.0 - exp(-1.0 / (tau * RATE)))
+				bell[i] += sin(TAU * gong[0] * part[0] * t) * g
+	_baked.ring = [_wav(_filter(bell, "lowpass", 3200.0, 1.0))]  # (a real bell, but across the room and not in your ear)
 
 
 func _zeros(n: int) -> PackedFloat32Array:

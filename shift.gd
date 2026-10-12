@@ -170,6 +170,7 @@ func begin_shift() -> void:  # first thing in the morning: 9:00, doors locked, y
 		k.tagged = false
 		shoppers._gone(k)
 	shoppers.silence_alarm()
+	main.get_node("Phone").new_day()
 	var th: Node = main.get_node("Things")
 	if not th.locked:
 		th.aim = "lock"

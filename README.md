@@ -29,6 +29,9 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | E on a mess | Picks it up; popcorn wants the carpet sweeper and a spilled soda the mop (E on either in the janitor's closet takes it, E on its spot puts it back) |
 | E on a bin, the chute | Ties off the bin's bag (two at a time; right-click sets them down); E at the chute in the janitor's closet sends them down |
 | E on the front doors | After close, with the customers gone: clocks you out. The shift's slip, then the next morning at 9:00, doors locked |
+| E on the phone, 1 / 2 | Answers it when it rings; 1 or 2 is what you tell them |
+| E on the holds tray | With a tape somebody's been promised: sets it aside for them. Empty-handed, with them at the counter for it: takes it down |
+| E / Q on a customer asking | E hands them the tape in your hand (the one they asked for, something like it, their hold); Q tells them it's all out |
 | E at the register | Mid-sale: the step in hand. With the gates going off: shuts the alarm up |
 | E at the rewinder | With a tape in hand: in it goes, and winds back (up to ten seconds); E again takes it out. A tape shelved unrewound snaps back with a word about it |
 | Click / E at Returns | Click takes a returned tape out of the bin (then put it away in its slot); E drops the one in your hand in |
@@ -85,6 +88,7 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `ambience.gd` | The store's sound, synthesized: the lights' hum, the vents, the road and cars passing, rain, wind, a crowd's murmur; footsteps, doors, the entry chime, the cooler, a flush, a tap. M mutes it (web: `ambience.js`) |
 | `chores.gd` | Keeping the place clean: what customers drop, the mop and the carpet sweeper from the janitor's closet, the four bins filling through the day, bags to the chute (web: `store/chores.js`) |
 | `shift.gd` | The day: two goals, the closing check, the store's reputation, the shift's slip when you clock out, and the next morning (web: `store/shift.js`, `store/title.js`) |
+| `phone.gd` | The phone behind the counter: members asking after a title (and the holds you promise them), closing time, pranks, late fees, Dennis from district (web: `store/phone.js`) |
 | `members.gd` | The three hundred locals in the register's system, the same numbers and names as the web game's: what they owe, how they feel about the store, who's banned (web: `pos.js`) |
 | `staff.gd` | Dana: at her post ringing up whoever's waiting when you don't; and with nobody waiting, taking the returns round the shelves, an armful at a time, through the pass-through and back, then cleaning up (messes, bins to the chute). She works Wednesday to Sunday, 5 to 10 PM; the rest of the time the register's yours (web: `store/staff.js`). Not over: the job board, snacks, the phone |
 | `save.gd` | The store kept between sessions (`user://store.json`): the day and hour, where you are, lights, doors, what's rented and when it's due, the Returns bin, what you're carrying, the VCR, the till (web: `store/main.js`, saveState). Not whoever was in the store |

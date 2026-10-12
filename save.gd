@@ -84,6 +84,7 @@ func snapshot() -> Dictionary:
 		"members": S.members.records(),
 		"chores": main.get_node("Chores").snapshot(),
 		"shift": main.get_node("Shift").snapshot(),
+		"phone": main.get_node("Phone").snapshot(),
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
 
@@ -195,6 +196,7 @@ func apply(d: Dictionary) -> void:
 	S.members.restore(d.get("members", {}))
 	main.get_node("Chores").restore(d.get("chores", {}))
 	main.get_node("Shift").restore(d.get("shift", {}))
+	main.get_node("Phone").restore(d.get("phone", {}))
 	C.served = int(d.till.served)
 	C.rentals = int(d.till.rentals)
 	C.take = d.till.take
