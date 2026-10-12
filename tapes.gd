@@ -42,6 +42,8 @@ var aim_returns := false
 var _returns_at := Vector3.ZERO
 var _peek_bin := false  # the tape you're looking at came out of the bin: right-click puts it back there
 var inv_sel := -1  # which of them is in hand (-1: empty-handed)
+var batch := false  # many tapes on or off the shelf at once (a store picked up again): the meshes rebuilt once, at commit()
+var _dirty := {}
 
 var _grid := {}  # cell -> [tape index]
 var _verts := {}  # cell -> PackedInt32Array of (mesh, surface, vertex) triples: the level's corners near any slot
@@ -216,13 +218,20 @@ func set_on_shelf(t: Dictionary, on: bool) -> void:  # show / hide one copy in t
 			vs[c[2]] = _meshes[c[0]].global_transform.affine_inverse() * Vector3(0, -10, 0)  # collapsed, under the floor
 		_arrays[c[0]][c[1]][Mesh.ARRAY_VERTEX] = vs
 		touched[c[0]] = true
-	for m: int in touched:
+	t.off = not on
+	_dirty.merge(touched)
+	if not batch:
+		commit()
+
+
+func commit() -> void:  # the shelves' meshes, rebuilt with what's been taken out of them (or put back)
+	for m: int in _dirty:
 		var mesh := ArrayMesh.new()
 		for s in _arrays[m].size():
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _arrays[m][s])
 			mesh.surface_set_material(s, _mats[m][s])
 		_meshes[m].mesh = mesh
-	t.off = not on
+	_dirty.clear()
 
 
 func _lift(t: Dictionary, corners: Array) -> ArrayMesh:  # the tape's own triangles, out of the shelves' meshes, about its middle

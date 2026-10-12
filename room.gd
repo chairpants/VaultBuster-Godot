@@ -98,10 +98,10 @@ var _made := {}
 func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of the materials it finds)
 	var RS := RenderingServer
 	for n in ["uZone", "uBoh", "uFloorBox", "uBohBox", "uLobbyBox", "uThBox"]:
-		RS.global_shader_parameter_add(n, RS.GLOBAL_VAR_TYPE_VEC4, Vector4(1, 1, 1, 1))
+		_add(n, RS.GLOBAL_VAR_TYPE_VEC4, Vector4(1, 1, 1, 1))
 	for n in ["uBohSplit", "uThLight"]:
-		RS.global_shader_parameter_add(n, RS.GLOBAL_VAR_TYPE_VEC2, Vector2(1, 1))
-	RS.global_shader_parameter_add("uThSconce", RS.GLOBAL_VAR_TYPE_FLOAT, 1.0)
+		_add(n, RS.GLOBAL_VAR_TYPE_VEC2, Vector2(1, 1))
+	_add("uThSconce", RS.GLOBAL_VAR_TYPE_FLOAT, 1.0)
 	var fixed := {  # lin(colour, k), as the web game sets them
 		"uInSky": _lin(0xdfe8ff, 1.15), "uInGround": _lin(0x223355, 1.15), "uInAmb": _lin(0xffffff, 0.32), "uInDirC": _lin(0xffffff, 0.55),
 		"uInDir": Vector3(3, 10, -6).normalized(),
@@ -110,7 +110,7 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 		"uDayC": Vector3.ONE, "uNightC": Vector3(0.035, 0.045, 0.08),  # (night: moonlight + the lot lights through the glass)
 	}
 	for n: String in fixed:
-		RS.global_shader_parameter_add(n, RS.GLOBAL_VAR_TYPE_VEC3, fixed[n])
+		_add(n, RS.GLOBAL_VAR_TYPE_VEC3, fixed[n])
 	var b: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).lights.boxes
 	for pair in [["uFloorBox", b.floor], ["uBohBox", b.boh], ["uLobbyBox", b.lobby], ["uThBox", b.theater]]:
 		RS.global_shader_parameter_set(pair[0], Vector4(pair[1][0], pair[1][1], pair[1][2], pair[1][3]))
@@ -119,6 +119,11 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 	print("room light: %d surfaces, %d materials, %d shaders" % [swapped, _made.size(), _shaders.size()])
 	# the light's all in the materials now: no sun lamp, no ambient (see sky.gd, which still turns the sky)
 	$"../Sun".visible = false
+
+
+func _add(n: String, type: int, value: Variant) -> void:  # (once: a fresh store, F9, comes through here again)
+	if not n in RenderingServer.global_shader_parameter_get_list():
+		RenderingServer.global_shader_parameter_add(n, type, value)
 
 
 func light(root: Node) -> int:  # everything lit under there, onto the room's light (the level; the cast of people)

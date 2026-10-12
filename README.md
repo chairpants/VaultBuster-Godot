@@ -28,6 +28,7 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | L | Skip an hour (not past midnight) |
 | F | Fly, through walls too (Space up, Ctrl down) |
 | Esc | Free the mouse (click to take it back) |
+| F9 | Start over: a fresh store (it's otherwise saved every ten seconds and when you close it, and picked up next time) |
 
 ## The level
 
@@ -74,6 +75,7 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `shoppers.gd` | Customers: who each one is (taste, patience, pace), how busy the day is, the visit: in the door, shelves looked over, a tape taken or put back, the line, the wait, out (web: `store/shoppers.js`). Rentals come back through the Returns slot when they're due. Not over: members, snacks, questions, kids, shoplifters, cars |
 | `checkout.gd` | Ringing somebody up, a step at a time; what a tape rents for; how a sale's scored (web: `store/checkout.js`, `pos.js`). Not over: members, late fees, sign-ups, snacks, tickets, the terminal's screens |
 | `staff.gd` | Dana, at her post, ringing up whoever's waiting when you don't (web: `store/staff.js`). Not over: the rest of her day |
+| `save.gd` | The store kept between sessions (`user://store.json`): the day and hour, where you are, lights, doors, what's rented and when it's due, the Returns bin, what you're carrying, the VCR, the till (web: `store/main.js`, saveState). Not whoever was in the store |
 | `nav.gd` | Finding a way round the store: the web game's grid and A* over its own floor boxes (web: `store/shoppers.js`, navGrid, navPath) |
 | `people/` | The cast: 24 people as the web game builds them (`people.glb`), a face sheet each, and who they are. `node tests/export-glb.mjs --people ../VaultBusterGodot/people` |
 | `lights.gd` | The nine light zones and their switches, fluorescents stuttering as they strike; the side lamps (web: `store/lounge.js`) |

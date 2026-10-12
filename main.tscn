@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://world/world.scn" id="2"]
@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://shoppers.gd" id="15"]
 [ext_resource type="Script" path="res://checkout.gd" id="16"]
 [ext_resource type="Script" path="res://staff.gd" id="17"]
+[ext_resource type="Script" path="res://save.gd" id="18"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.25, 0.45, 0.8, 1)
@@ -106,3 +107,6 @@ script = ExtResource("16")
 
 [node name="Staff" type="Node" parent="."]
 script = ExtResource("17")
+
+[node name="Save" type="Node" parent="."]
+script = ExtResource("18")

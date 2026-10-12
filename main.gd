@@ -349,6 +349,31 @@ func _check() -> void:
 					$Tapes.put_back()
 					if took.off and $Tapes.held == null and not $Tapes.return_bin.has(took) and $Tapes.inv.is_empty():
 						bad.append("the returned tape didn't go back on the shelf")
+	# a store saved and picked up again: the state turned over, then put back from the snapshot
+	var Tp := $Tapes
+	var out_tape: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not Tp._corners(t).is_empty())[0]
+	Tp.pickup(out_tape)
+	Tp.inspecting = false
+	$Shoppers.rented.append([Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not Tp._corners(t).is_empty())[0], Clock.day, Clock.day + 2])
+	Tp.set_on_shelf($Shoppers.rented[-1][0], false)
+	$Lights.set_zone("lounge", false)
+	$Fixtures.flap_open = true
+	var snap: Dictionary = JSON.parse_string(JSON.stringify($Save.snapshot()))  # (through text, as the file would be)
+	var was_h := Clock.h
+	Tp.put_back()
+	Tp.set_on_shelf($Shoppers.rented[-1][0], true)
+	var lent: Dictionary = $Shoppers.rented.pop_back()[0]
+	$Lights.set_zone("lounge", true)
+	$Fixtures.flap_open = false
+	Clock.h = 11.0
+	$Save.apply(snap)
+	if Tp.held != out_tape or not out_tape.off or not lent.off or $Shoppers.rented.is_empty() or $Lights.zone_on.lounge or not $Fixtures.flap_open or absf(Clock.h - was_h) > 0.01:
+		bad.append("a saved store didn't come back as it was (held %s, rental out %s, lounge lights %s, pass-through %s)" % [Tp.held == out_tape, lent.off, $Lights.zone_on.lounge, $Fixtures.flap_open])
+	Tp.put_back()
+	Tp.set_on_shelf(lent, true)
+	$Shoppers.rented.clear()
+	$Lights.set_zone("lounge", true)
+	$Fixtures.flap_open = false
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:
