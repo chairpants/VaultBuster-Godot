@@ -18,7 +18,8 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | Mouse wheel | Sat down: zoom in and out (getting up resets it) |
 | E | Whatever the crosshair's on: a door, a seat, the counter's pass-through, a light switch, a lamp, a ladder (the closet's goes up through the hatch; the one out back has to be kicked down from the roof first); at the TV or the theater's screen, the tape in your hand goes in (E again: out it comes) |
 | Hold E | On the stool or the standee: pick it up and carry it; E sets it down |
-| Click | A tape on the shelf: off it comes, held up to look at. Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
+| Click | A tape on the shelf: off it comes, held up to look at (what you were holding goes into the inventory: up to 9). Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
+| 1-9, mouse wheel | Which of the tapes you're carrying is in your hand |
 | Right-click | While you're still looking at a tape you've just picked up: put it back |
 | L | Skip an hour (not past midnight) |
 | F | Fly, through walls too (Space up, Ctrl down) |
@@ -59,7 +60,8 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `main.gd` | Makes the world solid: a collision shape from each mesh's own triangles (not the doors you walk through) |
 | `player.gd` | The first-person walker; sitting |
 | `clock.gd` | The shift's clock: 9 AM start, open 10 to midnight, a store hour every 90 seconds, real time after close (web: `store/shift.js`, `store/clock.js`) |
-| `sky.gd`, `sky.gdshader` | The sky for the hour, the sun and moon, stars, the day's clouds drifting, the same weather plan per day as the web game (web: `store/shift.js`, `exterior/sky.js`). Rain, snow and fog aren't over yet |
+| `sky.gd`, `sky.gdshader` | The sky for the hour, the sun and moon, stars, the day's clouds drifting, the same weather plan per day as the web game (web: `store/shift.js`, `exterior/sky.js`) |
+| `weather.gd` | The day's weather: rain and snow falling (not indoors), the ground going wet or white, fog, wind and gusts (web: `exterior/sky.js`). Not over: drops on the glass, drifts, umbrellas, the sound |
 | `interact.gd` | E on things: hinged doors, push doors that swing out of your way, the storefront's door, every seat (web: `store/player.js`, `store/main.js`, `store/shoppers.js`, `store/tv.js`) |
 | `fixtures.gd` | E on the fixed things: the counter's pass-through, light switches, lamps, both ladders (web: `store/player.js`, `store/clock.js`, `store/tv.js`, `store/roof.js`) |
 | `things.gd` | The loose things: the stool (E sits, E again spins, WASD gets up), carrying it and the standee, the cooler's door, the front doors' deadbolt, the flush and the paper towels, sleeping on the cardboard bed (3 hours, or after close through to morning), the roof's projector, VCR and bedsheet (web: `store/player.js`, `store/tv.js`, `store/staff.js`, `store/chores.js`, `store/customer-mode.js`, `store/roof.js`) |
@@ -74,7 +76,7 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 `godot --path . -- --check` starts it, tries the clock, noon and night, a door and the couch, prints `check: ok` (or
 what's off) and quits. `godot --path . -- --shot` saves `shot.png` from where you spawn and quits; `--at=x,y,z,yaw,pitch`
 (degrees) looks from somewhere else, `--hour=19.5` at another time of day, `--dark` with the store's lights off
-(`--lamps-off` too), `--take=0` with the first tape held up (`--carry`: in hand; `--play`: in the VCR and a few
+(`--lamps-off` too), `--weather=rain` (or `snow`, `fog`), `--wait=8` first, `--cine` with the roof's projector on, `--take=0` with the first tape held up (`--carry`: in hand; `--play`: in the VCR and a few
 seconds in; `--from=600`: wound on to there first). `godot --path . -- "--video=item|file|seconds"`
 plays that archive.org file a few seconds from there, saves a frame as `video.png`, and says how long it took.
 

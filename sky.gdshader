@@ -1,7 +1,7 @@
 shader_type sky;
 // The sky. The web game's dome shader (exterior/sky.js, wxSky), line for line: the day's colors (deeper overhead,
 // paler toward the horizon), the sun's disc and its glare, the low pink or orange glow some mornings and evenings,
-// a moon at night and the stars coming out, twinkling. No fog yet (the weather's not over here).
+// a moon at night and the stars coming out, twinkling (fewer down low, gone behind cloud and fog).
 
 uniform vec3 uZen;
 uniform vec3 uHor;
@@ -14,6 +14,8 @@ uniform float uMoonK;
 uniform float uStar;
 uniform float uT;
 uniform float uGlow;
+uniform vec3 uFogC;
+uniform float uFog;
 
 float h3(vec3 p) {
 	p = fract(p * 0.3183099 + 0.1);
@@ -56,5 +58,6 @@ void sky() {
 		col = mix(col, vec3(0.86, 0.85, 0.78) * mare * (0.75 + 0.25 * smoothstep(0.99972, 0.99995, md)), disc * uMoonK)
 			+ vec3(0.45, 0.52, 0.68) * (pow(max(md, 0.0), 2500.0) * 0.35 + pow(max(md, 0.0), 120.0) * 0.06) * uMoonK;
 	}
+	col = mix(col, uFogC, uFog * (0.55 + 0.45 * (1.0 - smoothstep(0.0, 0.6, e))));
 	COLOR = col;
 }

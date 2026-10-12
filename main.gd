@@ -47,6 +47,9 @@ func _shot(args: PackedStringArray) -> void:
 			if "--lamps-off" in args:
 				for l in $Lights.lamps:
 					$Lights.set_lamp(l, false)
+		elif a.begins_with("--weather="):  # rain | snow | fog | clear, straight to it
+			var w := a.trim_prefix("--weather=")
+			$Weather.set_now("clear" if w == "fog" else w, 0.9, 0.8 if w == "fog" else 0.0)
 		elif a == "--cine":  # the roof's projector on
 			$Things.cine_on = true
 		elif a.begins_with("--hour="):
@@ -227,6 +230,11 @@ func _check() -> void:
 	await get_tree().create_timer(0.8).timeout
 	if zoomed > 45.0 or $Player/Camera.fov < 68.0:
 		bad.append("the seat's zoom: %.0f sat down, %.0f stood up" % [zoomed, $Player/Camera.fov])
+	$Weather.set_now("rain")
+	await get_tree().create_timer(0.5).timeout
+	if not $Weather._rain[0].visible or $Sky.wx_k < 0.5 or $Weather._ground.size() < 3:
+		bad.append("rain: not falling, or the ground's not found (%d of its materials)" % $Weather._ground.size())
+	$Weather.set_now("clear")
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

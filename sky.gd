@@ -1,7 +1,7 @@
 extends Node3D
 ## The day going by overhead: the sky's colors and the sun for the hour, night, the day's clouds drifting.
 ## From the web game: store/shift.js (SKY_KEYS, todTick) and exterior/sky.js (wxPlan, wxSky, wxClouds). The numbers
-## are its numbers. Not here yet: rain, snow and fog (so WX.k and WX.fog are 0 throughout), and gusts.
+## are its numbers. What the weather's doing (cloud, wind, rain, fog) is weather.gd's, handed in here each frame.
 ##
 ## The light it throws is room.gd's business (the sun's direction and colour, and the daylight through the glass, are
 ## worked out here for it).
@@ -36,8 +36,11 @@ var sun_dir := Vector3.UP  # where the sun's light comes from (room.gd)
 var sun_c := SUN_C
 var day_c := Vector3.ONE
 var plan := {}
-var clouds := 0.0  # WX.clouds
+var clouds := 0.0  # WX.clouds: these five are the weather's, set by weather.gd
 var wind := 0.0  # WX.wind
+var wx_k := 0.0  # WX.k: how hard it's raining or snowing
+var fog := 0.0  # WX.fog
+var snowing := false
 
 var _mat := ShaderMaterial.new()
 var _clouds: Array[Dictionary] = []
@@ -86,11 +89,13 @@ func _process(dt: float) -> void:
 func _tick(dt: float) -> void:
 	if plan.get("day") != Clock.day:
 		plan = wx_plan(Clock.day)
-		clouds = plan.clouds  # (weatherTick eases toward these, and builds cloud ahead of rain: all there is to it without rain)
-		wind = plan.wind
 	_tod()
 	_sky(dt)
 	_drift(dt)
+
+
+func _over() -> float:  # overcast: under rain or snow, or a sky nearly full of cloud
+	return maxf(minf(1.0, wx_k * 1.6), maxf(0.0, clouds - 0.65) / 0.35)
 
 
 func _lin(hex: int) -> Color:  # a web colour, as the light it stands for
@@ -108,13 +113,16 @@ func _tod() -> void:  # sample the sky for the clock's hour (todTick)
 	var k := t * t * (3.0 - 2.0 * t)
 	level = lerpf(a[1], b[1], k)
 	sky_color = _lin(a[2]).lerp(_lin(b[2]), k)
+	if wx_k > 0.0:  # overcast
+		sky_color = sky_color.lerp(Color(0.42 * level + 0.07, 0.45 * level + 0.08, 0.5 * level + 0.1), wx_k * 0.8)
 	var ga: Array = GLASS[a[3]]
 	var gb: Array = GLASS[b[3]]
 	day_c = Vector3(lerpf(ga[0], gb[0], k), lerpf(ga[1], gb[1], k), lerpf(ga[2], gb[2], k))  # daylight through the glass
 	var arc := clampf((h - 5.9) / 14.2, 0.0, 1.0) * PI  # the sun: up in the east about 6, across, down in the west about 8
 	var up := sin(arc)
 	sun_dir = Vector3(-16.0 * cos(arc), 3.0 + 30.0 * up, -8.0).normalized()
-	sun_c = SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))  # warm and low at either end of the day
+	sun_c = SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0)) * (1.0 - (0.45 if snowing else 0.7) * wx_k)  # warm and low at either end of the day; no sun through the clouds
+	day_c *= 1.0 - 0.4 * wx_k  # ...and a duller light through the glass
 	env.ambient_light_energy = 0.0  # (the light's in the materials: see room.gd)
 
 
@@ -138,19 +146,27 @@ func _sky(dt: float) -> void:  # wxSky.tick
 	var hor := sky_color.lerp(Color.WHITE, 0.2 * L).lerp(grey, c * 0.3) + CITY * (1.0 - L)  # paler down low by day; the town's glow on it at night
 	var zen := (sky_color * (0.55 + 0.3 * (1.0 - L))).lerp(grey, over * 0.85)
 	var g := maxf(plan.glowAM * _bump(h, 5.2, 6.0, 6.7, 7.6), plan.glowPM * _bump(h, 18.6, 19.4, 20.0, 20.8))
-	var glow := g * (0.45 + 2.2 * c * (1.0 - c)) * (1.0 - over)
+	var glow := g * (0.45 + 2.2 * c * (1.0 - c)) * (1.0 - over) * (1.0 - fog * 0.8)
 	var glow_hue := _lin(GLOWS[plan.glowHue])
 	var glow_c := glow_hue * 0.55
 	_t += dt
 	_mat.set_shader_parameter("uSun", sun_dir)
-	_mat.set_shader_parameter("uSunUp", clampf(sun_dir.y * 14.0 + 0.25, 0.0, 1.0) * (1.0 - over))
+	_mat.set_shader_parameter("uSunUp", clampf(sun_dir.y * 14.0 + 0.25, 0.0, 1.0) * (1.0 - over) * (1.0 - fog * 0.85))
+	var fog_c := Color(0.5 * L + 0.035, 0.53 * L + 0.04, 0.56 * L + 0.05).lerp(hor, 0.25)
+	_mat.set_shader_parameter("uFogC", _v(fog_c))
+	_mat.set_shader_parameter("uFog", minf(1.0, fog + wx_k * 0.3))
+	var density := pow(fog, 1.3) * 0.11 + wx_k * (0.025 if snowing else 0.01)  # the air itself: the weather's fog, and a little with whatever's falling
+	env.fog_enabled = density > 0.0005
+	env.fog_light_color = fog_c.linear_to_srgb()
+	env.fog_density = density
+	env.fog_sky_affect = 0.0  # (the sky does its own)
 	_mat.set_shader_parameter("uSunC", _v(SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))))
 	_mat.set_shader_parameter("uHor", _v(hor))
 	_mat.set_shader_parameter("uZen", _v(zen))
 	_mat.set_shader_parameter("uGlow", glow)
 	_mat.set_shader_parameter("uGlowC", _v(glow_c))
-	_mat.set_shader_parameter("uStar", pow(1.0 - L, 2.0) * (1.0 - minf(1.0, c * 1.1 + over)))
-	_mat.set_shader_parameter("uMoonK", pow(1.0 - L, 1.5) * (1.0 - over * 0.9))
+	_mat.set_shader_parameter("uStar", pow(1.0 - L, 2.0) * (1.0 - minf(1.0, c * 1.1 + over)) * (1.0 - fog))
+	_mat.set_shader_parameter("uMoonK", pow(1.0 - L, 1.5) * (1.0 - over * 0.9) * (1.0 - fog * 0.85))
 	_mat.set_shader_parameter("uT", _t)
 	# the clouds: greyer under overcast, catching the glow; their own light the sky's, all round them
 	var cloud := Color.WHITE.lerp(CLOUD_LOW, over * 0.8).lerp(glow_c, minf(0.6, glow * 0.8))
@@ -161,7 +177,7 @@ func _sky(dt: float) -> void:  # wxSky.tick
 
 
 func _drift(dt: float) -> void:  # wxClouds.tick: a few to a sky full, as the day has them, drifting with the wind up there
-	var over := maxf(0.0, clouds - 0.65) / 0.35
+	var over := _over()
 	var v: float = plan.cloudV * (0.4 + 1.8 * wind) * dt
 	var dx: float = cos(plan.windDir) * v
 	var dz: float = sin(plan.windDir) * v
