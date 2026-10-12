@@ -8,6 +8,7 @@ var _cross := _label(18)
 var _tip := _label(18)
 var _toast := _label(20)
 var _toast_t := 0.0
+var _inv := _label(15)
 var _fade := ColorRect.new()
 var _fade_text := _label(40)
 
@@ -41,6 +42,14 @@ func fade(text: String) -> void:  # the screen gone black with a word on it ("" 
 	_fade_text.text = text
 
 
+func inventory(names: Array, sel: int) -> void:  # what you're carrying, numbered; the one in hand in brackets (nothing shown for one or none)
+	var parts := PackedStringArray()
+	for i in names.size():
+		var n: String = names[i] if names[i].length() <= 22 else names[i].left(21) + "…"
+		parts.append(("[%d %s]" if i == sel else "%d %s") % [i + 1, n])
+	_inv.text = "   ".join(parts) if names.size() > 1 else ""
+
+
 func toast(text: String) -> void:
 	_toast.text = text
 	_toast_t = 4.0
@@ -54,11 +63,12 @@ func _process(dt: float) -> void:
 	_status.position = Vector2(16, 44)
 	_toast_t -= dt
 	_toast.visible = _toast_t > 0.0
-	for l: Label in [_cross, _tip, _toast, _fade_text]:
+	for l: Label in [_cross, _tip, _toast, _fade_text, _inv]:
 		l.reset_size()
 	_fade.size = s
 	_fade_text.visible = _fade.visible
 	_fade_text.position = (s - _fade_text.size) / 2.0
 	_cross.position = (s - _cross.size) / 2.0
+	_inv.position = Vector2((s.x - _inv.size.x) / 2.0, s.y - 44.0)
 	_tip.position = Vector2((s.x - _tip.size.x) / 2.0, s.y * 0.78)
 	_toast.position = Vector2((s.x - _toast.size.x) / 2.0, s.y * 0.12)

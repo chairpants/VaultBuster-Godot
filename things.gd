@@ -8,7 +8,7 @@ extends Node
 ## store/checkout.js (how near, and the words of the tips). Where they are, and the stool's numbers: data/interact.json.
 ## Different here: anyone can sleep on the cardboard (the web game: customers only), and it's the clock that moves,
 ## nothing else happens while you're out; the deadbolt keeps the door shut but the signs in the glass don't turn; the
-## cooler has no thermometer; the tap doesn't run; a thing set down goes where there's a clear line to it, not by
+## cooler has no thermometer; a thing set down goes where there's a clear line to it, not by
 ## the web game's test of the floor.
 
 const HOLD := 0.45  # hold E this long to lift the stool or the standee
@@ -47,6 +47,8 @@ var cooler_open := false
 var locked := false
 var cine_on := false
 var flush_t := 0.0
+var tap := false
+var _stream := MeshInstance3D.new()
 var lifting := false  # E's being held on something that lifts (interact.gd)
 
 var _stool: Node3D
@@ -105,6 +107,20 @@ func _ready() -> void:
 	_block.position = Vector3(0.9, 1.15, 0.1)
 	_block.add_child(shape)
 	add_child(_block)
+	if T.sink != null:  # the tap's stream: there while it's running
+		var water := CylinderMesh.new()
+		water.top_radius = 0.006
+		water.bottom_radius = 0.007
+		water.height = 0.17
+		var wm := StandardMaterial3D.new()
+		wm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		wm.albedo_color = Color(0.75, 0.88, 1.0, 0.55)
+		water.material = wm
+		_stream.mesh = water
+		_stream.position = _v(T.sink.spout) + Vector3(0, -0.02, 0)
+		_stream.visible = false
+		add_child(_stream)
 	var s: Dictionary = T.cine.sheet  # the picture on the bedsheet: light added to the cloth, over the whole sheet (the shader knows where the frame lands)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(s.w, s.h)
@@ -167,6 +183,9 @@ func _process(dt: float) -> void:
 		_water.rotation.z += dt * (5.0 if t < 2.5 else 0.0)  # swirl
 	elif flush_t > 0.0:
 		flush_t = maxf(0.0, flush_t - dt)
+	if tap:  # its stream shimmers
+		var now := Time.get_ticks_msec() / 1000.0
+		_stream.scale = Vector3(1.0 + sin(now * 40.0) * 0.08, 1.0, 1.0 + cos(now * 37.0) * 0.08)
 	if _wake >= 0.0 and (Clock.h >= _wake or Clock.warp <= Clock.h):  # morning, or near enough
 		_wake = -1.0
 		hud.fade("")
@@ -213,6 +232,9 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 		if at.distance_to(_v(T.flush.at)) < 0.16:
 			aim = "flush"
 			return "Flushing…" if flush_t > 0.0 else "E — flush"
+		if T.sink != null and at.distance_to(_v(T.sink.at)) < 0.32:
+			aim = "sink"
+			return "E — turn the tap %s" % ("off" if tap else "on")
 		if T.towels != null and at.distance_to(_v(T.towels.at)) < 0.25:
 			aim = "towels"
 			return "E — take a paper towel"
@@ -279,8 +301,11 @@ func on_e() -> bool:
 		"flush":
 			if flush_t <= 0.0:
 				flush_t = 6.0
+		"sink":
+			tap = not tap
+			_stream.visible = tap
 		"towels":
-			hud.toast("You dry your hands")
+			hud.toast("Turn the tap off first" if tap else "You dry your hands")
 		"bed":
 			if Clock.after_close():  # through to the morning
 				hud.toast("You curl up on the cardboard. Morning comes soon enough")

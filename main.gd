@@ -63,6 +63,9 @@ func _shot(args: PackedStringArray) -> void:
 				var t0 := Time.get_ticks_msec()
 				while $Video._shown < 90 and Time.get_ticks_msec() - t0 < 60000:
 					await get_tree().process_frame
+	for w in args:  # --wait=seconds first (for things that take a while: lamps warming up)
+		if w.begins_with("--wait="):
+			await get_tree().create_timer(w.trim_prefix("--wait=").to_float()).timeout
 	for i in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://shot.png")
@@ -234,14 +237,36 @@ func _check() -> void:
 		bad.append("the front lights didn't come back on")
 	var T := $Tapes
 	var tape: Dictionary = T.tapes[0]
+	var second: Dictionary = T.tapes[1]
+	for t2: Dictionary in T.tapes:
+		if t2 != tape and T._corners(t2).size() >= 20:
+			second = t2
+			break
 	var n: int = T._corners(tape).size()
 	if n < 20:
 		bad.append("the first tape has %d corners in the shelves (22: a cover and a case)" % n)
 	T.pickup(tape)
 	if T.held != tape or not tape.off or tape.mesh.get_surface_count() < 2:
 		bad.append("a tape didn't come off the shelf whole")
+	T.pickup(second)
+	if T.inv.size() != 2 or T.held != second:
+		bad.append("a second tape didn't join the first in the inventory")
+	T.inv_select(0)
+	if T.held != tape:
+		bad.append("1 didn't bring the first tape back to hand")
 	T.put_back()
-	if T.held != null or tape.off:
+	if T.held != second or tape.off or T.inv.size() != 1:
+		bad.append("shelving the one in hand didn't bring the other out")
+	T.put_back()
+	if T.held != null or second.off or not T.inv.is_empty():
 		bad.append("a tape didn't go back")
+	$Lights.flip_plate("front")
+	if $Lights.zone_on.front or $Lights.zone_on.lounge or $Lights.zone_on.hall:
+		bad.append("the whole plate didn't go off together")
+	$Lights.flip_plate("front")
+	Clock.h = 22.0
+	await get_tree().create_timer(9.0).timeout
+	if $Lights._night.is_empty() or $Lights._night[0].light.light_energy <= 0.0:
+		bad.append("the lot's lamps didn't come on after dark (%d of them)" % $Lights._night.size())
 	print("check: %s" % ("ok" if bad.is_empty() else "; ".join(bad)))
 	get_tree().quit(0 if bad.is_empty() else 1)

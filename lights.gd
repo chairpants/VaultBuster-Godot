@@ -23,10 +23,20 @@ var _glows: Array[Light3D] = []  # the screens: lit with the colour of what's on
 var _glow := Color.BLACK
 var _panels := {}  # zone -> [the material of each ceiling panel in it]
 var _boxes := {}
+var plates := {}  # zone -> the zones that share its switch plate
+var closet := {}  # the bare bulb's pull, and the bulb
+var _bulb: StandardMaterial3D
+var _night: Array[Dictionary] = []  # the lot's lamps and the street's: { light, on, delay, sodium }
+var _night_t := -1.0  # seconds since dusk while the lot's lamps warm up (-1: it's day)
+var _zoned: Array[Dictionary] = []  # the few real lights that are on a switch
 
 @onready var sky: Node3D = $"../Sky"
 @onready var video: Node = $"../Video"
 const WINDOWS := 5  # lights along the storefront
+const SODIUM := 72.0  # the lot lamps' strength once they're warm (the web game's)
+const SODIUM_WARM := 5.0  # seconds to get there, from a cold orange
+const BULB_ON := Color(1.0, 0.949, 0.769)  # 0xfff2c4
+const BULB_OFF := Color(0.227, 0.22, 0.2)  # 0x3a3833
 const DAYLIGHT := 1.5  # how strong each is at noon
 const SCREEN_GAIN := 7.0  # the TV's light, for a full-white frame
 const PANEL_ON := Color(0.973, 0.984, 1.0)  # 0xf8fbff
@@ -43,6 +53,45 @@ func _ready() -> void:
 		zone_lvl[zone] = 1.0 if zone_on[zone] else 0.0
 	var all: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json"))
 	_boxes = d.boxes
+	plates = d.plates
+	closet = d.closet
+	if closet.bulb != null:
+		for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
+			if mi.global_position.distance_to(Vector3(closet.bulb[0], closet.bulb[1], closet.bulb[2])) < 0.01 and mi.mesh.surface_get_material(0) is StandardMaterial3D:
+				_bulb = mi.mesh.surface_get_material(0).duplicate()
+				mi.set_surface_override_material(0, _bulb)
+	# the scene's own lights (store/theater.js, exterior/lot.js): the one on a switch, and those that only come on at night
+	for s: Dictionary in d.scene:
+		var at := Vector3(s.p[0], s.p[1], s.p[2])
+		var mine := false
+		for lp: Dictionary in d.lamps:
+			mine = mine or at.distance_to(Vector3(lp.p[0], lp.p[1], lp.p[2])) < 0.01
+		if mine or (s.zone == null and s.kind == "point" and s.on == 0.0):
+			continue  # (the side lamps are below; the screens' glows are the screens' business)
+		var l: Light3D
+		if s.kind == "spot":
+			var sp := SpotLight3D.new()
+			sp.spot_range = s.range
+			sp.spot_angle = rad_to_deg(s.angle)
+			sp.position = at
+			sp.basis = Basis.looking_at((Vector3(s.to[0], s.to[1], s.to[2]) - at).normalized(), Vector3.FORWARD)
+			l = sp
+		else:
+			var om := OmniLight3D.new()
+			om.omni_range = s.range
+			om.position = at
+			l = om
+		l.light_color = Color.hex((int(s.color) << 8) | 0xff)
+		l.light_specular = 0.0
+		l.light_energy = 0.0
+		add_child(l)
+		# three's candela to Godot's energy, matched a few metres out (three falls off by the square, Godot to its range)
+		var ref: float = minf(s.range / 3.0, 5.0)
+		var full: float = (SODIUM if s.kind == "spot" else s.on) / (PI * ref * ref) / (1.0 - ref / s.range)
+		if s.zone != null:
+			_zoned.append({ "light": l, "on": full, "zone": s.zone })
+		else:
+			_night.append({ "light": l, "on": full, "delay": 0.0, "sodium": s.kind == "spot" })
 	# the ceiling's light panels: flat, white and unlit, up under a ceiling, a few meshes to a zone. Each gets a material
 	# of its own, to go dark with its zone's switch and stutter back on with it (the web game's panelMats)
 	for zone: String in zone_on:
@@ -134,6 +183,13 @@ func flip_switch(zone: String) -> void:
 	set_zone(zone, not zone_on[zone])
 
 
+func flip_plate(zone: String) -> void:  # the whole plate at once: all on, unless the first is (then all off)
+	var on: bool = not zone_on[plates[zone][0]]
+	for z: String in plates[zone]:
+		if zone_on[z] != on:
+			set_zone(z, on)
+
+
 func zone_at(p: Vector3) -> String:  # which switch lights this spot ("" outdoors): the room shader's boxes
 	var f: Array = _boxes.floor
 	var b: Array = _boxes.boh
@@ -177,6 +233,28 @@ func _process(dt: float) -> void:  # fluorescents restriking, tube by tube (ligh
 	for w in _windows:
 		w.light_color = Color(day.x, day.y, day.z).linear_to_srgb()
 		w.light_energy = DAYLIGHT
+	if _bulb:
+		_bulb.albedo_color = BULB_ON if zone_on.closet else BULB_OFF
+	for z: Dictionary in _zoned:
+		z.light.light_energy = z.on * zone_lvl[z.zone]
+	# lamps and lot lights from dusk on: the park's lamp straight on, the lot's sodiums each after its own delay, a slow
+	# start from a cold orange, then climbing to full
+	var night: bool = sky.level <= 0.5
+	if night and _night_t < 0.0:
+		_night_t = 0.0
+		for n in _night:
+			n.delay = 1.2 + randf() * 1.3
+	elif not night:
+		_night_t = -1.0
+	if _night_t >= 0.0:
+		_night_t += dt
+	for n in _night:
+		var k := 0.0
+		if _night_t >= 0.0:
+			k = clampf((_night_t - n.delay) / SODIUM_WARM, 0.0, 1.0) if n.sodium else 1.0
+		n.light.light_energy = n.on * k * k
+		if n.sodium:
+			n.light.light_color = Color(1.0, 0.302, 0.102).lerp(Color(1.0, 0.682, 0.29), k)  # 0xff4d1a to 0xffae4a
 	_glow = _glow.lerp(video.tint, minf(1.0, dt * 6.0))  # the light chases the picture
 	for g in _glows:
 		g.light_color = _glow

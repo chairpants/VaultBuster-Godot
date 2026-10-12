@@ -68,7 +68,10 @@ func _process(dt: float) -> void:
 		_hold += dt
 		if _hold >= things.HOLD:
 			_hold = -1.0
-			things.pick_up()
+			if fixtures.holdable():
+				fixtures.hold_done()
+			else:
+				things.pick_up()
 
 
 func _physics_process(_dt: float) -> void:
@@ -181,7 +184,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	if not e is InputEventKey or e.echo or e.physical_keycode != KEY_E:
 		return
 	if e.pressed:
-		if things.holdable():
+		if things.holdable() or fixtures.holdable():
 			_hold = 0.0  # a tap does one thing, a hold lifts it: wait and see which
 		else:
 			on_e()

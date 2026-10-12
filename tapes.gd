@@ -14,11 +14,13 @@ extends Node
 ## - The shelves are whole meshes, as in the web game, and a tape leaves one the same way (its corners pulled out of
 ##   sight); but which corners are a tape's is found by where they are, not by counting, since the level's meshes
 ##   aren't in the web game's order. The tape in your hand is those same triangles, lifted out: its own cover.
-## - One tape at a time: there's no inventory yet, so a second won't come off the shelf while your hand's full.
+## - The inventory (the web game's, store/chores.js: up to 9 carried, one of them in hand; 1-9 or the wheel swap which)
+##   holds tapes only so far, and its slots are a line of names, not pictures.
 ## - A tape goes on from where it was wound to, to the second (the web game can't seek, so it restarts the episode).
 ## - No case on the coffee table, no picture settings.
 
 const REACH := 3.4
+const INV_MAX := 9
 const CELL := 0.25
 const YELLOW := Color(1, 0.831, 0)
 var HAND := Transform3D(Basis.from_euler(Vector3(0.05, -0.4, 0.06)), Vector3(0.3, -0.28, -0.55))  # carried
@@ -34,6 +36,8 @@ var peek = null  # the tape you've only just picked up to look at: right-click s
 var aim_slot := false
 var aim_tv = null  # the screen the crosshair's on
 var playing = null  # { tape, idx }
+var inv: Array = []  # the tapes you're carrying, the one in hand among them
+var inv_sel := -1  # which of them is in hand (-1: empty-handed)
 
 var _grid := {}  # cell -> [tape index]
 var _verts := {}  # cell -> PackedInt32Array of (mesh, surface, vertex) triples: the level's corners near any slot
@@ -290,10 +294,52 @@ func _lift(t: Dictionary, corners: Array) -> ArrayMesh:  # the tape's own triang
 
 # ---- in your hand
 
-func pickup(t: Dictionary) -> void:  # off the shelf, held up to look at
+func pickup(t: Dictionary) -> void:  # off the shelf, held up to look at (whatever was in hand goes into the inventory)
+	if not inv_make_room():
+		hud.toast("Your hands are full: 9 is all you can carry")
+		return
 	set_on_shelf(t, false)
-	show_tape(t)
+	_take(t)
 	inspecting = true
+
+
+func inv_make_room() -> bool:  # before picking something new up: stash what's in hand, or refuse at 9
+	if inv.size() >= INV_MAX:
+		return false
+	inv_stash()
+	return true
+
+
+func inv_stash() -> void:  # what's in hand, out of it (still carried)
+	held = null
+	inspecting = false
+	peek = null  # swapping away from a tape counts as taking it
+	_hand.visible = false
+	inv_sel = -1
+
+
+func inv_select(i: int) -> void:  # 1-9, or the wheel: that one into your hand (an empty slot: empty-handed)
+	if i == inv_sel or i < 0 or i >= INV_MAX:
+		return
+	inv_stash()
+	if i < inv.size():
+		inv_sel = i
+		show_tape(inv[i])
+
+
+func _take(t: Dictionary) -> void:  # into your hand, and so into the inventory
+	inv.append(t)
+	inv_sel = inv.size() - 1
+	show_tape(t)
+
+
+func _gone() -> void:  # what was in hand has left it (shelved, into the VCR): the next one comes out
+	var was := inv_sel
+	if was >= 0:
+		inv.remove_at(was)
+	inv_sel = -1
+	if not inv.is_empty():
+		inv_select(mini(maxi(was, 0), inv.size() - 1))
 
 
 func show_tape(t: Dictionary) -> void:  # the tape in your hand (fresh off the shelf, or back out of the VCR)
@@ -311,6 +357,7 @@ func release() -> void:  # clears the hand without touching the shelf (into the 
 	inspecting = false
 	peek = null
 	_hand.visible = false
+	_gone()
 
 
 func put_back() -> void:  # back into its own shelf slot
@@ -322,13 +369,20 @@ func put_back() -> void:  # back into its own shelf slot
 func _process(dt: float) -> void:
 	if held != null:
 		_hand.transform = _hand.transform.interpolate_with(LOOK if inspecting else HAND, minf(1.0, dt * 14.0))
+	hud.inventory(inv.map(func(t: Dictionary) -> String: return t.t), inv_sel)
 	if playing != null and not video.url.is_empty():  # the tape winds forward as it plays
 		playing.tape.ep = playing.idx
 		playing.tape.at = video.position
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode >= KEY_1 and e.physical_keycode <= KEY_9:
+		inv_select(e.physical_keycode - KEY_1)
+		return
 	if not e is InputEventMouseButton or not e.pressed or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or player.fly:
+		return
+	if (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN) and player.seat == null and inv.size() > 1:
+		inv_select(posmod((inv_sel if inv_sel >= 0 else 0) + (1 if e.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1), inv.size()))  # (sat down, the wheel's the zoom)
 		return
 	if e.button_index == MOUSE_BUTTON_RIGHT:  # right click puts down what's in hand, if it's only being looked at
 		if held != null and held == peek:
@@ -339,12 +393,11 @@ func _unhandled_input(e: InputEvent) -> void:
 			peek = null
 		elif aim_slot:  # slotted back into its own spot on the shelf
 			put_back()
-		elif hovered != null:
-			if held != null:
-				hud.toast("One tape at a time for now: put that one back first")
-			else:
-				pickup(hovered)
-				peek = hovered
+		elif hovered != null:  # another one: whatever's in hand goes into the inventory
+			var t: Dictionary = hovered
+			pickup(t)
+			if held == t:
+				peek = t
 		elif held != null:  # hold it up to look at it
 			inspecting = true
 
@@ -415,8 +468,11 @@ func vcr_use() -> void:  # E on the TV or the theater's screen: one tape, every 
 		var old = playing.tape if playing != null else null
 		play_episode(tape.ep, tape)  # it plays from wherever it's wound to
 		release()  # the tape leaves your hand...
-		if old != null:
-			show_tape(old)  # ...and the one that was in there comes out into it
+		if old != null:  # ...and the one that was in there comes out into your inventory
+			if inv_make_room():
+				_take(old)
+			else:
+				set_on_shelf(old, true)
 	elif playing != null:
 		eject()
 
@@ -462,8 +518,8 @@ func eject() -> void:
 	playing = null
 	for q in _quads:
 		q.visible = false
-	if held == null:
-		show_tape(tape)  # the tape comes back out into your hand, not the shelf
+	if inv_make_room():
+		_take(tape)  # the tape comes back out into your hand, not the shelf (whatever you were holding slides into the inventory)
 	else:
-		set_on_shelf(tape, true)  # hands full: it goes home (the web game: to Returns)
+		set_on_shelf(tape, true)  # hands full (9 already): it goes home (the web game: to Returns)
 		hud.toast("%s went back on its shelf" % tape.t)

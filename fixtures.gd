@@ -5,9 +5,9 @@ extends Node
 ## store/clock.js (flipSwitch), store/tv.js (setLamp), store/roof.js (roofClimb, backLadderE, backLadderDrop, the
 ## climb in roofTick), store/checkout.js (how near: 2.6 m for the flap and a lamp, 2.2 for a switch and a ladder
 ## from the ground, 2.4 from the roof; the words of the tips). Where they all are: data/interact.json.
-## Different here: a tap on a switch flips its own zone (the web game's hold-E for the whole plate isn't over); the
-## hatch's lid only lifts while you're on the ladder (open, you could walk into the hole); the closet's bulb has no
-## pull to aim at yet; and a thing's found by where the crosshair lands near it, not by the mesh it hits.
+## A tap on a switch flips its own zone; held, the whole plate (flipPlate).
+## Different here: the hatch's lid only lifts while you're on the ladder (open, you could walk into the hole); and a
+## thing's found by where the crosshair lands near it, not by the mesh it hits.
 
 var flap := {}
 var ladders := {}
@@ -101,6 +101,9 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 				best = at.distance_to(_v(s.p))
 				aim = "switch"
 				aim_what = s
+		if aim == "" and at.distance_to(_v(lights.closet.at)) < 0.4:  # the closet's bare bulb: it, or its chain
+			aim = "switch"
+			aim_what = { "zone": "closet" }
 		if aim == "switch":
 			return "E — turn the %s lights %s" % [lights.names[aim_what.zone], "off" if lights.zone_on[aim_what.zone] else "on"]
 	if hit_d < 2.6:
@@ -128,6 +131,15 @@ func _near_line(from: Vector3, dir: Vector3, x: float, z: float, y0: float, y1: 
 	var t := (Vector2(x - from.x, z - from.z).dot(flat)) / flat.length_squared()
 	var p := from + dir * t
 	return t > 0.2 and t < reach and t < hit_d + 0.5 and Vector2(p.x - x, p.z - z).length() < off and p.y > y0 and p.y < y1
+
+
+func holdable() -> bool:  # E held on a switch that shares its plate: the whole plate
+	return aim == "switch" and lights.plates[aim_what.zone].size() > 1
+
+
+func hold_done() -> void:
+	if holdable():
+		lights.flip_plate(aim_what.zone)
 
 
 func on_e() -> bool:  # true if E was ours
