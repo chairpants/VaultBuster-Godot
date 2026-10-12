@@ -324,7 +324,7 @@ func _check() -> void:
 			t0 = Time.get_ticks_msec()
 			while not c2.paid and S.custs.has(c2) and Time.get_ticks_msec() - t0 < 40000:
 				await get_tree().process_frame
-			if $Staff.dana == null or not c2.paid or C.served != 2:
+			if $Staff.dana == null or not c2.paid or C.served < 2:
 				bad.append("Dana didn't ring the next one up (she's %s, served %d)" % ["there" if $Staff.dana else "not there", C.served])
 			Clock.day += 6  # past due: somebody brings it back, through the slot, into the bin
 			var back := false
@@ -439,34 +439,59 @@ func _check() -> void:
 			S.silence_alarm()
 			loot.lost = false
 		Tp.set_on_shelf(loot, true)
-	# chores: a mess wants its tool; a bin's bag goes down the chute
+	# chores: a mess wants its tool; a bin's bag goes down the chute. (Nobody new in meanwhile: what walk-ins drop and
+	# buy would muddy the count)
+	S._arrive = 99999.0
 	var Ch := $Chores
 	Ch.mess_add("wrapper", 0.0, 8.0)
+	var wrapper: Dictionary = Ch.messes[-1]
 	Ch.mess_add("spill", 0.5, 8.0)
-	var score0: int = $Checkout.score
-	Ch.aim = { "mess": Ch.messes[-1] }
+	var soda: Dictionary = Ch.messes[-1]
+	Ch.aim = { "mess": soda }
 	Ch.on_e()
-	if Ch.messes.size() != 2:
+	if not Ch.messes.has(soda):
 		bad.append("a spilled soda came up without the mop")
-	Ch.aim = { "mess": Ch.messes[0] }
+	Ch.aim = { "mess": wrapper }
 	Ch.on_e()
 	if Ch.tools.mop.nodes.is_empty() or Ch.tools.sweeper.nodes.is_empty():
 		bad.append("the mop (%d) or the sweeper (%d) isn't in the janitor's closet" % [Ch.tools.mop.nodes.size(), Ch.tools.sweeper.nodes.size()])
 	else:
 		Ch.tool_take("mop")
-		Ch.aim = { "mess": Ch.messes[0] }
+		Ch.aim = { "mess": soda }
 		Ch.on_e()
 		await get_tree().create_timer(2.8).timeout
 		Ch.tool_return()
-		if not Ch.messes.is_empty() or $Checkout.score != score0 + 30 or Ch.tools.mop.nodes.any(func(n: Node3D) -> bool: return not n.visible):
-			bad.append("the wrapper and the soda didn't both get cleaned up (%d left, %+d)" % [Ch.messes.size(), $Checkout.score - score0])
+		if Ch.messes.has(wrapper) or Ch.messes.has(soda) or Ch.tools.mop.nodes.any(func(n: Node3D) -> bool: return not n.visible):
+			bad.append("the wrapper and the soda didn't both get cleaned up")
 	Ch.bins[0].n = 3
 	Ch.aim = { "bin": Ch.bins[0] }
 	Ch.on_e()
+	var bagged: int = Ch.bag_carry.size()
 	Ch.aim = { "chute": true }
 	Ch.on_e()
-	if Ch.bins[0].n != 0 or not Ch.bag_carry.is_empty() or $Checkout.score < score0 + 15:
+	if Ch.bins[0].n != 0 or bagged != 1 or not Ch.bag_carry.is_empty():
 		bad.append("a bin's bag didn't go down the chute")
+	# Dana tidies up when there's nothing else to do
+	Ch.mess_add("cup", -1.0, 8.0)
+	var cup: Dictionary = Ch.messes[-1]
+	t0 = Time.get_ticks_msec()
+	while Ch.messes.has(cup) and Time.get_ticks_msec() - t0 < 150000:
+		await get_tree().process_frame
+	if Ch.messes.has(cup):
+		bad.append("Dana didn't clean up a cup left on the floor (she's %s)" % St.state)
+	# her shift over, she goes home; the next one, she's back
+	St._on_always = false  # (the check's clock is at an hour she doesn't work)
+	t0 = Time.get_ticks_msec()
+	while St.dana != null and Time.get_ticks_msec() - t0 < 60000:
+		await get_tree().process_frame
+	if St.dana != null:
+		bad.append("Dana didn't go home off shift (she's %s, on duty %s)" % [St.state, St.on_duty()])
+	St._on_always = true
+	t0 = Time.get_ticks_msec()
+	while (St.dana == null or St.state != "post" or not St._path.is_empty()) and Time.get_ticks_msec() - t0 < 60000:
+		await get_tree().process_frame
+	if St.dana == null or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
+		bad.append("Dana didn't come in for her shift and get to her post")
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

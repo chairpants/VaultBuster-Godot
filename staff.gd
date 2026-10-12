@@ -6,8 +6,13 @@ extends Node
 ## From the web game's store/staff.js (EMP_POST; the "post" state: her turn after a second and a half, the reach before
 ## each step, 0.9 s to the customer and 0.7 otherwise, quicker with her DEX of 3; chatting while she works; "toShelf"
 ## and "shelve": a hand to the slot, 0.9 s less a little for her INT of 3, the tag re-armed).
-## Not over yet: the job board and the rest of her jobs (snacks, cleaning, the phone), lunch, the stool, going home,
-## skills, hiring, the others. She's in all day. She puts a tape away rewound without a trip to the rewinder.
+## She works her shifts: Wednesday to Sunday, 5 to 10 PM (defaultSched, onDuty); in through the front door, out again
+## when it's over. The rest of the time the register's yours. With nothing else to do she cleans up: the nearest
+## mess, or a bin that's filling (or a bag left on the floor) to the chute (danaStartJob's cleanup; toMess, toBin,
+## toBag, toChute).
+## Not over yet: the job board (her jobs are in its default order), snacks, the phone, questions at the counter,
+## lunch (her shift's never over midday), the stool, skills, hiring, the others. She puts a tape away rewound
+## without a trip to the rewinder, and carries a bag of trash without it showing.
 
 const Nav := preload("res://nav.gd")
 const DEX := 3
@@ -30,10 +35,16 @@ var _face := 0.0
 var _ry := 0.0
 var _nav: RefCounted  # her own map: the pass-through's no wall to her
 var _bin_spot := Vector2.ZERO
+var _chute_spot := Vector2.ZERO
 var _flap_mid := Vector2.ZERO
 var _by_flap := false
 var _alarm_t := 0.0
 var _step_d := 0.0
+var _mess = null
+var _trash = null  # the bin, or the bag on the floor, she's after
+var _bag = null  # the bag in her hands
+var _on_always := not OS.get_cmdline_user_args().is_empty()  # (the tests: she's always in)
+var _clock_t := 0.0
 var _target = null
 
 @onready var tapes: Node = $"../Tapes"
@@ -42,6 +53,8 @@ var _target = null
 @onready var checkout: Node = $"../Checkout"
 @onready var fixtures: Node = $"../Fixtures"
 @onready var hud: CanvasLayer = $"../HUD"
+@onready var chores: Node = $"../Chores"
+@onready var interact: Node = $"../Interact"
 
 
 func _ready() -> void:
@@ -52,11 +65,18 @@ func _ready() -> void:
 	var mine: Dictionary = d.nav.duplicate()
 	mine.colliders = d.nav.colliders.filter(func(c: Array) -> bool: return not (absf(c[0] - fb.x0) < 0.01 and absf(c[1] - fb.x1) < 0.01 and absf(c[2] - fb.z0) < 0.01 and absf(c[3] - fb.z1) < 0.01))
 	_nav = Nav.new(mine)
+	_chute_spot = Vector2(d.things.chute.stand.x, d.things.chute.stand.z)
 	_bin_spot = Vector2(d.things.returns.bin[0] - 0.55, d.things.returns.bin[2])  # behind the counter, by the tote
-	call_deferred("_hire")
 
 
-func _hire() -> void:
+func on_duty() -> bool:  # should she be in the store right now? Five 5-hour shifts: Wednesday to Sunday, 5 to 10 PM
+	if _on_always:
+		return true
+	var n := int(Clock.h) - 9
+	return n >= 8 and n <= 12 and Clock.date().weekday in [3, 4, 5, 6, 0]
+
+
+func _hire(arrive: bool) -> void:  # already at her post if the store's just loaded; else in through the door
 	for i in people.cast.who.size():
 		if people.cast.who[i].get("staff", "") == "Dana":
 			dana = people.spawn(i)
@@ -67,6 +87,11 @@ func _hire() -> void:
 	_face = _post.ry
 	_ry = _post.ry
 	dana.walk_lean = false
+	state = "post"
+	if arrive:
+		dana.position = Vector3(shoppers._door.x, 0.0, shoppers._door.y)
+		_go(Vector2(_post.x, _post.z), "toPost")
+		hud.toast("Dana clocked in")
 
 
 func _go(to: Vector2, then: String) -> void:
@@ -92,8 +117,15 @@ func _next() -> void:  # the next return to put away, or home
 
 
 func _process(dt: float) -> void:
+	_clock_t += dt
 	if dana == null:
+		if on_duty() and _clock_t > 0.2:  # off the clock: in when her shift starts
+			_hire(_clock_t > 3.0)
 		return
+	if not on_duty() and state == "post" and checkout.co == null and carry.is_empty():  # her shift's over: out the front door
+		_go(Vector2(shoppers._door.x, shoppers._door.y), "toExit")
+		dana.set_mood("happy")
+		hud.toast("Dana clocked out")
 	var waiting = shoppers.waiting()
 	var speed := 0.0
 	# the pass-through: up as she comes to it, down behind her
@@ -113,12 +145,17 @@ func _process(dt: float) -> void:
 			speed = PACE
 			dana.position += Vector3(to.x, 0.0, to.y) / d * minf(d, speed * dt)
 			_step_d += minf(d, speed * dt)
+			for door: Dictionary in interact.doors:  # she gets the doors
+				if not door.open and not door.locked and not door.push and Vector2((door.shut.x0 + door.shut.x1) / 2.0, (door.shut.z0 + door.shut.z1) / 2.0).distance_to(Vector2(dana.position.x, dana.position.z)) < 1.2:
+					interact.toggle_door(door)
 			if _step_d > 0.7:
 				_step_d = 0.0
 				$"../Ambience".step(dana.position)
 			_ry = atan2(to.x, to.y)
 		# called away: somebody's at the counter and she's out on the floor. Home first
-		if waiting != null and checkout.co == null and state in ["toBin", "toShelf"]:
+		if waiting != null and checkout.co == null and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag"]:
+			_trash = null
+			_mess = null
 			_go(Vector2(_post.x, _post.z), "toPost")
 	else:
 		_t -= dt
@@ -128,6 +165,69 @@ func _process(dt: float) -> void:
 				_at_post(dt, waiting)
 			"toPost":
 				state = "post"
+			"toExit":  # gone home
+				dana.queue_free()
+				dana = null
+				state = "post"
+				return
+			"toMess":
+				dana.set_pose("crouch")
+				dana.reach_to(Vector3(_mess.x, 0.05, _mess.z))
+				state = "cleaning"
+				_t = 1.4
+			"cleaning":
+				if _t <= 0.0:
+					dana.reach_to(null)
+					dana.set_pose("idle")
+					if chores.messes.has(_mess):
+						chores.mess_clean(_mess, "dana")
+					_mess = null
+					_go(Vector2(_post.x, _post.z), "toPost")
+			"toTrash":  # at the bin: the bag out, a fresh liner in
+				dana.reach_to(Vector3(_trash.x, _trash.rimY + 0.05, _trash.z))
+				state = "bagging"
+				_t = 2.2 * maxf(0.5, 1.0 - 0.03 * (DEX - 1))
+			"bagging":
+				if _t <= 0.0:
+					dana.reach_to(null)
+					if _trash.n == 0:  # somebody beat her to it
+						_go(Vector2(_post.x, _post.z), "toPost")
+					else:
+						_bag = { "bin": _trash.id, "n": _trash.n }
+						_trash.n = 0
+						_trash.acc = 0.0
+						_trash.spilled = false
+						_go(_chute_spot, "toChute")
+					_trash = null
+			"toBag":  # one somebody left on the floor
+				dana.set_pose("crouch")
+				dana.reach_to(Vector3(_trash.x, 0.25, _trash.z))
+				state = "bagLift"
+				_t = 0.8
+			"bagLift":
+				if _t <= 0.0:
+					dana.set_pose("idle")
+					dana.reach_to(null)
+					if chores.bags_down.has(_trash):
+						chores.bags_down.erase(_trash)
+						_trash.node.queue_free()
+						_bag = { "bin": _trash.bin, "n": _trash.n }
+						_go(_chute_spot, "toChute")
+					else:
+						_go(Vector2(_post.x, _post.z), "toPost")
+					_trash = null
+			"toChute":
+				dana.reach_to(chores._chute)
+				state = "chuting"
+				_t = 1.3
+			"chuting":
+				if _bag != null and _t < 0.9:  # in it goes
+					_bag = null
+					checkout.score += 10
+					hud.toast("Dana took a bag of trash down the chute (+10)")
+				if _t <= 0.0:
+					dana.reach_to(null)
+					_go(Vector2(_post.x, _post.z), "toPost")
 			"toBin":  # by the tote: a hand in
 				dana.reach_to(Vector3(_bin_spot.x + 0.55, 0.6, _bin_spot.y), 1, true)
 				state = "binTake"
@@ -210,3 +310,36 @@ func _at_post(dt: float, waiting) -> void:
 		_next()
 	elif not tapes.return_bin.is_empty():  # returns to put away
 		_go(_bin_spot, "toBin")
+	else:
+		_cleanup()
+
+
+func _cleanup() -> void:  # litter, spills, taking out the trash: a bag on the floor or a nearly-full bin before litter; otherwise litter first
+	var t = chores.bags_down[0] if not chores.bags_down.is_empty() else null
+	if t == null:
+		var full: Array = chores.bins.filter(func(b: Dictionary) -> bool: return b.n >= b.cap * 0.6)
+		full.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.n) / a.cap > float(b.n) / b.cap)
+		if not full.is_empty():
+			t = full[0]
+	if t != null and (chores.messes.is_empty() or t.has("node") or t.n >= t.cap * 0.85):
+		_trash = t
+		dana.set_mood("neutral")
+		if t.has("node"):
+			_go(Vector2(t.x + 0.45, t.z), "toBag")
+		else:
+			_go(Vector2(t.stand.x, t.stand.z), "toTrash")
+		if state == "toPost":
+			_trash = null  # (no way there)
+		return
+	if chores.messes.is_empty():
+		return
+	var here := Vector2(dana.position.x, dana.position.z)
+	var m: Dictionary = chores.messes[0]
+	for o: Dictionary in chores.messes:
+		if here.distance_to(Vector2(o.x, o.z)) < here.distance_to(Vector2(m.x, m.z)):
+			m = o
+	_mess = m
+	dana.set_mood("neutral")
+	_go(Vector2(m.x + 0.45, m.z), "toMess")
+	if state == "toPost":
+		_mess = null
