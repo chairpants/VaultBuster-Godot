@@ -17,6 +17,8 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if "--check" in args:  # godot --path . -- --check: the clock, the sky, a door and a seat, then quits (non-zero if any's off)
 		_check()
+	elif args.size() and args[0].begins_with("--video="):  # godot --path . -- "--video=item|file|seconds in": plays it a few seconds, saves a frame as video.png, quits
+		_video(args[0].trim_prefix("--video=").split("|"))
 	elif "--shot" in args:  # godot --path . -- --shot [--at=x,y,z,yaw] [--hour=h]: shot.png from there, then quits
 		_shot(args)
 
@@ -45,6 +47,23 @@ func _shot(args: PackedStringArray) -> void:
 	get_viewport().get_texture().get_image().save_png("res://shot.png")
 	print("shot: %s, on the floor %s, at %s" % [Clock.fmt_clock(Clock.h), $Player.is_on_floor(), $Player.global_position])
 	get_tree().quit()
+
+
+
+func _video(p: PackedStringArray) -> void:
+	var V := $Video
+	var at := p[2].to_float() if p.size() > 2 else 0.0
+	V.failed.connect(func(why: String) -> void:
+		print("video: failed: ", why)
+		get_tree().quit(1))
+	var t0 := Time.get_ticks_msec()
+	V.play_episode([p[0], "", p[1] if p.size() > 1 and p[1] != "" else null], at)
+	while V.position < at + 4.0 and Time.get_ticks_msec() - t0 < 90000:
+		await get_tree().process_frame
+	V.texture.get_image().save_png("res://video.png")
+	print("video: %s, %.1f s in (asked for %.1f), of %.0f s; first frame after %.1f s; sound %s; %s" % ["ok" if V.position >= at + 4.0 else "nothing in 90 s", V.position, at, V.duration, (Time.get_ticks_msec() - t0) / 1000.0 - (V.position - at), V.audio.playing, V.url])
+	V.stop()
+	get_tree().quit(0 if V.position >= at + 4.0 else 1)
 
 
 func _check() -> void:

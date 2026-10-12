@@ -56,10 +56,12 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `interact.gd` | E on things: hinged doors, push doors that swing out of your way, the storefront's door, every seat (web: `store/player.js`, `store/main.js`, `store/shoppers.js`, `store/tv.js`) |
 | `data/interact.json` | The doors and seats, from the web game (`node tests/export-glb.mjs --data ../VaultBusterGodot/data/interact.json`) |
 | `hud.gd` | The day and time, the crosshair, the tip for what you're aiming at |
+| `video.gd` | Plays a tape's file from archive.org: picture onto a texture, sound beside it, with pause and seek. No screen of its own yet. Needs `ffmpeg` on the PATH (from SpaceLife's `wall_tv.gd`; which file a tape is, from web `store/tv.js`) |
 
 `godot --path . -- --check` starts it, tries the clock, noon and night, a door and the couch, prints `check: ok` (or
 what's off) and quits. `godot --path . -- --shot` saves `shot.png` from where you spawn and quits; `--at=x,y,z,yaw,pitch`
-(degrees) looks from somewhere else, `--hour=19.5` at another time of day.
+(degrees) looks from somewhere else, `--hour=19.5` at another time of day. `godot --path . -- "--video=item|file|seconds"`
+plays that archive.org file a few seconds from there, saves a frame as `video.png`, and says how long it took.
 
 Not carried over, and noticeable: the lights. The web game lights its rooms in its own shaders, by zone, with
 switches; here it's a grid of plain lights under each ceiling, always on, and the lot's lamps don't light at night.
