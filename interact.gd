@@ -191,7 +191,7 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	if aim_seat != null:
 		hud.tip("Press E to sit on the toilet" if aim_seat.kind == "toilet" else "Press E to sit on the couch" if aim_seat.kind == "couch" else "Press E to take a seat")
 	else:
-		hud.tip("Holding %s" % tapes.held.t if tapes.held != null else "")
+		hud.tip("Holding %s%s" % [tapes.held.t, "" if tapes.is_rewound(tapes.held) else " · not rewound"] if tapes.held != null else "")
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -222,6 +222,8 @@ func on_e() -> void:
 		pass
 	elif fixtures.on_e():
 		pass
+	elif tapes.aim_rewinder:
+		tapes.rewinder_use()
 	elif tapes.aim_returns and tapes.held != null:
 		tapes.drop_in_returns()
 	elif tapes.aim_tv != null:

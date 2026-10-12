@@ -17,6 +17,8 @@ extends Node
 ## - The inventory (the web game's, store/chores.js: up to 9 carried, one of them in hand; 1-9 or the wheel swap which)
 ##   holds tapes only so far, and its slots are a line of names, not pictures.
 ## - A tape goes on from where it was wound to, to the second (the web game can't seek, so it restarts the episode).
+## - The rewinder's the web game's (E puts the tape in hand in; up to ten seconds; E takes it out), without its
+##   tape showing in it, its light or its whir. Shelve one unrewound and it snaps back, with a word about it.
 ## - No case on the coffee table, no picture settings; the tapes in the Returns bin aren't drawn (the tip counts them).
 
 const REACH := 3.4
@@ -39,6 +41,8 @@ var playing = null  # { tape, idx }
 var inv: Array = []  # the tapes you're carrying, the one in hand among them
 var return_bin: Array = []  # tapes customers have dropped back, waiting to be put away
 var aim_returns := false
+var rewinder := {}  # the counter's rewinder: { at, tape, f0, t, dur, done }
+var aim_rewinder := false
 var _returns_at := Vector3.ZERO
 var _peek_bin := false  # the tape you're looking at came out of the bin: right-click puts it back there
 var inv_sel := -1  # which of them is in hand (-1: empty-handed)
@@ -68,6 +72,9 @@ func _ready() -> void:
 	screens = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).get("screens", [])
 	var rb: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.returns.bin
 	_returns_at = Vector3(rb[0], rb[1], rb[2])
+	var rw: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.rewinders
+	if not rw.is_empty():
+		rewinder = { "at": Vector3(rw[0][0], rw[0][1], rw[0][2]), "tape": null, "f0": 0.0, "t": 0.0, "dur": 1.0, "done": false }
 	var near := {}  # every cell a slot reaches into
 	var region := AABB(_pos(tapes[0]), Vector3.ZERO)
 	for i in tapes.size():
@@ -375,8 +382,50 @@ func release() -> void:  # clears the hand without touching the shelf (into the 
 	_gone()
 
 
+func is_rewound(t: Dictionary) -> bool:
+	return t.ep == 0 and t.at < 1.0
+
+
+func wind_frac(t: Dictionary) -> float:  # how far through the whole tape it's wound, 0..1: episodes played + the part of the current one
+	if is_rewound(t):
+		return 0.0
+	var n: int = t.e.size()
+	var d: float = t.get("d", 1500.0 if n > 1 else 6000.0)  # (its length, if it's been played; a movie-ish guess if not)
+	return minf(1.0, (t.ep + minf(1.0, t.at / d)) / n)
+
+
+func set_wind_frac(t: Dictionary, f: float) -> void:  # the inverse
+	var n: int = t.e.size()
+	var d: float = t.get("d", 1500.0 if n > 1 else 6000.0)
+	var x := clampf(f, 0.0, 1.0) * n
+	t.ep = mini(n - 1, int(x)) if f > 0.0 else 0
+	t.at = (x - t.ep) * d if f > 0.0 else 0.0
+
+
+func rewinder_use() -> void:  # E on it: the tape in hand goes in; E again takes it out (early: only partly rewound)
+	var rw := rewinder
+	if rw.tape == null:
+		if held == null:
+			return
+		rw.tape = held
+		rw.f0 = wind_frac(held)
+		rw.t = 0.0
+		rw.dur = maxf(1.0, rw.f0 * 10.0)  # up to ten seconds, by how far it's wound
+		rw.done = rw.f0 <= 0.0
+		release()
+	elif inv_make_room():
+		var t: Dictionary = rw.tape
+		rw.tape = null
+		_take(t)
+
+
 func put_back() -> void:  # back into its own shelf slot
 	if held != null:
+		if not is_rewound(held):  # shelved unrewound: it snaps back to the start, with a word about it
+			hud.toast("Not rewound: %s · be kind, rewind!" % held.t)
+			held.ep = 0
+			held.at = 0.0
+		held.desens = false  # (its tag's armed again)
 		set_on_shelf(held, true)
 	release()
 
@@ -384,10 +433,17 @@ func put_back() -> void:  # back into its own shelf slot
 func _process(dt: float) -> void:
 	if held != null:
 		_hand.transform = _hand.transform.interpolate_with(LOOK if inspecting else HAND, minf(1.0, dt * 14.0))
-	hud.inventory(inv.map(func(t: Dictionary) -> String: return t.t), inv_sel)
+	hud.inventory(inv.map(func(t: Dictionary) -> String: return t.t + ("" if is_rewound(t) else " ◂%d%%" % roundi(100.0 * wind_frac(t)))), inv_sel)
+	if not rewinder.is_empty() and rewinder.tape != null and not rewinder.done:  # winding back
+		rewinder.t += dt
+		var p: float = minf(1.0, rewinder.t / rewinder.dur)
+		set_wind_frac(rewinder.tape, rewinder.f0 * (1.0 - p))
+		rewinder.done = p >= 1.0
 	if playing != null and not video.url.is_empty():  # the tape winds forward as it plays
 		playing.tape.ep = playing.idx
 		playing.tape.at = video.position
+		if video.duration > 0.0:
+			playing.tape.d = video.duration
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -439,6 +495,7 @@ func drop_in_returns() -> void:  # E at Returns with a tape in hand
 
 func clear_aim() -> void:
 	aim_returns = false
+	aim_rewinder = false
 	hovered = null
 	aim_slot = false
 	aim_tv = null
@@ -456,6 +513,11 @@ func aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> String:
 		if aim_slot:
 			_show_box(held)
 			return "Click — put %s back" % held.t
+	if hit and hit_d < 2.4 and not rewinder.is_empty() and hit.position.distance_to(rewinder.at) < 0.3 and (held != null or rewinder.tape != null):  # the rewinder
+		aim_rewinder = true
+		if rewinder.tape == null:
+			return "E — rewind %s%s" % [held.t, " (already rewound)" if is_rewound(held) else ""]
+		return "E — take out %s · rewound" % rewinder.tape.t if rewinder.done else "Rewinding… %d%% · E — take it out early" % roundi(100.0 * rewinder.t / rewinder.dur)
 	if hit and hit_d < 2.4 and hit.position.distance_to(_returns_at) < 0.55 and (held != null or not return_bin.is_empty()):  # Returns: the bin behind the slot
 		aim_returns = true
 		var lines := PackedStringArray()

@@ -150,6 +150,7 @@ func _check() -> void:
 	I.on_e()
 	if P.seat != null:
 		bad.append("E didn't stand you up")
+	var t0 := Time.get_ticks_msec()
 	var F := $Fixtures
 	if F._flap_pivot == null or F._flap_gate == null or F._lid == null or F._slide == null:
 		bad.append("not every fixture was found in the level")
@@ -277,7 +278,7 @@ func _check() -> void:
 		cu.stops_left = 1
 		cu.who.picky = 5.0
 		cu.who.cats = [S._spots[0].copies[0].c]
-		var t0 := Time.get_ticks_msec()
+		t0 = Time.get_ticks_msec()
 		while cu.state != "wait" and S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
 			await get_tree().process_frame
 		if cu.state != "wait" or cu.holding < 1:
@@ -336,6 +337,8 @@ func _check() -> void:
 			if not back or not $Tapes.return_bin.has(took):
 				bad.append("a rental past due didn't come back through the Returns slot (found one bringing it: %s; out: %d; states: %s)" % [back, S.rented.size(), S.custs.map(func(k: Dictionary) -> String: return "%s/%d/%.1f,%.1f" % [k.state, k.returning.size(), k.c.position.x, k.c.position.z])])
 			else:
+				$Staff.state = "post"  # (Dana: not this one)
+				$Staff._path = []
 				$Tapes.aim_returns = true
 				var click := InputEventMouseButton.new()
 				click.button_index = MOUSE_BUTTON_LEFT
@@ -374,6 +377,26 @@ func _check() -> void:
 	$Shoppers.rented.clear()
 	$Lights.set_zone("lounge", true)
 	$Fixtures.flap_open = false
+	# the rewinder, and Dana's round of the shelves
+	var wound: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not Tp._corners(t).is_empty())[0]
+	Tp.pickup(wound)
+	Tp.set_wind_frac(wound, 0.2)
+	if Tp.is_rewound(wound) or absf(Tp.wind_frac(wound) - 0.2) > 0.01:
+		bad.append("winding a tape on didn't take")
+	Tp.rewinder_use()
+	await get_tree().create_timer(2.6).timeout
+	if Tp.held != null or not Tp.rewinder.done or not Tp.is_rewound(wound):
+		bad.append("the rewinder didn't rewind it (%.2f)" % Tp.wind_frac(wound))
+	Tp.rewinder_use()
+	if Tp.held != wound:
+		bad.append("the rewound tape didn't come back out")
+	Tp.drop_in_returns()
+	var St := $Staff
+	t0 = Time.get_ticks_msec()
+	while (wound.off or St.state != "post") and Time.get_ticks_msec() - t0 < 90000:
+		await get_tree().process_frame
+	if wound.off or not St.carry.is_empty() or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
+		bad.append("Dana didn't put the return away and come home (she's %s, carrying %d, at %s)" % [St.state, St.carry.size(), St.dana.position])
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

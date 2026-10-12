@@ -76,6 +76,8 @@ func snapshot() -> Dictionary:
 			"inv": T.inv.map(func(t: Dictionary) -> String: return t.k), "sel": T.inv_sel,
 			"playing": [T.playing.tape.k, T.playing.idx] if T.playing != null else [],
 			"wound": wound,
+			"rewinder": T.rewinder.tape.k if not T.rewinder.is_empty() and T.rewinder.tape != null else "",
+			"dana": main.get_node("Staff").carry.map(func(t: Dictionary) -> String: return t.k),
 		},
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
@@ -162,6 +164,13 @@ func apply(d: Dictionary) -> void:
 	var in_vcr = by_key.get(d.tapes.playing[0]) if d.tapes.playing.size() == 2 else null
 	if in_vcr != null:
 		T.set_on_shelf(in_vcr, false)
+	var extra: Array = d.tapes.get("dana", []).duplicate()  # (what was in the rewinder or Dana's arms: into the bin)
+	if d.tapes.get("rewinder", "") != "":
+		extra.append(d.tapes.rewinder)
+	for k: String in extra:
+		if by_key.has(k):
+			T.set_on_shelf(by_key[k], false)
+			T.return_bin.append(by_key[k])
 	T.batch = false
 	T.commit()
 	T.inv.clear()

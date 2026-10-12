@@ -462,6 +462,8 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					var n: int = cust.returning.size()
 					for t: Dictionary in cust.returning:
+						if randf() < 0.4:  # (not everybody's kind)
+							tapes.set_wind_frac(t, 0.15 + randf() * 0.85)
 						tapes.return_bin.append(t)
 					hud.toast("A customer returned %s" % (cust.returning[0].t if n == 1 else "%d tapes" % n))
 					if tapes.return_bin.size() >= 15 and tapes.return_bin.size() - n < 15:

@@ -23,6 +23,7 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | Hold E | On the stool or the standee: pick it up and carry it; E sets it down |
 | Click | A tape on the shelf: off it comes, held up to look at (what you were holding goes into the inventory: up to 9). Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
 | 1-9, mouse wheel | Which of the tapes you're carrying is in your hand |
+| E at the rewinder | With a tape in hand: in it goes, and winds back (up to ten seconds); E again takes it out. A tape shelved unrewound snaps back with a word about it |
 | Click / E at Returns | Click takes a returned tape out of the bin (then put it away in its slot); E drops the one in your hand in |
 | Right-click | While you're still looking at a tape you've just picked up: put it back |
 | L | Skip an hour (not past midnight) |
@@ -74,7 +75,7 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `people.gd` | The cast, and the people going by on the walk out front (web: `store/shoppers.js`, walkerTick) |
 | `shoppers.gd` | Customers: who each one is (taste, patience, pace), how busy the day is, the visit: in the door, shelves looked over, a tape taken or put back, the line, the wait, out (web: `store/shoppers.js`). Rentals come back through the Returns slot when they're due. Not over: members, snacks, questions, kids, shoplifters, cars |
 | `checkout.gd` | Ringing somebody up, a step at a time; what a tape rents for; how a sale's scored (web: `store/checkout.js`, `pos.js`). Not over: members, late fees, sign-ups, snacks, tickets, the terminal's screens |
-| `staff.gd` | Dana, at her post, ringing up whoever's waiting when you don't (web: `store/staff.js`). Not over: the rest of her day |
+| `staff.gd` | Dana: at her post ringing up whoever's waiting when you don't; and with nobody waiting, taking the returns round the shelves, an armful at a time, through the pass-through and back (web: `store/staff.js`). Not over: her other jobs, lunch, going home |
 | `save.gd` | The store kept between sessions (`user://store.json`): the day and hour, where you are, lights, doors, what's rented and when it's due, the Returns bin, what you're carrying, the VCR, the till (web: `store/main.js`, saveState). Not whoever was in the store |
 | `nav.gd` | Finding a way round the store: the web game's grid and A* over its own floor boxes (web: `store/shoppers.js`, navGrid, navPath) |
 | `people/` | The cast: 24 people as the web game builds them (`people.glb`), a face sheet each, and who they are. `node tests/export-glb.mjs --people ../VaultBusterGodot/people` |
