@@ -108,7 +108,7 @@ func info(n: int) -> String:  # what's in a store file, for the menu ("" for an 
 		return ""
 	var rep: float = d.get("shift", {}).get("rep", 50.0)
 	var stars := clampi(roundi(1.0 + rep / 25.0), 1, 5)
-	return "Sandbox · day %d · $%d · %s" % [int(d.clock.day), roundi(d.get("shift", {}).get("budget", 300.0)), "★".repeat(stars) + "☆".repeat(5 - stars)]
+	return "Sandbox · day %d · $%d · %s" % [int(d.clock.day), roundi(d.get("shift", {}).get("budget", 10000.0)), "★".repeat(stars) + "☆".repeat(5 - stars)]
 
 
 func _reload_into(n: int, play: bool) -> void:  # the game into file n (and on into the store, if play)

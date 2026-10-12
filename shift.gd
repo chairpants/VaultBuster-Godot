@@ -18,7 +18,7 @@ const GOALS := {  # two a day. n: how many, by the day (the yes/no ones have non
 var stats := {}
 var goals: Array = []  # today's: [{ id, n }]
 var rep := 50.0  # the store's reputation, 0..100 (1-5 stars)
-var budget := 300.0
+var budget := 10000.0  # (a sandbox store's: a fat one)
 var report := false
 var aim := false  # the crosshair's on the way home
 
@@ -172,6 +172,7 @@ func begin_shift() -> void:  # first thing in the morning: 9:00, doors locked, y
 		shoppers._gone(k)
 	shoppers.silence_alarm()
 	main.get_node("Phone").new_day()
+	main.get_node("POS").deliver()  # yesterday's orders
 	var th: Node = main.get_node("Things")
 	if not th.locked:
 		th.aim = "lock"

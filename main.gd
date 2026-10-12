@@ -21,6 +21,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var menu: Node = preload("res://menu.gd").new()  # (and the main menu, which is also the pause screen: menu.gd)
 	menu.name = "Menu"
 	add_child(menu)
+	var pos: Node = preload("res://pos.gd").new()  # (and the register's terminal: pos.gd. Last, so it has the keyboard first)
+	pos.name = "POS"
+	add_child(pos)
 
 
 func _ready() -> void:
@@ -301,6 +304,7 @@ func _check() -> void:
 		cu.who.cats = [S._spots[0].copies[0].c]
 		cu.returning = []
 		cu.snack_done = true
+		cu.thief = false
 		S._next_stop(cu)  # (straight to a shelf: nothing to drop off, nothing to ask at the counter)
 		t0 = Time.get_ticks_msec()
 		while cu.state != "wait" and S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
@@ -454,7 +458,11 @@ func _check() -> void:
 				bad.append("a shoplifter didn't set the gates off and get away with it (alarm %s, %s)" % [S.alarm_on, th.state])
 			$Checkout.aim = "register"
 			$Checkout.on_e()
-			if S.alarm_on:
+			var logged_in: bool = $POS.open
+			$POS.type("A")
+			$POS.type("Y")
+			$POS.log_off()
+			if S.alarm_on or not logged_in:
 				bad.append("E on the register didn't shut the gate alarm off")
 			S.silence_alarm()
 			loot.lost = false
@@ -589,7 +597,7 @@ func _check() -> void:
 	t0 = Time.get_ticks_msec()
 	var tagged := false
 	while (S.custs.has(mum) or S.custs.has(kid)) and Time.get_ticks_msec() - t0 < 120000:
-		tagged = tagged or kid.state == "tagAlong"
+		tagged = tagged or kid.state == "tagAlong" or mum.state == "tagAlong"  # (whoever's done first waits on the other)
 		await get_tree().process_frame
 	if S.custs.has(mum) or S.custs.has(kid) or not tagged:
 		bad.append("a parent and kid didn't see their visit through together (parent %s, kid %s, tagged along %s)" % [mum.state, kid.state, tagged])
@@ -637,6 +645,39 @@ func _check() -> void:
 	Mn.resume()
 	if not stopped or get_tree().paused or Mn.visible or Mn.info(3) != "" and not "day" in Mn.info(3):
 		bad.append("the menu didn't stop the store and let it go again")
+	# the register's terminal: a title looked up; supplies and a replacement tape ordered, here in the morning
+	var Po := $POS
+	Po.log_in()
+	Po.type("find " + loot.t.left(5))
+	var found: String = Po._screen.title
+	Po.type("1")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not found.begins_with("TITLE SEARCH") or not Po._screen.title.begins_with("TITLE INQUIRY") or not "STOCK....:" in Po._text.text:
+		bad.append("the terminal didn't look a title up (%s / %s)" % [found, Po._screen.title])
+	Po.log_off()
+	Po.log_in()
+	var budget0: float = $Shift.budget
+	var stock0: Dictionary = Sn.backstock.duplicate()
+	Po.type("O")
+	Po.type("1")
+	Po.type("2")
+	loot.lost = true
+	Tp.set_on_shelf(loot, false)
+	Po.type("B")
+	Po.type("1")
+	Po.type("Y")
+	Po.log_off()
+	var ordered: Array = Sn.orders.keys()
+	if ordered.size() != 1 or Sn.orders[ordered[0]] != 24 or loot.lost or not Po.replacements.has(loot) or $Shift.budget > budget0 - 30.0:
+		bad.append("ordering on the terminal didn't take (%s, replacements %d, $%.2f spent)" % [Sn.orders, Po.replacements.size(), budget0 - $Shift.budget])
+	else:
+		Po.deliver()
+		if Sn.backstock[ordered[0]] != stock0[ordered[0]] + 24 or not Tp.return_bin.has(loot):
+			bad.append("the morning's delivery didn't come")
+	Tp.return_bin.erase(loot)
+	loot.lost = false
+	Tp.set_on_shelf(loot, true)
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

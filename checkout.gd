@@ -10,7 +10,7 @@ extends Node
 ## Snacks and drinks off the racks are rung up with the tapes, or by themselves (no card, then: just the cash).
 ## Not over yet: sign-ups, the snack offer and the snack offer, show
 ## tickets, the drawer opening, the receipt coming out of the printer, the terminal's own screens.
-## E on the register shuts the gate alarm off (the web game: logging in to its terminal does).
+## E on the register with no sale waiting on it logs in to its terminal (pos.gd).
 
 const STEPS := [  # [id, where it's done]
 	["card", "customer"], ["tap", "register"], ["cardBack", "customer"], ["fees", "customer"], ["tapes", "customer"], ["desens", "pad"],
@@ -243,7 +243,7 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 		return ("Printing…" if _printing > 0.0 else "E — tear off the receipt") if mine and step()[0] == "tear" else "Receipt printer"
 	if at.distance_to(_at.pos) < 0.42:
 		aim = "register"
-		return "E — %s" % tip() if mine and step()[1] == "register" else "E — silence the gate alarm" if shoppers.alarm_on else "The register"
+		return "E — %s" % tip() if mine and step()[1] == "register" else "E — log in to the register (silence the gate alarm)" if shoppers.alarm_on else "E — log in to the register"
 	return ""
 
 
@@ -252,6 +252,6 @@ func on_e() -> bool:
 		return false
 	if co != null and co.by == "player" and step()[1] == aim:
 		act(aim)
-	elif aim == "register":
-		shoppers.silence_alarm()
+	elif aim == "register":  # nothing of yours waiting on it: the terminal
+		$"../POS".log_in()
 	return true

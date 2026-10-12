@@ -8,8 +8,7 @@ extends Node3D
 ## From the web game's store/phone.js (CALLS, phoneCaller, phoneTick, phoneAnswer, callAnswer, callHud, holdPull,
 ## holdPlace, holdsRender, holdsTick, danaCall, ringBurst via ambience.gd). Whoever comes in for a hold asks for it
 ## at the counter (shoppers.gd). Where the phone and the holds tray are: data/interact.json.
-## Not over yet: the overdue calls you make (the register's message center, post-its), missed calls noted on the
-## register. Dana doesn't walk to the shelf for a hold she's promised: the copy's just on the tray.
+## Not over yet: the overdue calls you make (the register's message center, post-its), the call list. Dana doesn't walk to the shelf for a hold she's promised: the copy's just on the tray.
 
 const NOT_YET := [["Twister", "1996-05-10", "1996-10-01"], ["Mission: Impossible", "1996-05-22", "1996-11-12"], ["Independence Day", "1996-07-02", "1996-11-22"],
 	["Jerry Maguire", "1996-12-13", "1997-08-26"], ["Men in Black", "1997-07-02", "1997-11-25"], ["Titanic", "1997-12-19", "1998-09-01"]]  # in theaters, out on tape
@@ -118,6 +117,7 @@ func _process(dt: float) -> void:  # phoneTick
 		_dana_call()  # nobody in the store needs her: she gets it
 	elif ring.t > 20.0:  # rang out
 		var from := _who(ring)
+		$"../POS".message("%s MISSED CALL - %s%s" % [Clock.fmt_clock(Clock.h), "%s #%d" % [from, ring.member.num] if ring.member != null else "DENNIS AT DISTRICT", " RE: LATE FEE" if ring.get("kind", "") == "fee" else " RE: %s" % ring.title if ring.has("title") else ""])
 		if _busy():
 			hud.toast("Missed a call from %s while you were with customers: they'll call back" % from)
 			next = Clock.h + 0.4 + randf() * 0.4

@@ -18,6 +18,7 @@ const CARRY_MAX := 9
 var units: Array = []  # { n, k (a drink's kind, or ""), at, lane, lz, ly, node, out, claim }
 var spots: Array = []  # in front of each fixture, where a shopper can reach it: { x, z, ry, units, drinks }
 var backstock := {}  # product name -> count in the cupboards
+var orders := {}  # ordered on the register, here tomorrow morning: product name -> how many
 var carry: Array = []  # rack units you're carrying as stock (the unit is just its look: any empty spot of that product will take it)
 var aim := {}  # { cupboard: "drinks" | "food" } | { spot: unit }
 

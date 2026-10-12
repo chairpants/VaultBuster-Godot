@@ -11,7 +11,7 @@ extends Node
 ##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd).
 ## - Shoplifters and the gates are the web game's (custSneak, custCatch, custWatched, wisTick, empCatch, tagFix,
 ##   custHearAlarm, custGone's stolen tapes; title.js's startGateAlarm), the 1-5 call on one you've caught among them;
-##   a stolen tape's just gone (no ordering a replacement). The gates' lights don't flash; they're never switched off.
+##   a stolen tape's just gone (no ordering a replacement). The gates' lights don't flash.
 ## - Everybody's a member (members.gd): the same person every visit, coming in on their own rhythm, what they rent
 ##   on their account, three out at most, late fees when it's back late. Nobody signs up; nobody's phoned.
 ## - They pick up snacks (snacks.gd), ask for help at the counter, come in for holds (phone.gd), bring a kid or a
@@ -42,6 +42,7 @@ var catch_call = null  # the shoplifter you've stopped, waiting on what happens 
 var _last_member = null
 var _slot := {}  # in the lane, facing the drop slot
 var alarm_on := false  # the gates going off
+var gates_armed := true  # (switched off at the register, tagged tapes walk through)
 var alarm_t := 0.0
 
 const GATE_Z := 4.0  # the security gates' line across the entry lane (|x| < 2)
@@ -258,7 +259,7 @@ func _process(dt: float) -> void:
 
 
 func start_alarm() -> void:
-	if alarm_on:
+	if alarm_on or not gates_armed:
 		return
 	alarm_on = true
 	alarm_t = 0.0
