@@ -71,10 +71,14 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 
 `godot --path . -- --check` starts it, tries the clock, noon and night, a door and the couch, prints `check: ok` (or
 what's off) and quits. `godot --path . -- --shot` saves `shot.png` from where you spawn and quits; `--at=x,y,z,yaw,pitch`
-(degrees) looks from somewhere else, `--hour=19.5` at another time of day, `--take=0` with the first tape held up
-(`--carry`: in hand; `--play`: in the VCR and a few seconds in). `godot --path . -- "--video=item|file|seconds"`
+(degrees) looks from somewhere else, `--hour=19.5` at another time of day, `--dark` with the store's lights off
+(`--lamps-off` too), `--take=0` with the first tape held up (`--carry`: in hand; `--play`: in the VCR and a few
+seconds in; `--from=600`: wound on to there first). `godot --path . -- "--video=item|file|seconds"`
 plays that archive.org file a few seconds from there, saves a frame as `video.png`, and says how long it took.
 
-Of the lighting, not over yet: light spilling through a doorway into a dark room, the TV's glow on the lounge and
-the theater screen's on the seats, the ceiling panels themselves going dark with their switch, the lot's lamps at
-night, and the closet bulb's pull (so the closet stays dark).
+The lighting goes past the web game in two places, on purpose. Daylight comes in through the storefront as real
+light with shadows (the web game fades it toward the back, evenly), so with the switches off the back of the store is
+dark, and darker where something's in the way of the windows. And every screen lights the room with the average
+colour of the frame on it: the TV and the theater's screen with shadows, the hung monitors with a small pool each.
+The knobs are at the top of `lights.gd` (`DAYLIGHT`, `SCREEN_GAIN`). Not over yet: light spilling through a doorway
+into a dark room, the lot's lamps at night, and the closet bulb's pull (so the closet stays dark).

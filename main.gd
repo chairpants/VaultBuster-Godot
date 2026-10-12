@@ -14,6 +14,7 @@ func _ready() -> void:
 		m.create_trimesh_collision()  # ponytail: built at every start (a few seconds); bake it into the level if that gets old
 		solid += 1
 	print("world: %d meshes solid" % solid)
+	print("lights: ceiling panels by zone %s" % [$Lights._panels.keys().map(func(z: String) -> String: return "%s %d" % [z, $Lights._panels[z].size()])])
 	var args := OS.get_cmdline_user_args()
 	if "--check" in args:  # godot --path . -- --check: the clock, the sky, a door and a seat, then quits (non-zero if any's off)
 		_check()
@@ -40,16 +41,25 @@ func _shot(args: PackedStringArray) -> void:
 			$Player.rotation.y = deg_to_rad(v[3])
 			if v.size() > 4:
 				$Player/Camera.rotation.x = deg_to_rad(v[4])
+		elif a == "--dark":  # the store's lights off (the sales floor's and the hall's)
+			for z in ["front", "aisles", "lounge", "hall"]:
+				$Lights.set_zone(z, false)
+			if "--lamps-off" in args:
+				for l in $Lights.lamps:
+					$Lights.set_lamp(l, false)
 		elif a.begins_with("--hour="):
 			Clock.h = a.trim_prefix("--hour=").to_float()
 		elif a.begins_with("--take="):  # a tape off the shelf, by its number in data/tapes.json: held up, or (with --carry) in hand
+			for b in args:  # --from=seconds: wound on to there first
+				if b.begins_with("--from="):
+					$Tapes.tapes[a.trim_prefix("--take=").to_int()].at = b.trim_prefix("--from=").to_float()
 			$Tapes.pickup($Tapes.tapes[a.trim_prefix("--take=").to_int()])
 			$Tapes.inspecting = not "--carry" in args
 			if "--play" in args:  # ...and into the VCR, and on a few seconds
 				$Tapes.aim_tv = $Tapes.screens[0]
 				$Tapes.vcr_use()
 				var t0 := Time.get_ticks_msec()
-				while $Video.position < 6.0 and Time.get_ticks_msec() - t0 < 60000:
+				while $Video._shown < 90 and Time.get_ticks_msec() - t0 < 60000:
 					await get_tree().process_frame
 	for i in 30:
 		await get_tree().process_frame

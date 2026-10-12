@@ -31,6 +31,7 @@ var url := ""  # what's playing ("" when nothing is)
 var position := 0.0  # seconds into it
 var duration := 0.0  # 0 when archive.org doesn't say
 var paused := false
+var tint := Color.BLACK  # the average colour of the frame on screen (black when nothing's playing): what the screens light the room with
 
 var _has_ffmpeg := false
 var _src_pos := 0.0  # where the next chunk to fetch starts
@@ -143,6 +144,7 @@ func stop() -> void:
 	_reader = null
 	audio.stop()
 	audio.stream = null
+	tint = Color.BLACK
 	url = ""
 	_empty = 0
 	_acc = 0.0
@@ -222,6 +224,20 @@ func _chunk_ok(path: String) -> bool:  # (against a whole frame: that catches tr
 	return f != null and f.get_length() >= FRAME_BYTES
 
 
+func _frame_tint(buf: PackedByteArray) -> Color:  # a sparse stride, not every pixel: a light needs the gist
+	var step := maxi(1, (RES.x * RES.y) / 1000) * 3
+	var r := 0
+	var g := 0
+	var b := 0
+	var n := 0
+	for i in range(0, buf.size() - 2, step):
+		r += buf[i]
+		g += buf[i + 1]
+		b += buf[i + 2]
+		n += 1
+	return Color(r, g, b) / (255.0 * maxi(1, n))
+
+
 func _next_frame() -> bool:
 	for _attempt in 2:
 		if _reader == null:
@@ -239,6 +255,7 @@ func _next_frame() -> bool:
 		var buf := _reader.get_buffer(FRAME_BYTES)
 		if buf.size() == FRAME_BYTES:
 			texture.update(Image.create_from_data(RES.x, RES.y, false, Image.FORMAT_RGB8, buf))
+			tint = _frame_tint(buf)
 			position += 1.0 / FPS
 			_shown += 1
 			if _shown == 1:

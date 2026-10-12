@@ -10,8 +10,11 @@ extends Node
 ##
 ## Every lit material in the level is swapped, as the game starts, for one that does this (the level's own file isn't
 ## touched). Things the web game draws unlit (screens, signs, the inside of Tony's) stay as they are.
-## Not over yet: light spilling through a doorway into a dark room; the TV's glow on the lounge; the theater screen's
-## on the seats; the ceiling panels themselves going dark with their switch.
+## Past the web game, on purpose: its daylight is a fade toward the back with no shadows, so a dark store was still
+## evenly grey. Here daylight comes in through the storefront as real light that things stand in the way of, and the
+## screens light the room with what's on them (both in lights.gd).
+## Not over yet: light spilling through a doorway into a dark room; the ceiling panels themselves going dark with
+## their switch.
 
 const SHADER := """
 shader_type spatial;
@@ -62,7 +65,9 @@ void fragment() {
 		float w1 = 1.0 - smoothstep(9.0, 11.0, P.z), w3 = smoothstep(18.0, 20.0, P.z), w2 = max(0.0, 1.0 - w1 - w3);
 		float win = exp(-P.z / 9.0);
 		float facing = 0.75 + 0.35 * max(-rN.z, 0.0) + 0.2 * max(rN.y, 0.0);
-		rl = (uZone.x * w1 + uZone.y * w2 + uZone.z * w3) * fl + (day * uDayC + (1.0 - day) * uNightC) * (0.42 + 0.9 * win) * facing;
+		// (the web game's daylight is all here, unshadowed: (0.42 + 0.9 * win). Here it comes in as real light, with shadows,
+		// from lights.gd, and this is only what bounces round: next to nothing at the back)
+		rl = (uZone.x * w1 + uZone.y * w2 + uZone.z * w3) * fl + (day * uDayC + (1.0 - day) * uNightC) * (0.015 + 0.16 * win * win) * facing;
 	} else if (P.x > uBohBox.x && P.x < uBohBox.y && P.z >= uFloorBox.z && P.z < uBohBox.w && P.y < uBohSplit.y + 0.05 && (P.z < uBohBox.z || P.x < uFloorBox.y)) {
 		bool closet = P.x > uFloorBox.y && P.z < uBohBox.z;   // the janitor's closet: one bare bulb, warm
 		float lvl = closet ? 0.8 * uBoh.w : P.z < uBohBox.z ? uBoh.x : (P.x < uBohSplit.x ? uBoh.y : uBoh.z);
