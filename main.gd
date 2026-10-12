@@ -747,6 +747,26 @@ func _check() -> void:
 		bad.append("walking at the curb didn't step up onto it (from %.2f to %s)" % [low, $Player.global_position])
 	if $People.tony == null or $People.tony.position.distance_to(Vector3(16.2, 0, 8.3)) > 0.1:
 		bad.append("Tony isn't behind his counter")
+	# somebody new signs up at the counter: their form, into the computer, their card
+	var newbie: Dictionary = S.members.all[9]
+	newbie.active = false
+	$Staff._ring_t = -999.0
+	var pr: Dictionary = S.spawn(newbie)
+	pr.prospect = true
+	pr.returning = []
+	pr.c.position = Vector3(S._counter.x, 0, S._counter.z)
+	pr.path = []
+	S.line.append(pr)
+	pr.state = "counter"
+	await get_tree().create_timer(0.3).timeout
+	S.aim = pr
+	S.on_e()
+	$Checkout.act("register")
+	$Checkout.act("customer")
+	if not newbie.active or pr.state != "signedUp" or $Shift.stats.signups != 1 or $Checkout.co != null:
+		bad.append("signing somebody up didn't go through (%s, active %s)" % [pr.state, newbie.active])
+	$Staff._ring_t = 0.0
+	S._gone(pr)
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

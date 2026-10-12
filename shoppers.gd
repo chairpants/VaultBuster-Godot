@@ -178,7 +178,10 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 	var k: float = weather.k  # the weather: a wet afternoon is slow, a wet evening's a movie night
 	if k > 0.0:
 		r *= (1.0 - 0.4 * k if h < 17.0 else 1.0) if weather.kind == "snow" else (1.0 - 0.3 * k if h < 17.0 else 1.0 + 0.25 * k)
-	return r * $"../Shift".rep_mult()  # (a better name brings more people in)
+	var sh: Node = $"../Shift"
+	if sh.sim():  # a small member base is a quiet store; and a gentle first week, 40% busy on day 1 up to full on day 5
+		r *= (0.45 + 0.55 * minf(1.0, members.all.filter(func(m: Dictionary) -> bool: return m.active).size() / 150.0)) * minf(1.0, 0.25 + 0.15 * Clock.day)
+	return r * sh.rep_mult()  # (a better name brings more people in)
 
 
 func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a parent's kid tagging along (not a member: on their parent's number)
@@ -213,7 +216,7 @@ func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a 
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
-	var cust := { "who": who, "member": member, "name": members.name_of(member) if kid_of == null else "%s's kid" % members.name_of(member), "kid": kid_of != null, "party": [], "tag_t": 0.0, "said": {}, "th_seat": null, "watched": false, "mood_t": 0.0, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
+	var cust := { "who": who, "member": member, "name": members.name_of(member) if kid_of == null else "%s's kid" % members.name_of(member), "kid": kid_of != null, "party": [], "tag_t": 0.0, "said": {}, "prospect": false, "th_seat": null, "watched": false, "mood_t": 0.0, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
 		"thief": kid_of == null and randf() < 0.06 * (0.6 if $"../Shift".owned("cameras") else 1.0) * (0.7 if $"../Shift".owned("sign") else 1.0), "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
@@ -249,6 +252,23 @@ func _process(dt: float) -> void:
 	if alarm_on:
 		alarm_t += dt
 	var dana: Node3D = $"../Staff".dana
+	var gr: Dictionary = $"../Shift".growth
+	if gr.prospects > 0 and not things.locked and open and custs.size() < cap + 1:  # somebody new, here to sign up
+		gr.t -= dt
+		if gr.t <= 0.0:
+			gr.t = (40.0 + randf() * 80.0) / rush_level()
+			var pool: Array = members.all.filter(func(m: Dictionary) -> bool: return not m.active and m.status == "" and not custs.any(func(k: Dictionary) -> bool: return k.member == m))
+			if pool.is_empty():
+				gr.prospects = 0
+			else:
+				var k := spawn(pool.pick_random())
+				k.prospect = true
+				k.thief = false
+				k.returning = []
+				k.tickets = 0
+				k.c.hold_tape(0)
+				k.c.set_pose("idle")
+				gr.prospects -= 1
 	for k: Dictionary in custs.duplicate():
 		_hear_alarm(k, dt)
 		if k.sneaking and not k.alarmed:
@@ -802,6 +822,9 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					elif cust.pickup != null:  # here for their hold: they ask at the counter
 						cust.want = { "kind": "hold", "title": cust.pickup.title, "hold": cust.pickup }
 						_ask_go(cust)
+					elif cust.prospect:  # straight to the counter, form in hand
+						line.append(cust)
+						to_line(cust)
 					elif cust.get("moviegoer", false):  # ticket in hand: straight in
 						if not _pick_theater_seat(cust):
 							cust.moviegoer = false
@@ -871,7 +894,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0 and c.mood != "impatient":
 					c.set_mood("impatient")
 			"counter":
-				c.hold_prop("card" if not cust.tapes.is_empty() else "cash")
+				c.hold_prop("form" if cust.prospect else "card" if not cust.tapes.is_empty() else "cash")
 				c.set_pose("wait")
 				c.set_mood("wait")
 				cust.state = "wait"
@@ -903,6 +926,14 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					c.set_mood("happy")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"signedUp":  # card in hand: now to look around
+				if cust.t <= 0.0:
+					c.hold_prop(null)
+					c.set_pose("idle")
+					if cust.stops_left > 0:
+						_next_stop(cust)
+					else:
+						go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"tagAlong":
 				_tag_tick(cust)
 			"thAisle":
@@ -1059,7 +1090,7 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 			return "%s\nLooking for %s (%s)%s\nQ — tell them it's all out" % [aim.name, w.title, w.cat, give]
 		return "%s\nWants %s%s" % [aim.name, TASTE_ASK.get(aim.who.taste, "something good"), give if give != "" else "\nBring them a tape"]
 	if aim.state in ["wait", "impatient", "angry"] and checkout.co == null:
-		return "E — ring them up"
+		return "%s\nE — they'd like to sign up" % aim.name if aim.prospect else "E — ring them up"
 	if checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
 		return "E — %s" % checkout.tip() if checkout.step()[1] == "customer" or checkout.step()[0] == "desens" else "Next: %s" % checkout.tip()
 	return "%s\n%s" % [aim.name, "Caught · 1-5 to decide" if catch_call == aim else aim.who.taste]

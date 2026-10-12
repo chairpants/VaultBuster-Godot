@@ -5,13 +5,14 @@ extends CanvasLayer
 ## inversion, smooth edges, how long a shift is.
 ## From the web game's store/title.js (slotInfo, titleMenu and its settings). The game holds one store at a time,
 ## so playing another file reloads into it.
-## Not over yet: the simulation and customer modes (every store's a sandbox). Not up at all when the game's run
+## A new store's a sandbox or a simulation (shift.gd). Not over yet: the customer mode. Not up at all when the game's run
 ## with arguments (--check, --shot).
 
 const SLOTS := 3
 const SET_PATH := "user://settings.json"
 
 static var slot := 1  # the store file in play (kept across the reload into another)
+static var pending_mode := "sandbox"  # what kind of store a new one is (shift.gd picks it up)
 static var go := false  # (reloading into a file somebody pressed PLAY on: straight in)
 static var settings := { "sound": 100.0, "tv": 100.0, "sens": 100.0, "invert": false, "aa": true, "shift": 21.0 }
 static var _read := false
@@ -108,7 +109,7 @@ func info(n: int) -> String:  # what's in a store file, for the menu ("" for an 
 		return ""
 	var rep: float = d.get("shift", {}).get("rep", 50.0)
 	var stars := clampi(roundi(1.0 + rep / 25.0), 1, 5)
-	return "Sandbox · day %d · $%d · %s" % [int(d.clock.day), roundi(d.get("shift", {}).get("budget", 10000.0)), "★".repeat(stars) + "☆".repeat(5 - stars)]
+	return ("Simulation" if d.get("shift", {}).get("mode", "") == "simulation" else "Sandbox") + " · day %d · $%d · %s" % [int(d.clock.day), roundi(d.get("shift", {}).get("budget", 10000.0)), "★".repeat(stars) + "☆".repeat(5 - stars)]
 
 
 func _reload_into(n: int, play: bool) -> void:  # the game into file n (and on into the store, if play)
@@ -120,6 +121,16 @@ func _reload_into(n: int, play: bool) -> void:  # the game into file n (and on i
 	Clock.day = 1
 	Clock.warp = 0.0
 	get_tree().reload_current_scene()
+
+
+func _new(n: int, m: String) -> void:  # a new store in file n (the one on screen, if it's that file and nothing's been played in it; else a reload into it)
+	pending_mode = m
+	if n == slot and not _started and m == "sandbox":
+		resume()
+	else:
+		if _started and _live:
+			main.get_node("Save").save_store()
+		_reload_into(n, true)
 
 
 func _play(n: int) -> void:
@@ -188,7 +199,8 @@ func _render() -> void:
 				_step = "del"
 				_render()))
 		else:
-			row.add_child(_btn("SANDBOX — Dana on staff: just play store", _play.bind(n)))
+			row.add_child(_btn("SANDBOX\nDana on staff, $10,000 in the budget:\nbuy whatever you like and just play store", _new.bind(n, "sandbox")))
+			row.add_child(_btn("SIMULATION\nA bare-bones store: no staff, the theater\nlocked up, part of the library. Build it up", _new.bind(n, "simulation")))
 	_box.add_child(_btn("SETTINGS", func() -> void:
 		_page = "settings"
 		_render()))

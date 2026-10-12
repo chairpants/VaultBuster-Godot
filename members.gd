@@ -2,7 +2,7 @@ extends RefCounted
 ## The store's members: the three hundred locals in the register's system. Everybody who walks in is one of them, and
 ## their member number is their seed, so the same member always looks and acts the same (shoppers.gd).
 ## From the web game's pos.js (the seeded customers: the same numbers and names as over there; owed, settle,
-## setStatus, canVisit, loyal). Sandbox rules: everyone's a member from the start.
+## setStatus, canVisit, loyal). In a sandbox everyone's a member from the start; a simulation starts with forty.
 ## Not over yet: the terminal that shows any of this, addresses and notes, incidents on a record, sign-ups.
 
 const FIRST := ["JOHN", "MARY", "DAVID", "LISA", "MIKE", "KAREN", "STEVE", "SUSAN", "CHRIS", "AMY", "BRIAN", "DONNA", "KEVIN", "TINA", "JASON",
@@ -34,7 +34,7 @@ func _init() -> void:
 			num = 10001 + int(_rnd() * 38999)
 		var first: String = FIRST[int(_rnd() * FIRST.size())]
 		var m := { "num": num, "first": first, "female": FIRST.find(first) % 2 == 1, "last": LAST[int(_rnd() * LAST.size())],
-			"owed": 0.0, "loyalty": 0.0, "last_visit": -9.0, "status": "", "until": 0 }
+			"active": true, "owed": 0.0, "loyalty": 0.0, "last_visit": -9.0, "status": "", "until": 0 }
 		for skip in 5:  # (their address, since when, lifetime rentals, the note on their account: the terminal's)
 			_rnd()
 		m.heavy = _rnd() < 0.2
@@ -42,12 +42,21 @@ func _init() -> void:
 		all.append(m)
 
 
+func start_small(n: int) -> void:  # a simulation's store: a small base to start, the rest sign up over time
+	for m: Dictionary in all:
+		m.active = false
+	var pool := all.duplicate()
+	pool.shuffle()
+	for m: Dictionary in pool.slice(0, n):
+		m.active = true
+
+
 func name_of(m: Dictionary) -> String:
 	return "%s %s" % [m.first.capitalize(), m.last.capitalize()]
 
 
 func can_visit(m: Dictionary) -> bool:  # status: "banned" (till a day) | "cancelled" | "arrested" | ""
-	return not m.status in ["cancelled", "arrested"] and not (m.status == "banned" and m.until > Clock.day)
+	return m.active and not m.status in ["cancelled", "arrested"] and not (m.status == "banned" and m.until > Clock.day)
 
 
 func loyal(m: Dictionary, d: float) -> void:  # how they feel about the store: -100..100

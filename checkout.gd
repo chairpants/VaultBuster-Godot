@@ -17,6 +17,8 @@ const STEPS := [  # [id, where it's done]
 	["cash", "customer"], ["ring", "register"], ["tear", "printer"], ["change", "customer"], ["receipt", "customer"], ["handback", "customer"],
 ]
 
+const SIGNUP := [["form", "customer"], ["enroll", "register"], ["newcard", "customer"]]  # signing somebody up: their form, into the computer, their new card
+
 var co = null  # the sale in hand: { by: "player" | "dana", cust, i, total, bill, change, start, idle }
 var served := 0
 var rentals := 0
@@ -67,7 +69,11 @@ func _process(dt: float) -> void:
 
 
 func step() -> Array:  # the step the sale's at: [id, where], or [] if there's no sale
-	return STEPS[co.i] if co != null and co.i < STEPS.size() else []
+	return _steps()[co.i] if co != null and co.i < _steps().size() else []
+
+
+func _steps() -> Array:
+	return SIGNUP if co != null and co.get("kind", "") == "signup" else STEPS
 
 
 func tip() -> String:  # what the step in hand wants doing
@@ -76,6 +82,9 @@ func tip() -> String:  # what the step in hand wants doing
 	var n: int = co.cust.tapes.size()
 	var what: String = co.cust.tapes[0].t if n == 1 else "%d tapes" % n
 	match step()[0]:
+		"form": return "take their sign-up form"
+		"enroll": return "enter them into the computer"
+		"newcard": return "hand them their new member card"
 		"card": return "take their member card"
 		"tap": return "tap the member card on the register"
 		"cardBack": return "hand their card back"
@@ -94,6 +103,12 @@ func tip() -> String:  # what the step in hand wants doing
 
 
 func start(by: String, cust: Dictionary) -> void:  # coStart
+	if cust.get("prospect", false):  # not buying: signing up
+		co = { "by": by, "cust": cust, "kind": "signup", "i": 0, "total": 0.0, "bill": 0.0, "change": 0.0, "start": _now, "idle": 0.0, "pts": 0, "fees": 0.0 }
+		cust.state = "checkout"
+		cust.c.set_mood("happy")
+		cust.c.set_pose("wait")
+		return
 	var total := 0.0
 	for t: Dictionary in cust.tapes:
 		total += price(t)
@@ -120,6 +135,8 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 
 
 func _skip() -> void:  # past any step this sale doesn't need
+	if co != null and co.get("kind", "") == "signup":
+		return
 	while co != null and co.i < STEPS.size() and ((STEPS[co.i][0] == "change" and co.change <= 0.0) or (STEPS[co.i][0] == "fees" and co.cust.member.owed <= 0.0) or (STEPS[co.i][0] in ["card", "tap", "cardBack", "fees", "tapes", "desens"] and co.cust.tapes.is_empty())):  # (just snacks: no card, no tapes)
 		co.i += 1
 	if co != null:  # what they're holding out for this one
@@ -145,6 +162,26 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 	var k: Dictionary = co.cust
 	var again := false
 	match s[0]:
+		"form":
+			k.c.hold_prop(null)
+		"enroll":
+			k.member.active = true
+		"newcard":
+			var pts := 40 + maxi(0, roundi(40.0 - (_now - co.start)))
+			score += pts
+			$"../Shift".stats.signups += 1
+			shoppers.members.loyal(k.member, 5)
+			hud.toast("%s %s (#%d): a new member (+%d)" % ["Dana signed up" if co.by == "dana" else "Signed up", k.name, k.member.num, pts])
+			k.prospect = false
+			k.c.hold_prop("card")
+			k.c.set_mood("love")
+			k.hi = 1.8
+			co = null
+			shoppers.leave_line(k)
+			k.path = []
+			k.state = "signedUp"
+			k.t = 1.5
+			return true
 		"tap":  # their account comes up
 			var m: Dictionary = k.member
 			var late: int = shoppers.rentals_of(m).filter(func(r: Array) -> bool: return r[2] < Clock.day).size()

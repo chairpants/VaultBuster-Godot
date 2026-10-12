@@ -74,7 +74,7 @@ func on_duty() -> bool:  # should she be in the store right now? Five 5-hour shi
 	if _on_always:
 		return true
 	var n := int(Clock.h) - 9
-	return n >= 8 and n <= 12 and Clock.date().weekday in [3, 4, 5, 6, 0]
+	return $"../Shift".owned("hire") and n >= 8 and n <= 12 and Clock.date().weekday in [3, 4, 5, 6, 0]
 
 
 func _hire(arrive: bool) -> void:  # already at her post if the store's just loaded; else in through the door
