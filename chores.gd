@@ -7,6 +7,8 @@ extends Node3D
 ## From the web game's store/chores.js (MESS, MESS_TOOL, messAdd, messClean, toolTake, toolReturn, scrubStart,
 ## trashAdd, binBag, bagsSetDown, bagPickUp, chuteDrop, trashTick's rates) and store/shoppers.js (who litters, and
 ## how a grotty store sits with people). Where the tools, bins and chute are: data/interact.json.
+## And tapes put back in the wrong place (misshelve, strayTake): crooked, half out of the row. E pulls one out;
+## it wants putting back in its own slot.
 ## Not over yet: the mop's and sweeper's pose in your hands as you work (it stands in front of you, and sways), the
 ## heap rising in a bin, the bags' look and sounds, the chute's door, the staff cleaning up, puddles by the door in
 ## the rain and anyone slipping in them, the step ladder and the ceiling tubes that burn out.
@@ -22,7 +24,8 @@ var tool_held := ""
 var bins: Array = []  # { id, name, cap, x, z, rimY, r, towels, stand, n, acc, spilled }
 var bag_carry: Array = []  # in your hands: { bin, n }
 var bags_down: Array = []  # set down somewhere: { bin, n, node, x, z }
-var aim := {}  # what the crosshair's on: { mess } | { tool } | { bin } | { bag } | { chute }
+var strays: Array = []  # tapes shoved in anywhere: { copy, node, at, ry }
+var aim := {}  # what the crosshair's on: { mess } | { tool } | { bin } | { bag } | { chute } | { stray }
 
 var _chute := Vector3.ZERO
 var _scrub = null  # { m, t, dur }
@@ -59,6 +62,34 @@ func _find_tools() -> void:  # the level's own mop and sweeper: whatever sits in
 		for t: Dictionary in tools.values():
 			if AABB(t.home - t.size / 2.0, t.size).grow(0.03).has_point(c):
 				t.nodes.append(mi)
+
+
+func misshelve(copy: Dictionary, spot = null, near = null) -> void:  # put back in the wrong place: crooked, half out of the row, by some other tape on that shelf (misshelve)
+	if near == null:
+		near = copy
+		if spot != null and spot.has("copies"):
+			for t: Dictionary in spot.copies:
+				if not t.off and t != copy:
+					near = t
+					break
+	var T: Node = $"../Tapes"
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(T.size.x, T.size.y, T.size.z)
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.07, 0.07, 0.08)
+	box.material = m
+	mi.mesh = box
+	mi.position = Vector3(near.p[0] + cos(near.ry) * 0.07, near.p[1] + 0.02, near.p[2] - sin(near.ry) * 0.07)
+	mi.rotation = Vector3(0.0, near.ry, 0.4)
+	add_child(mi)
+	$"../Room".light(mi)
+	strays.append({ "copy": copy, "node": mi, "at": Vector3(near.p[0], near.p[1], near.p[2]), "ry": near.ry, "near": near.k })
+
+
+func stray_take(s: Dictionary) -> void:  # off the shelf and into a hand
+	s.node.queue_free()
+	strays.erase(s)
 
 
 func grot() -> int:  # litter, overflowing bins, bags left lying about
@@ -258,6 +289,10 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 	if not hit or hit_d > 2.4:
 		return ""
 	var at: Vector3 = hit.position
+	for s: Dictionary in strays:  # a misshelved tape sticks out in front of the row
+		if at.distance_to(s.node.position) < 0.16:
+			aim = { "stray": s }
+			return "E — pull out %s\nmisshelved: it goes back in its own slot" % s.copy.t
 	for m: Dictionary in messes:
 		if Vector2(at.x - m.x, at.z - m.z).length() < 0.3 and absf(at.y - m.node.position.y) < 0.3:
 			aim = { "mess": m }
@@ -286,6 +321,14 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 func on_e() -> bool:
 	if aim.is_empty():
 		return false
+	if aim.has("stray"):
+		if $"../Tapes".inv_make_room():
+			stray_take(aim.stray)
+			$"../Tapes"._take(aim.stray.copy)
+			checkout.score += 5
+		else:
+			hud.toast("Hands full")
+		return true
 	if aim.has("mess"):
 		var m: Dictionary = aim.mess
 		var need: String = MESS[m.kind][1]
@@ -339,11 +382,18 @@ func snapshot() -> Dictionary:
 	var fill := {}
 	for b: Dictionary in bins:
 		fill[b.id] = b.n
-	return { "messes": messes.map(func(m: Dictionary) -> Array: return [m.kind, m.x, m.z]), "bins": fill,
+	return { "strays": strays.map(func(s: Dictionary) -> Array: return [s.copy.k, s.near]), "messes": messes.map(func(m: Dictionary) -> Array: return [m.kind, m.x, m.z]), "bins": fill,
 		"bags": (bags_down + bag_carry.map(func(g: Dictionary) -> Dictionary: return { "bin": g.bin, "n": g.n, "x": player.global_position.x, "z": player.global_position.z })).map(func(g: Dictionary) -> Array: return [g.bin, g.n, g.x, g.z]) }
 
 
 func restore(d: Dictionary) -> void:
+	var by := {}
+	for t: Dictionary in $"../Tapes".tapes:
+		by[t.k] = t
+	for s: Array in d.get("strays", []):
+		if by.has(s[0]) and by.has(s[1]):
+			$"../Tapes".set_on_shelf(by[s[0]], false)
+			misshelve(by[s[0]], null, by[s[1]])
 	for m: Array in d.get("messes", []):
 		mess_add(m[0], m[1], m[2])
 	for b: Dictionary in bins:

@@ -41,6 +41,7 @@ var _by_flap := false
 var _alarm_t := 0.0
 var _step_d := 0.0
 var _mess = null
+var _stray = null
 var _trash = null  # the bin, or the bag on the floor, she's after
 var _bag = null  # the bag in her hands
 var _on_always := not OS.get_cmdline_user_args().is_empty()  # (the tests: she's always in)
@@ -153,7 +154,7 @@ func _process(dt: float) -> void:
 				$"../Ambience".step(dana.position)
 			_ry = atan2(to.x, to.y)
 		# called away: somebody's at the counter and she's out on the floor. Home first
-		if waiting != null and checkout.co == null and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag"]:
+		if waiting != null and checkout.co == null and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag", "toStray"]:
 			_trash = null
 			_mess = null
 			_go(Vector2(_post.x, _post.z), "toPost")
@@ -165,6 +166,19 @@ func _process(dt: float) -> void:
 				_at_post(dt, waiting)
 			"toPost":
 				state = "post"
+			"toStray":
+				dana.reach_to(_stray.node.position if chores.strays.has(_stray) else _stray.at)
+				state = "strayTake"
+				_t = 0.8
+			"strayTake":
+				if _t <= 0.0:
+					dana.reach_to(null)
+					if chores.strays.has(_stray):
+						chores.stray_take(_stray)
+						carry.append(_stray.copy)
+						checkout.score += 5
+					_stray = null
+					_next()
 			"toExit":  # gone home
 				dana.queue_free()
 				dana = null
@@ -310,6 +324,9 @@ func _at_post(dt: float, waiting) -> void:
 		_next()
 	elif not tapes.return_bin.is_empty():  # returns to put away
 		_go(_bin_spot, "toBin")
+	elif not chores.strays.is_empty():  # the bin's done: straighten up what customers shoved in anywhere
+		_stray = chores.strays[0]
+		_go(Vector2(_stray.at.x + cos(_stray.ry) * 0.8, _stray.at.z - sin(_stray.ry) * 0.8), "toStray")
 	else:
 		_cleanup()
 

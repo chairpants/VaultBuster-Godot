@@ -491,6 +491,17 @@ func _check() -> void:
 	Ch.on_e()
 	if Ch.bins[0].n != 0 or bagged != 1 or not Ch.bag_carry.is_empty():
 		bad.append("a bin's bag didn't go down the chute")
+	# a tape shoved in anywhere: pulled out, it's in your hand to put back where it goes
+	var crooked: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not Tp._corners(t).is_empty())[3]
+	Tp.set_on_shelf(crooked, false)
+	Ch.misshelve(crooked, S._spots[2])
+	Ch.aim = { "stray": Ch.strays[-1] }
+	Ch.on_e()
+	if Tp.held != crooked or Ch.strays.any(func(s: Dictionary) -> bool: return s.copy == crooked):
+		bad.append("a misshelved tape didn't come out into your hand")
+	Tp.put_back()
+	if crooked.off:
+		bad.append("the misshelved tape didn't go back in its slot")
 	# Dana tidies up when there's nothing else to do
 	Ch.mess_add("cup", -1.0, 8.0)
 	var cup: Dictionary = Ch.messes[-1]

@@ -14,7 +14,10 @@ extends Node
 ##   a stolen tape's just gone (no ordering a replacement). The gates' lights don't flash; they're never switched off.
 ## - Everybody's a member (members.gd): the same person every visit, coming in on their own rhythm, what they rent
 ##   on their account, three out at most, late fees when it's back late. Nobody signs up; nobody's phoned.
-## - No snacks, no questions at the counter, no kids or company, no cars, nobody going to the theater.
+## - They pick up snacks (snacks.gd), ask for help at the counter, come in for holds (phone.gd), bring a kid or a
+##   friend along, and shove a tape back in the wrong place now and then (chores.gd), the web game's way; but
+##   nobody stops to chat, and nobody's talked into a snack at the register.
+## - No cars (everyone walks up the sidewalk), nobody going to the theater, nobody signing up.
 
 const Nav := preload("res://nav.gd")
 const TASTES := [
@@ -830,8 +833,11 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					_decide(cust)
 			"reach":
 				if cust.t <= 0.0:
-					if cust.reach != "take":  # put back, into its slot
-						tapes.set_on_shelf(cust.tapes.pop_back(), true)
+					if cust.reach != "take":  # put back: into its slot, or (a quarter of the time) just shoved in anywhere
+						if randf() < 0.25:
+							$"../Chores".misshelve(cust.tapes.pop_back(), cust.spot)
+						else:
+							tapes.set_on_shelf(cust.tapes.pop_back(), true)
 					var got = cust.reach_copy if cust.reach_copy != null and not cust.reach_copy.off else (null if cust.reach == "return" else _pick_copy(cust))
 					if cust.reach != "return" and got != null:
 						tapes.set_on_shelf(got, false)
@@ -1282,8 +1288,11 @@ func _tag_tick(cust: Dictionary) -> void:  # standing by: near whoever's still g
 				par.state = "browse"
 				par.t = 0.5
 				par.stops_left = 0
-		elif not custs.has(par) or par.state in LEAVING or par.state in ["queue", "inLine", "counter", "wait", "impatient", "angry", "checkout", "paid"]:  # too late (they're paying, or going): back it goes
-			tapes.set_on_shelf(cust.tapes.pop_back(), true)
+		elif not custs.has(par) or par.state in LEAVING or par.state in ["queue", "inLine", "counter", "wait", "impatient", "angry", "checkout", "paid"]:  # too late (they're paying, or going): it gets stuck on the nearest shelf
+			if cust.spot != null and cust.spot.has("copies"):
+				$"../Chores".misshelve(cust.tapes.pop_back(), cust.spot)
+			else:
+				tapes.set_on_shelf(cust.tapes.pop_back(), true)
 			cust.holding = 0
 			c.hold_tape(0)
 	var others: Array = cust.party.filter(func(k: Dictionary) -> bool: return k != cust and custs.has(k) and not k.state in LEAVING)
