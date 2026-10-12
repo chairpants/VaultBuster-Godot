@@ -6,7 +6,7 @@ extends Node
 ## tape rents for: $3.99 a new release, $1.99 the rest) and store/tv.js (E on the register, the pad, the printer).
 ## Where the register, the pad and the printer are: data/interact.json.
 ## Not over yet: members and their accounts (so no late fees, no sign-ups), snacks and the snack offer, show
-## tickets, the drawer and the receipt as things you can see, the terminal's own screens, the gates' alarm as more than
+## tickets, the drawer opening, the receipt coming out of the printer, the terminal's own screens, the gates' alarm as more than
 ## a word about it, anyone coming back to have a missed tag fixed.
 
 const STEPS := [  # [id, where it's done]
@@ -55,6 +55,7 @@ func _process(dt: float) -> void:
 		score -= 100
 		hud.toast("A customer gave up on the checkout and walked out")
 		k.c.set_mood("angry")
+		k.c.hold_prop(null)
 		k.c.hold_tape(k.tapes.size())
 		k.c.set_pose("hold")
 		shoppers.go(k, "leave", { "x": shoppers._door.x, "z": shoppers._door.y })
@@ -101,11 +102,15 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 	cust.state = "checkout"
 	cust.c.set_mood("happy")
 	cust.c.set_pose("wait")
+	_skip()
 
 
 func _skip() -> void:  # past any step this sale doesn't need
 	while co != null and co.i < STEPS.size() and STEPS[co.i][0] == "change" and co.change <= 0.0:
 		co.i += 1
+	if co != null:  # what they're holding out for this one
+		var id: String = step()[0] if not step().is_empty() else ""
+		co.cust.c.hold_prop("card" if id == "card" else "cash" if id == "cash" else null)
 
 
 func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
@@ -148,6 +153,7 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			k.tagged = missed > 0  # anything still tagged sets the gates off
 			k.paid = true
 			hud.toast("%s: %s, $%.2f%s (+%d)" % ["Dana rang up" if co.by == "dana" else "Rang up", "1 tape" if k.tapes.size() == 1 else "%d tapes" % k.tapes.size(), co.total, ", %d tag%s missed" % [missed, "" if missed == 1 else "s"] if missed else "", got])
+			k.c.hold_prop("receipt")
 			k.c.set_mood("thanks")
 			k.c.set_pose("hold")
 			k.state = "paid"

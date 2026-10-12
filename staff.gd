@@ -69,16 +69,16 @@ func _process(dt: float) -> void:
 			if _reached:
 				_reached = false
 				checkout.act(s[1])
-				dana.set_pose("idle")
+				dana.reach_to(null)
 				_co_t = 0.35
 			else:
 				_reached = true
-				dana.set_pose("reach")
+				dana.reach_to(Vector3(lerpf(dana.position.x, q.x, 0.55), 1.05, lerpf(dana.position.z, q.z, 0.55)) if s[1] == "customer" else checkout._at["pos" if s[1] == "register" else s[1]], 1, false)  # across the counter to them, or to the register, the pad, the printer
 				_co_t = (0.9 if s[1] == "customer" else 0.7) * maxf(0.45, 1.0 - 0.04 * (DEX - 1))  # (DEX: quick hands at the register)
 	else:
 		dana.talking = false
 		dana.look_at_yaw(null)
-		dana.set_pose("idle")
+		dana.reach_to(null)
 		if waiting == null:
 			dana.set_mood("neutral")
 			# restocking: with nobody to ring up, a return goes back on its shelf every so often. (The web game walks her

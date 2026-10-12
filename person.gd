@@ -4,8 +4,8 @@ extends Node3D
 ## From the web game's customers.js: the object build() returns (setMood, setPose, lookAt, holdTape, sigh, talk) and
 ## its tick: the walk cycle (the planted foot stays put on the floor; the hips ride over it; a run over ~2 m/s),
 ## the gaits, sitting and crouching, the arms' poses, the head, breathing.
-## Not over yet: reaching for things (the arm IK), props (card, cash, umbrella), what the weather does to them
-## (hunching, snow on them, gusts), slipping and shaking off, blinking. And the body is the web game's older jointed
+## Not over yet: what the weather does to them (hunching, snow on them, gusts, the umbrella up), a second hand
+## reaching, slipping and shaking off, blinking. And the body is the web game's older jointed
 ## blocks, not its one stretched skin.
 ##
 ## The origin's on the floor between the feet; they face +z.
@@ -31,6 +31,7 @@ var walk_lean := true  # tip forward into the stride
 var height := 1.0
 var talking := false
 var sit_at := {}  # { hipY, tuck }
+var build := 1.0
 
 var _body: Node3D
 var _upper: Node3D
@@ -39,6 +40,9 @@ var _torso: Node3D
 var _legs: Array = []  # [hip, knee]
 var _arms: Array = []  # [shoulder, elbow]
 var _tapes: Array[Node3D] = []
+var _props := {}  # card, cash, receipt, form, umbrella: in the other hand
+var _reach := { "target": Vector3.ZERO, "on": false, "w": 0.0, "arm": 1, "lean": true }
+var _sx := 0.255  # the shoulder joints, off center (hers sit in a little)
 var _face := StandardMaterial3D.new()
 var _moods: Array = []
 var _look = null  # the head's yaw someone asked for (relative to the body), or null
@@ -46,12 +50,14 @@ var _t := 0.0
 var _phase := 0.0
 var _since := 0.0
 var _sigh := 0.0
-var _st := { "y": 0.0, "squat": 0.0, "nod": 0.0, "ry": 0.0, "rz": 0.0, "rx": 0.0, "ax0": 0.0, "ae0": -0.12, "ax1": 0.0, "ae1": -0.12, "h0": 0.0, "h1": 0.0, "k0": 0.0, "k1": 0.0 }
+var _st := { "y": 0.0, "squat": 0.0, "nod": 0.0, "ry": 0.0, "rz": 0.0, "rx": 0.0, "ax0": 0.0, "ae0": -0.12, "ax1": 0.0, "ae1": -0.12, "h0": 0.0, "h1": 0.0, "k0": 0.0, "k1": 0.0, "lean": 0.0, "crouch": 0.0, "step": 0.0 }
 
 
 func setup(who: Dictionary, face: Texture2D, moods: Array, index: int) -> void:
 	var pre := "p%d_" % index  # (each of the cast's joints is named for whose it is)
 	height = who.height
+	build = who.build
+	_sx = 0.235 if who.female else 0.255
 	gait = who.get("gait", "plain")
 	_moods = moods
 	_body = find_child(pre + "body", true, false)
@@ -65,6 +71,9 @@ func setup(who: Dictionary, face: Texture2D, moods: Array, index: int) -> void:
 		j.rotation_order = EULER_ORDER_XYZ  # (three's order: the numbers below are its)
 	for n: Node3D in find_children(pre + "tape*", "Node3D", true, false):
 		_tapes.append(n)
+		n.visible = false
+	for n: Node3D in find_children(pre + "prop_*", "Node3D", true, false):
+		_props[String(n.name).trim_prefix(pre + "prop_")] = n
 		n.visible = false
 	_face.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # the face: one of sixteen on their sheet, picked by the mood
 	_face.albedo_texture = face
@@ -98,6 +107,21 @@ func hold_tape(n: int) -> void:
 		_tapes[i].visible = i < n
 
 
+func hold_prop(what) -> void:  # "card" / "cash" / "receipt" / "form" / "umbrella" in the other hand, or null
+	for k: String in _props:
+		_props[k].visible = k == what
+
+
+func reach_to(point, arm := 1, lean := true) -> void:  # put a hand on a point in the world (eased in and out); null lets go. lean: false = the arm only (counter work: no bowing)
+	if point == null:
+		_reach.on = false
+	else:
+		_reach.target = point
+		_reach.on = true
+		_reach.arm = arm
+		_reach.lean = lean
+
+
 func sigh() -> void:
 	_sigh = 1.3
 
@@ -125,6 +149,21 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 	var sw_u := sin(_phase - 0.5) if walking else 0.0  # the upper body: the same rhythm, trailing the legs
 	var soft := minf(1.0, dt * 6.0)
 	var squat := _ease("squat", 1.0 if pose == "crouch" else 0.0, minf(1.0, dt * 10.0))  # a deep knees-bent crouch
+	# reaching: where the target sits relative to an unbent shoulder decides how much to bend at the waist, crouch, or step in
+	_reach.w += ((1.0 if _reach.on else 0.0) - _reach.w) * minf(1.0, dt * 5.0)
+	var w: float = 0.0 if _reach.w < 0.002 else _reach.w
+	var flat := 0.0
+	var dy := 0.0
+	if w > 0.0:
+		var d := to_local(_reach.target) - Vector3((_sx if _reach.arm else -_sx) * build, 1.5 * height, 0.0)
+		flat = Vector2(d.x, d.z).length()
+		dy = d.y
+	var bend: bool = w > 0.0 and _reach.lean  # may the body help? (shelves yes, counter work no)
+	var low := maxf(0.0, -dy - 0.35) if bend else 0.0
+	var far := maxf(0.0, flat - 0.4) if bend else 0.0
+	var lean := _ease("lean", minf(1.0, far * 1.4 + low * 0.9), minf(1.0, dt * 5.0)) * w  # bend at the waist toward it
+	var crouch := _ease("crouch", clampf((low - 0.35) / 0.5, 0.0, 1.0), minf(1.0, dt * 5.0)) * w  # really low: bend the knees too
+	var step_in := _ease("step", clampf(maxf(0.0, flat - 0.4) - (0.35 if bend else 0.2), 0.0, 0.2) if w > 0.0 else 0.0, minf(1.0, dt * 5.0)) * w  # really far: a half step in
 	# the gait cycle, per leg (p: 0..1 from its heel strike): a stance of ~60% (less running), then the swing
 	var cyc := _phase / TAU - 0.25
 	var knee_k: float = (G.knee * (1.0 - run) + 1.6 * run) * minf(1.0, 0.55 + 0.35 * speed)
@@ -141,8 +180,8 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 		var hx: float = -PI / 2.0 if sit else -gl[i][0] if walking else 0.0  # (thigh forward is -x)
 		var kx: float = PI / 2.0 + sit_at.get("tuck", 0.0) if sit else gl[i][1] if walking else 0.0
 		var lr := 1.0 if walking and not sit else r  # walking: exactly where the cycle puts them (easing lags, and the feet skate)
-		_legs[i][0].rotation.x = _ease("h%d" % i, hx, lr) - squat * 1.6
-		_legs[i][1].rotation.x = _ease("k%d" % i, kx, lr) + squat * 2.4
+		_legs[i][0].rotation.x = _ease("h%d" % i, hx, lr) - crouch * 1.05 - squat * 1.6
+		_legs[i][1].rotation.x = _ease("k%d" % i, kx, lr) + crouch * 1.9 + squat * 2.4
 	var seat_y: float = sit_at.get("hipY", 0.5) - 0.9 * height if sit else 0.0  # hips down to the seat
 	var jolt := sin((t - _since) / 0.35 * PI) * 0.06 if mood == "shock" and t - _since < 0.35 else 0.0  # a little jump
 	var bob := 0.0
@@ -150,12 +189,13 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 		bob = leg_bob + run * 0.03 * absf(sin(_phase)) + (pow(maxf(0.0, sin(_phase)), 2.0) * 0.06 if G.get("hop", false) and run == 0.0 else 0.0)
 	var body_y := seat_y + jolt + bob
 	_st.y += (body_y - _st.y) * (r if absf(body_y - _st.y) > 0.05 else 1.0)  # eased sitting down / getting up, the bob tracked directly
-	_body.position.y = _st.y - squat * 0.6
+	_body.position.y = _st.y - crouch * 0.4 - squat * 0.6
+	_body.position.z = step_in
 	var sg := 0.0  # a sigh: up, then a long sag
 	if _sigh > 0.0:
 		_sigh -= dt
 		sg = sin((1.0 - _sigh / 1.3) * PI)
-	_upper.rotation.x = (0.28 if pose == "lean" else 0.0) + maxf(0.0, sg) * 0.08 + (G.lean if walking else 0.0)
+	_upper.rotation.x = lean + (0.28 if pose == "lean" else 0.0) + maxf(0.0, sg) * 0.08 + (G.lean if walking else 0.0)
 	if _torso:  # breathing
 		_torso.scale.y = 0.56 * (1.0 + sin(t * 1.7) * 0.012)
 		_torso.scale.z = 0.245 * (1.0 + sin(t * 1.7) * 0.02)
@@ -212,12 +252,22 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 	for i in 2:
 		_arms[i][0].rotation = Vector3(p2[i][0], 0.0, -0.06 if i else 0.06)
 		_arms[i][1].rotation.x = p2[i][1]
+	if w > 0.0:  # two-bone IK: the elbow from the law of cosines, the shoulder swung to aim the chain
+		var sh: Node3D = _arms[_reach.arm][0]
+		var el: Node3D = _arms[_reach.arm][1]
+		var d := _upper.to_local(_reach.target) - sh.position
+		var D := clampf(d.length(), 0.12, 0.29 + 0.32 - 0.01)  # (shoulder to elbow 0.29, elbow to hand 0.32)
+		var inner := acos(clampf((0.29 * 0.29 + 0.32 * 0.32 - D * D) / (2.0 * 0.29 * 0.32), -1.0, 1.0))
+		var e := -(PI - inner)  # negative: the forearm folds forward
+		var hand0 := Vector3(0.0, -0.29 - 0.32 * cos(e), -0.32 * sin(e)).normalized()
+		sh.quaternion = sh.quaternion.slerp(Quaternion(hand0, d.normalized()), w)
+		el.rotation.x += (e - el.rotation.x) * w
 	# head: browsing scans, impatience tilts, otherwise a slow idle drift
 	var yaw: float = _look if _look != null else sin(t * 1.3) * 0.25 if mood == "browse" else sin(t * 2.3) * 0.55 if mood == "shifty" else sin(t * 0.4) * 0.05  # shifty: checking over both shoulders
 	_head.rotation.y += (yaw + (sin(t * 0.9) * 0.06 if talking else 0.0) - _head.rotation.y) * r * 0.6
 	_head.rotation.z += ((0.12 if mood == "impatient" else sin(t * 1.3) * 0.05 if talking else 0.0) - _head.rotation.z) * r * 0.5
 	_head.rotation.x = _ease("nod", cos(_phase * 2.0 - 0.8) * 0.008 if walking else -0.06 if mood == "watch" else maxf(0.0, sin(t * 2.4)) * 0.05 if talking else 0.0, soft) \
-		+ (0.3 if pose == "read" else 0.35 if pose == "watch" else 0.0) + maxf(0.0, sg) * 0.2
+		+ lean * 0.85 + (0.3 if pose == "read" else 0.35 if pose == "watch" else 0.0) + maxf(0.0, sg) * 0.2  # (bowing with the upper body)
 	_head.position = to_local(_upper.to_global(Vector3(0.0, 0.73, HEAD_Z / height)))  # the head rides the top of the neck, wherever the waist has put it
 
 

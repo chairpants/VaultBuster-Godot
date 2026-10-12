@@ -11,8 +11,7 @@ extends Node
 ##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd). Nobody's late, so no fees.
 ## - Left waiting too long at the counter they walk out, and their tapes go back on the shelf (the web game: gone).
 ## - Nobody's a member: each is a new face (the web game's are its 150 members, the same person every visit).
-## - They reach with a fixed arm, not to the tape itself; they don't step round you or each other; no snacks, no
-##   questions at the counter, no kids or company, no shoplifters, no cars, nobody going to the theater.
+## - No snacks, no questions at the counter, no kids or company, no shoplifters, no cars, nobody going to the theater.
 
 const Nav := preload("res://nav.gd")
 const TASTES := [
@@ -159,7 +158,8 @@ func spawn() -> Dictionary:
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
 	var cust := { "who": who, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
-		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null }
+		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
+		"squeeze": 0.0, "stuck": 0.0, "detour": false, "bump_t": 0.0, "bump_detour": false, "wait_for": null }
 	# about half the time it's someone with tapes out, bringing them back: what's due (or late), and half the time what's due tomorrow
 	var due := rented.filter(func(r: Array) -> bool: return r[2] <= Clock.day or (r[2] == Clock.day + 1 and randf() < 0.5))
 	cust.returning = []
@@ -195,11 +195,30 @@ func at_the_door() -> bool:  # anyone right at the door: it swings open (interac
 	return custs.any(func(k: Dictionary) -> bool: return Vector2(k.c.position.x - 0.9, k.c.position.z + 0.2).length() < 1.3)
 
 
-func go(cust: Dictionary, state: String, spot: Dictionary) -> void:  # head for a spot; state is what to do on arrival
+func go(cust: Dictionary, state: String, spot: Dictionary, avoid_player := false) -> void:  # head for a spot; state is what to do on arrival
 	var p: Vector3 = cust.c.position
 	if state == "leave":
 		leave_line(cust)
-	var way: Array = _nav.path(p.x, p.z, spot.x, spot.z)
+	var you := Vector2(player.global_position.x, player.global_position.z)
+	if you.distance_to(Vector2(spot.x, spot.z)) <= 0.6:  # you're standing on it: the next spot along
+		var ry: float = spot.get("ry", 0.0)
+		for k in [0.75, -0.75, 1.1, -1.1]:
+			var q := Vector2(spot.x + cos(ry) * k, spot.z - sin(ry) * k)
+			if _nav.open_at(q.x, q.y) and you.distance_to(q) > 0.6:
+				spot = spot.duplicate()
+				spot.x = q.x
+				spot.z = q.y
+				break
+	var others: Array = custs.filter(func(k: Dictionary) -> bool: return k != cust and k.c.position.z > 0.3).map(func(k: Dictionary) -> Vector2: return Vector2(k.c.position.x, k.c.position.z))
+	if avoid_player:
+		others.append(you)
+	var way: Array = _nav.path(p.x, p.z, spot.x, spot.z, others)
+	if way.is_empty():
+		way = _nav.path(p.x, p.z, spot.x, spot.z)  # someone's standing in the doorway: plan through them (the walk waits them out)
+	if not avoid_player:
+		cust.detour = false
+	cust.stuck = 0.0
+	cust.bump_detour = false
 	if way.is_empty():  # no way there right now: try again in a sec (never straight through a wall)
 		cust.path = []
 		cust.repath = [state, spot]
@@ -210,6 +229,51 @@ func go(cust: Dictionary, state: String, spot: Dictionary) -> void:  # head for 
 	cust.path = way
 	cust.state = state
 	cust.spot = spot
+
+
+func _yield_to_you(cust: Dictionary, to: Vector2, dt: float) -> bool:  # yields while you're right ahead; goes round after a moment; slips past if there's truly no way
+	if cust.squeeze > 0.0:
+		cust.squeeze -= dt  # excuse me...
+		return false
+	var off := Vector2(player.global_position.x - cust.c.position.x, player.global_position.z - cust.c.position.z)
+	if not (off.length() < (0.5 if cust.detour else 0.75) and off.dot(to) > 0.0 and absf(player.global_position.y - cust.c.position.y) < 1.5):
+		return false
+	cust.stuck += dt
+	if cust.stuck > 0.6 and not cust.detour:
+		cust.detour = true
+		go(cust, cust.state, cust.spot, true)  # go around
+		cust.detour = true
+		cust.stuck = 0.01
+	elif cust.stuck > 3.5:
+		cust.squeeze = 1.4  # no way round: slip past
+		cust.stuck = 0.0
+	return true
+
+
+func _bumps(cust: Dictionary, to: Vector2, dt: float) -> bool:  # the same manners with the other shoppers (and Dana): wait a beat, go round, slip past
+	if cust.squeeze > 0.0:
+		return false
+	var here := Vector2(cust.c.position.x, cust.c.position.z)
+	var dir := to.normalized()
+	var who = null
+	for k: Dictionary in custs:
+		var off := Vector2(k.c.position.x, k.c.position.z) - here
+		if k != cust and k.get("wait_for") != cust and off.length() < 0.7 and off.dot(dir) > off.length() * 0.5:
+			who = k
+			break
+	cust.wait_for = who  # (two meeting head-on don't both wait: whoever's already waiting on the other gets the right of way)
+	if who == null:
+		cust.bump_t = 0.0
+		return false
+	cust.bump_t += dt
+	if cust.bump_t > 0.7 and not cust.bump_detour:
+		go(cust, cust.state, cust.spot)  # go around
+		cust.bump_detour = true
+		cust.bump_t = 0.01
+	elif cust.bump_t > 3.0:
+		cust.squeeze = 1.4  # pardon me
+		cust.bump_t = 0.0
+	return true
 
 
 func _line_spot(i: int) -> Dictionary:  # the front of the line stands at the counter, the rest queue back into the store behind them
@@ -302,8 +366,12 @@ func _decide(cust: Dictionary) -> void:  # done browsing this shelf: take one, p
 	else:
 		cust.reach = ""
 	if cust.reach != "":
-		cust.reach_copy = null if cust.reach == "return" else _pick_copy(cust)
-		cust.c.set_pose("reach")
+		cust.reach_copy = null if cust.reach == "return" else _pick_copy(cust)  # decided now, so the hand goes to the copy they'll take
+		var to = cust.reach_copy if cust.reach_copy != null else (cust.tapes[-1] if not cust.tapes.is_empty() else null)  # ...or the slot theirs goes back into
+		if to != null:
+			cust.c.reach_to(Vector3(to.p[0], to.p[1], to.p[2]))
+		else:
+			cust.c.set_pose("reach")
 		cust.c.set_mood("meh" if cust.reach == "return" else "love" if likes > 0.4 else "happy")
 		cust.state = "reach"
 		cust.t = 1.3
@@ -352,6 +420,8 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 		var d := to.length()
 		if d < 0.05:
 			cust.path.pop_front()
+		elif _yield_to_you(cust, to, dt) or _bumps(cust, to, dt):  # you're in the way, or another shopper is
+			pass
 		else:
 			speed = who.speed * (1.4 if cust.state == "outside" and not cust.paid and cust.holding > 0 else 1.0)  # storming out
 			var step := minf(d, speed * dt)
@@ -385,7 +455,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					else:
 						_next_stop(cust)
 			"dropoff":  # at the slot: a hand out to it
-				c.set_pose("reach")
+				c.reach_to(Vector3(_slot.x - 0.6, 0.9, _slot.z))
 				cust.state = "dropping"
 				cust.t = 1.2
 			"dropping":
@@ -397,6 +467,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					if tapes.return_bin.size() >= 15 and tapes.return_bin.size() - n < 15:
 						hud.toast("Returns are piling up: %d in the bin" % tapes.return_bin.size())
 					cust.returning = []
+					c.reach_to(null)
 					c.hold_tape(0)
 					c.set_pose("idle")
 					c.set_mood("happy")
@@ -419,6 +490,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					if cust.reach != "return" and got != null:
 						tapes.set_on_shelf(got, false)
 						cust.tapes.append(got)
+					c.reach_to(null)
 					cust.holding = cust.tapes.size()
 					c.hold_tape(cust.holding)
 					c.set_pose("hold" if cust.holding > 0 else "idle")
@@ -435,6 +507,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0 and c.mood != "impatient":
 					c.set_mood("impatient")
 			"counter":
+				c.hold_prop("card")
 				c.set_pose("wait")
 				c.set_mood("wait")
 				cust.state = "wait"
@@ -452,6 +525,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			"angry":
 				if cust.t <= 0.0:
 					hud.toast("A customer got tired of waiting and walked out")
+					c.hold_prop(null)
 					c.set_pose("hold")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"checkout":  # being rung up (checkout.gd)

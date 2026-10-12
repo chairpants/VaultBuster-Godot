@@ -97,7 +97,17 @@ func _near(x: float, z: float) -> int:  # a blocked start or goal: the nearest o
 	return -1
 
 
-func path(ax: float, az: float, bx: float, bz: float) -> Array:  # A* (8-way, binary heap), then string-pulled to straight runs. [] if there's no way
+var _extra := {}  # cells shut for this one path: somebody standing in the way
+
+
+func path(ax: float, az: float, bx: float, bz: float, standing: Array = []) -> Array:  # A* (8-way, binary heap), then string-pulled to straight runs. [] if there's no way. standing: [Vector2, ...] to go round, a body's width each
+	_extra = {}
+	for s: Vector2 in standing:
+		var r := 0.22 + 0.3
+		for k in range(maxi(0, ceili((s.y - r - z0) / cell - 0.5)), mini(nz - 1, floori((s.y + r - z0) / cell - 0.5)) + 1):
+			for i in range(maxi(0, ceili((s.x - r - x0) / cell - 0.5)), mini(nx - 1, floori((s.x + r - x0) / cell - 0.5)) + 1):
+				_extra[k * nx + i] = true
+	_extra.erase(at(ax, az))  # (never where they're standing themselves)
 	var s := _near(ax, az)
 	var e := _near(bx, bz)
 	if s < 0 or e < 0:
@@ -142,7 +152,7 @@ func path(ax: float, az: float, bx: float, bz: float) -> Array:  # A* (8-way, bi
 			if ni + d[0] < 0 or ni + d[0] >= nx:
 				continue
 			var m: int = n + d[1] * nx + d[0]
-			if m < 0 or m >= g.size() or g[m] == 1 or closed[m] == 1:
+			if m < 0 or m >= g.size() or g[m] == 1 or closed[m] == 1 or _extra.has(m):
 				continue
 			if d[0] != 0 and d[1] != 0 and (g[n + d[0]] == 1 or g[n + d[1] * nx] == 1):
 				continue  # no cutting a corner
