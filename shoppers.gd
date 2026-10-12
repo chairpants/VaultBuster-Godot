@@ -186,6 +186,12 @@ func spawn(member = null) -> Dictionary:  # custSpawn
 	if Clock.h >= 23.0 and randf() < 0.5:  # the 11:30 walk-in, in no hurry at all
 		who.stops = 7 + randi() % 4
 		who.dwell *= 1.5
+	var chores: Node = $"../Chores"
+	if chores.grot() >= 3:  # litter, overflowing bins, bags left lying about: people notice
+		members.loyal(member, -2)
+		if chores._t - chores._mess_note > 120.0:
+			chores._mess_note = chores._t
+			hud.toast("Customers are noticing the mess (%d spots to clean%s)" % [chores.messes.size(), ", the trash overflowing" if chores.bins.any(func(b: Dictionary) -> bool: return b.n >= b.cap) else ""])
 	if member.loyalty >= 40.0:
 		hud.toast("%s, one of the regulars, came in" % members.name_of(member))
 	var out := rentals_of(member)

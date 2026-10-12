@@ -137,6 +137,7 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	aim_door = null
 	aim_seat = null
 	fixtures.aim = ""
+	$"../Chores".aim = {}
 	if player.climb != null:
 		tapes.clear_aim()
 		hud.tip("")
@@ -193,6 +194,12 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip(fix_tip)
 		return
+	var chore_tip: String = $"../Chores".take_aim(hit, hit_d)  # a mess, the mop, a bin, the chute (see chores.gd)
+	if chore_tip != "" and not things.carrying:
+		tapes.clear_aim()
+		hud.tip(chore_tip)
+		return
+	$"../Chores".aim = {}
 	var tape_tip: String = tapes.aim(from, dir, hit, hit_d)  # tapes, your tape's slot, a screen (see tapes.gd)
 	if tape_tip != "":
 		hud.tip(tape_tip)
@@ -237,6 +244,8 @@ func on_e() -> void:
 	elif things.on_e():
 		pass
 	elif fixtures.on_e():
+		pass
+	elif $"../Chores".on_e():
 		pass
 	elif tapes.aim_rewinder:
 		tapes.rewinder_use()

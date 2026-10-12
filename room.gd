@@ -134,7 +134,7 @@ func light(root: Node) -> int:  # everything lit under there, onto the room's li
 		for s in mi.mesh.get_surface_count():
 			var m := mi.mesh.surface_get_material(s)
 			if m is StandardMaterial3D and m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
-				mi.mesh.surface_set_material(s, _room_material(m, mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR != 0))
+				mi.mesh.surface_set_material(s, _room_material(m, mi.mesh is ArrayMesh and mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR != 0))
 				swapped += 1
 	return swapped
 

@@ -961,6 +961,108 @@
     43.6
    ]
   },
+  "tools": {
+   "mop": {
+    "label": "mop",
+    "home": [
+     12.36,
+     0.95,
+     29.45
+    ],
+    "size": [
+     0.25,
+     1.3,
+     0.25
+    ]
+   },
+   "sweeper": {
+    "label": "carpet sweeper",
+    "home": [
+     12.28,
+     0.65,
+     28.85
+    ],
+    "size": [
+     0.36,
+     1.3,
+     0.42
+    ]
+   }
+  },
+  "bins": [
+   {
+    "id": "breakroom",
+    "name": "break room trash",
+    "cap": 10,
+    "x": 5.27,
+    "z": 32.6,
+    "rimY": 0.55,
+    "r": 0.15,
+    "towels": false,
+    "stand": {
+     "x": 5.27,
+     "z": 31.98,
+     "ry": 0
+    }
+   },
+   {
+    "id": "restroom",
+    "name": "restroom wastebasket",
+    "cap": 8,
+    "x": 8.59,
+    "z": 31.07,
+    "rimY": 0.31,
+    "r": 0.1,
+    "towels": true,
+    "stand": {
+     "x": 9.18,
+     "z": 31.07,
+     "ry": -1.5707963267948966
+    }
+   },
+   {
+    "id": "counter",
+    "name": "counter wastebasket",
+    "cap": 8,
+    "x": -7.32,
+    "z": 0.35,
+    "rimY": 0.34,
+    "r": 0.1,
+    "towels": false,
+    "stand": {
+     "x": -7.17,
+     "z": 0.97,
+     "ry": 3.141592653589793
+    }
+   },
+   {
+    "id": "lobby",
+    "name": "lobby trash",
+    "cap": 16,
+    "x": 2.5,
+    "z": 3.85,
+    "rimY": 0.9,
+    "r": 0.25,
+    "towels": false,
+    "stand": {
+     "x": 2.5,
+     "z": 4.55,
+     "ry": 3.141592653589793
+    }
+   }
+  ],
+  "chute": {
+   "at": [
+    11.549999999999999,
+    1.05,
+    28.25
+   ],
+   "stand": {
+    "x": 11.549999999999999,
+    "z": 28.720000000000002,
+    "ry": 3.141592653589793
+   }
+  },
   "rewinders": [
    [
     -2.37,

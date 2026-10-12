@@ -6,6 +6,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var amb: Node = preload("res://ambience.gd").new()
 	amb.name = "Ambience"
 	add_child(amb)
+	var chores: Node = preload("res://chores.gd").new()  # (and the cleaning up: chores.gd)
+	chores.name = "Chores"
+	add_child(chores)
 
 
 func _ready() -> void:
@@ -436,6 +439,34 @@ func _check() -> void:
 			S.silence_alarm()
 			loot.lost = false
 		Tp.set_on_shelf(loot, true)
+	# chores: a mess wants its tool; a bin's bag goes down the chute
+	var Ch := $Chores
+	Ch.mess_add("wrapper", 0.0, 8.0)
+	Ch.mess_add("spill", 0.5, 8.0)
+	var score0: int = $Checkout.score
+	Ch.aim = { "mess": Ch.messes[-1] }
+	Ch.on_e()
+	if Ch.messes.size() != 2:
+		bad.append("a spilled soda came up without the mop")
+	Ch.aim = { "mess": Ch.messes[0] }
+	Ch.on_e()
+	if Ch.tools.mop.nodes.is_empty() or Ch.tools.sweeper.nodes.is_empty():
+		bad.append("the mop (%d) or the sweeper (%d) isn't in the janitor's closet" % [Ch.tools.mop.nodes.size(), Ch.tools.sweeper.nodes.size()])
+	else:
+		Ch.tool_take("mop")
+		Ch.aim = { "mess": Ch.messes[0] }
+		Ch.on_e()
+		await get_tree().create_timer(2.8).timeout
+		Ch.tool_return()
+		if not Ch.messes.is_empty() or $Checkout.score != score0 + 30 or Ch.tools.mop.nodes.any(func(n: Node3D) -> bool: return not n.visible):
+			bad.append("the wrapper and the soda didn't both get cleaned up (%d left, %+d)" % [Ch.messes.size(), $Checkout.score - score0])
+	Ch.bins[0].n = 3
+	Ch.aim = { "bin": Ch.bins[0] }
+	Ch.on_e()
+	Ch.aim = { "chute": true }
+	Ch.on_e()
+	if Ch.bins[0].n != 0 or not Ch.bag_carry.is_empty() or $Checkout.score < score0 + 15:
+		bad.append("a bin's bag didn't go down the chute")
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

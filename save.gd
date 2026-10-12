@@ -82,6 +82,7 @@ func snapshot() -> Dictionary:
 			"dana": main.get_node("Staff").carry.map(func(t: Dictionary) -> String: return t.k),
 		},
 		"members": S.members.records(),
+		"chores": main.get_node("Chores").snapshot(),
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
 
@@ -191,6 +192,7 @@ func apply(d: Dictionary) -> void:
 	if in_vcr != null:
 		T.play_episode(int(d.tapes.playing[1]), in_vcr)  # (on from where it had got to)
 	S.members.restore(d.get("members", {}))
+	main.get_node("Chores").restore(d.get("chores", {}))
 	C.served = int(d.till.served)
 	C.rentals = int(d.till.rentals)
 	C.take = d.till.take
