@@ -1,0 +1,247 @@
+extends Node3D
+## The day going by overhead: the sky's colors and the sun for the hour, night, the day's clouds drifting.
+## From the web game: store/shift.js (SKY_KEYS, todTick) and exterior/sky.js (wxPlan, wxSky, wxClouds). The numbers
+## are its numbers. Not here yet: rain, snow and fog (so WX.k and WX.fog are 0 throughout), and gusts.
+##
+## Godot's own, where the web game does it in its material shaders: the sun as a DirectionalLight3D (the moon after
+## dark), the outdoors' ambient light following the daylight, and inside the buildings a grid of plain lights under the
+## ceiling (the store's lights are on, whatever the hour).
+
+const SKY_KEYS := [  # [hour, daylight 0..1, sky]: everything eases between neighbours
+	[0.0, 0.0, 0x0e1a38], [4.8, 0.0, 0x0e1a38],
+	[5.6, 0.12, 0x2d3564],  # first light
+	[6.3, 0.45, 0x9b8cb4],  # dawn
+	[7.4, 0.85, 0x8fb0d8], [8.6, 1.0, 0x4f8fd6], [17.4, 1.0, 0x4f8fd6],
+	[18.8, 0.8, 0x9ea9bd],  # golden hour
+	[19.6, 0.45, 0xc9794f],  # sunset
+	[20.3, 0.12, 0x39406e],  # the blue hour
+	[21.1, 0.0, 0x0e1a38], [24.0, 0.0, 0x0e1a38],  # night
+]
+const SUN_C := Color(1, 1, 1)  # noon sun
+const SUN_LOW := Color(0.95, 0.475, 0.209)  # sun on the horizon
+const CITY := Color(0.035, 0.024, 0.012)  # the town's glow on the low sky at night
+const CLOUD_LOW := Color(0.5, 0.52, 0.56)
+const GLOWS := [0xff6f9a, 0xff8a3c, 0xff7466]
+const N := 56  # clouds; they wrap round inside this box
+const X0 := -110.0
+const X1 := 120.0
+const Z0 := -95.0
+const Z1 := 135.0
+const BUILDINGS := [[-7.84, 11.1, -0.1, 33.1], [11.1, 12.7, 27.9, 29.9], [-7.07, 1.33, 33.1, 46.6], [13.0, 21.0, 0.0, 14.0]]  # the store's footprint (ROOF.rects) and Tony's
+
+var level := 1.0  # daylight, 0..1 (tod.level)
+var sky_color := Color()  # tod.sky
+var plan := {}
+var clouds := 0.0  # WX.clouds
+var wind := 0.0  # WX.wind
+
+var _mat := ShaderMaterial.new()
+var _clouds: Array[Dictionary] = []
+var _puffs: Array[Dictionary] = []
+var _mm := MultiMesh.new()
+var _cloud_mat := StandardMaterial3D.new()
+var _t := 0.0
+var _indoors: Array[OmniLight3D] = []
+
+@onready var sun: DirectionalLight3D = $"../Sun"
+@onready var env: Environment = $"../WorldEnvironment".environment
+
+
+func _ready() -> void:
+	_mat.shader = load("res://sky.gdshader")
+	env.sky.sky_material = _mat
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED  # (or the sky's re-filtered every frame it changes)
+	for i in N:
+		var n := 5 + randi() % 3
+		_clouds.append({ "x": randf_range(X0, X1), "y": 15.0 + randf() * 9.0, "z": randf_range(Z0, Z1), "s": 3.5 + randf() * 4.5, "p0": _puffs.size(), "n": n })
+		for j in n:
+			var t := j / float(n) * 6.28 + randf()
+			var r := 0.5 + randf() * 0.6 if j else 0.0
+			_puffs.append({ "ox": cos(t) * r * 1.2, "oy": randf() * 0.3, "oz": sin(t) * r * 0.8, "r": 0.45 + randf() * 0.35 if j else 0.9 })
+	var puff := SphereMesh.new()  # (the web game's is an icosahedron: about this)
+	puff.radius = 1.0
+	puff.height = 2.0
+	puff.radial_segments = 6
+	puff.rings = 3
+	_cloud_mat.emission_enabled = true
+	_cloud_mat.disable_fog = true
+	puff.material = _cloud_mat
+	_mm.transform_format = MultiMesh.TRANSFORM_3D
+	_mm.mesh = puff
+	_mm.instance_count = _puffs.size()
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = _mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mmi.custom_aabb = AABB(Vector3(X0 - 20, 0, Z0 - 20), Vector3(X1 - X0 + 40, 50, Z1 - Z0 + 40))
+	add_child(mmi)
+	for b in BUILDINGS:  # indoors the lights are on, whatever the hour: a grid of them under each ceiling
+		var nx := maxi(1, roundi((b[1] - b[0]) / 5.0))
+		var nz := maxi(1, roundi((b[3] - b[2]) / 5.0))
+		for ix in nx:
+			for iz in nz:
+				var l := OmniLight3D.new()
+				l.position = Vector3(b[0] + (ix + 0.5) * (b[1] - b[0]) / nx, 3.0, b[2] + (iz + 0.5) * (b[3] - b[2]) / nz)
+				l.omni_range = 8.0
+				l.light_color = Color(1, 0.98, 0.94)
+				l.light_specular = 0.0
+				add_child(l)
+				_indoors.append(l)
+	_tick(0.0)
+
+
+func _process(dt: float) -> void:
+	_tick(dt)
+
+
+func _tick(dt: float) -> void:
+	if plan.get("day") != Clock.day:
+		plan = wx_plan(Clock.day)
+		clouds = plan.clouds  # (weatherTick eases toward these, and builds cloud ahead of rain: all there is to it without rain)
+		wind = plan.wind
+	_tod()
+	_sky(dt)
+	_drift(dt)
+
+
+func _lin(hex: int) -> Color:  # a web colour, as the light it stands for
+	return Color.hex((hex << 8) | 0xff).srgb_to_linear()
+
+
+func _tod() -> void:  # sample the sky for the clock's hour (todTick)
+	var h := fmod(Clock.h, 24.0)
+	var i := 0
+	while i < SKY_KEYS.size() - 2 and SKY_KEYS[i + 1][0] <= h:
+		i += 1
+	var a: Array = SKY_KEYS[i]
+	var b: Array = SKY_KEYS[i + 1]
+	var t := clampf((h - a[0]) / (b[0] - a[0]), 0.0, 1.0)
+	var k := t * t * (3.0 - 2.0 * t)
+	level = lerpf(a[1], b[1], k)
+	sky_color = _lin(a[2]).lerp(_lin(b[2]), k)
+	var arc := clampf((h - 5.9) / 14.2, 0.0, 1.0) * PI  # the sun: up in the east about 6, across, down in the west about 8
+	var up := sin(arc)
+	var over := maxf(0.0, clouds - 0.65) / 0.35
+	if level > 0.02:
+		sun.global_basis = Basis.looking_at(-Vector3(-16.0 * cos(arc), 3.0 + 30.0 * up, -8.0).normalized())
+		sun.light_color = SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))  # warm and low at either end of the day
+		sun.light_energy = 1.2 * level * (1.0 - 0.6 * over)
+	else:  # the moon's turn
+		sun.global_basis = Basis.looking_at(-Vector3(-0.5, 0.3, -0.8).normalized())
+		sun.light_color = Color(0.45, 0.52, 0.68)
+		sun.light_energy = 0.15 * (1.0 - 0.9 * over)
+	env.ambient_light_color = Color(0.10, 0.12, 0.2).lerp(Color(1, 0.98, 0.94), level)
+	env.ambient_light_energy = lerpf(0.45, 0.9, level)
+	for l in _indoors:  # (by day the daylight's in there with them already)
+		l.light_energy = lerpf(0.7, 0.25, level)
+
+
+func _bump(h: float, a: float, b: float, c: float, d: float) -> float:  # 0 up to a, 1 from b to c, 0 again by d (wxBump)
+	return maxf(0.0, minf(1.0, minf((h - a) / (b - a), (d - h) / (d - c))))
+
+
+func _v(c: Color) -> Vector3:
+	return Vector3(c.r, c.g, c.b)
+
+
+func _sky(dt: float) -> void:  # wxSky.tick
+	var h := fmod(Clock.h, 24.0)
+	var L := level
+	var c := clouds
+	var over := maxf(0.0, c - 0.65) / 0.35
+	var a := (h - 5.9) / 14.2 * PI  # the sun on its light's arc, carried on below the horizon at night
+	var up := maxf(0.0, sin(a))
+	var sun_dir := Vector3(-16.0 * cos(a), 30.0 * sin(a), -8.0).normalized()
+	var grey := Color(0.36 * L + 0.02, 0.38 * L + 0.025, 0.42 * L + 0.04)
+	var hor := sky_color.lerp(Color.WHITE, 0.2 * L).lerp(grey, c * 0.3) + CITY * (1.0 - L)  # paler down low by day; the town's glow on it at night
+	var zen := (sky_color * (0.55 + 0.3 * (1.0 - L))).lerp(grey, over * 0.85)
+	var g := maxf(plan.glowAM * _bump(h, 5.2, 6.0, 6.7, 7.6), plan.glowPM * _bump(h, 18.6, 19.4, 20.0, 20.8))
+	var glow := g * (0.45 + 2.2 * c * (1.0 - c)) * (1.0 - over)
+	var glow_hue := _lin(GLOWS[plan.glowHue])
+	var glow_c := glow_hue * 0.55
+	_t += dt
+	_mat.set_shader_parameter("uSun", sun_dir)
+	_mat.set_shader_parameter("uSunUp", clampf(sun_dir.y * 14.0 + 0.25, 0.0, 1.0) * (1.0 - over))
+	_mat.set_shader_parameter("uSunC", _v(SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))))
+	_mat.set_shader_parameter("uHor", _v(hor))
+	_mat.set_shader_parameter("uZen", _v(zen))
+	_mat.set_shader_parameter("uGlow", glow)
+	_mat.set_shader_parameter("uGlowC", _v(glow_c))
+	_mat.set_shader_parameter("uStar", pow(1.0 - L, 2.0) * (1.0 - minf(1.0, c * 1.1 + over)))
+	_mat.set_shader_parameter("uMoonK", pow(1.0 - L, 1.5) * (1.0 - over * 0.9))
+	_mat.set_shader_parameter("uT", _t)
+	# the clouds: greyer under overcast, catching the glow; their own light the sky's, all round them
+	_cloud_mat.albedo_color = Color.WHITE.lerp(CLOUD_LOW, over * 0.8).lerp(glow_c, minf(0.6, glow * 0.8))
+	var em := Color(0.3 * L + 0.03, 0.31 * L + 0.035, 0.34 * L + 0.05) * (1.0 - 0.35 * over)
+	_cloud_mat.emission = em.lerp(glow_hue, minf(1.0, glow * 1.4) * 0.6)
+
+
+func _drift(dt: float) -> void:  # wxClouds.tick: a few to a sky full, as the day has them, drifting with the wind up there
+	var over := maxf(0.0, clouds - 0.65) / 0.35
+	var v: float = plan.cloudV * (0.4 + 1.8 * wind) * dt
+	var dx: float = cos(plan.windDir) * v
+	var dz: float = sin(plan.windDir) * v
+	var show := roundi(N * minf(1.0, 0.04 + clouds * 0.96))
+	var grow := 1.0 + 0.35 * over
+	var k := 0
+	for i in show:
+		var cl := _clouds[i]
+		cl.x = wrapf(cl.x + dx, X0, X1)
+		cl.z = wrapf(cl.z + dz, Z0, Z1)
+		for j in cl.n:
+			var f := _puffs[cl.p0 + j]
+			var r: float = f.r * cl.s * grow
+			var at := Vector3(cl.x + f.ox * cl.s * grow, cl.y - 1.5 * over + f.oy * cl.s, cl.z + f.oz * cl.s * grow)
+			_mm.set_instance_transform(k, Transform3D(Basis.from_scale(Vector3(r, r * (0.55 - 0.15 * over), r)), at))
+			k += 1
+	_mm.visible_instance_count = k
+
+
+func wx_plan(day: int) -> Dictionary:  # the day's weather, worked out from the date so it's the same every time (wxPlan)
+	var s := [7907 * day + 101]
+	var rnd := func() -> float:
+		s[0] = (s[0] * 16807) % 2147483647
+		return s[0] / 2147483647.0
+	rnd.call()
+	rnd.call()
+	var month: int = Clock.date().month
+	var winter := month == 12 or month <= 2
+	var summer := month >= 6 and month <= 8
+	var p := { "day": day, "kind": "clear", "from": 0.0, "to": 0.0, "k": 0.0 }
+	if rnd.call() < (0.4 if winter else 0.25 if summer else 0.33):
+		p.kind = "snow" if winter and rnd.call() < 0.65 else "rain"
+		var all_day: bool = rnd.call() < 0.25
+		if all_day:
+			p.from = 0.0
+		elif summer and p.kind == "rain":
+			p.from = 14.0 + rnd.call() * 4.0
+		else:
+			p.from = 8.0 + rnd.call() * 13.0
+		if all_day:
+			p.to = 25.0
+		else:
+			p.to = p.from + (1.0 + rnd.call() * 2.0 if summer else 2.0 + rnd.call() * 6.0)
+		p.k = 0.45 + rnd.call() * 0.55
+	var s2 := [4111 * day + 977]
+	var r2 := func() -> float:
+		s2[0] = (s2[0] * 16807) % 2147483647
+		return s2[0] / 2147483647.0
+	r2.call()
+	var shoulder := not winter and not summer
+	var c: float = r2.call()
+	if c < 0.3:  # clear, a few about, mostly cloudy
+		p.clouds = r2.call() * 0.15
+	elif c < 0.7:
+		p.clouds = 0.2 + r2.call() * 0.4
+	else:
+		p.clouds = 0.6 + r2.call() * 0.35
+	p.wind = 0.06 + pow(r2.call(), 1.6) * 0.6 + (0.08 if shoulder or winter else 0.0) + (0.15 if p.kind != "clear" else 0.0)
+	p.windDir = (r2.call() - 0.5) * 1.6  # mostly out of the west (blowing toward +x), give or take
+	p.cloudV = 0.4 + r2.call() * 1.4  # m/s up there, before the wind
+	p.fogAM = 0.45 + r2.call() * 0.55 if r2.call() < (0.25 if shoulder else 0.15 if winter else 0.08) else 0.0
+	p.fogEnd = 8.5 + r2.call() * 2.5
+	p.fogPM = 0.3 + r2.call() * 0.4 if r2.call() < 0.07 else 0.0
+	p.fogFrom = 20.5 + r2.call() * 2.0
+	p.glowAM = 0.4 + r2.call() * 0.6 if r2.call() < 0.35 else r2.call() * 0.25
+	p.glowPM = 0.4 + r2.call() * 0.6 if r2.call() < 0.4 else r2.call() * 0.25
+	p.glowHue = int(floor(r2.call() * 3.0))
+	return p

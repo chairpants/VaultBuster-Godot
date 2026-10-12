@@ -15,6 +15,10 @@ config/description="The video store from the web game, to walk round and edit. T
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
+[autoload]
+
+Clock="*res://clock.gd"
+
 [display]
 
 window/size/viewport_width=1280

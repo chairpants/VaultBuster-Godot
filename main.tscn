@@ -1,8 +1,11 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://world/world.scn" id="2"]
 [ext_resource type="Script" path="res://player.gd" id="3"]
+[ext_resource type="Script" path="res://sky.gd" id="4"]
+[ext_resource type="Script" path="res://interact.gd" id="5"]
+[ext_resource type="Script" path="res://hud.gd" id="6"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.25, 0.45, 0.8, 1)
@@ -19,7 +22,7 @@ sky = SubResource("sky")
 ambient_light_source = 2
 ambient_light_color = Color(1, 0.98, 0.94, 1)
 ambient_light_energy = 0.9
-tonemap_mode = 2
+tonemap_mode = 0
 
 [sub_resource type="CapsuleShape3D" id="capsule"]
 radius = 0.3
@@ -50,3 +53,12 @@ shape = SubResource("capsule")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
 fov = 70.0
 far = 600.0
+
+[node name="Sky" type="Node3D" parent="."]
+script = ExtResource("4")
+
+[node name="Interact" type="Node" parent="."]
+script = ExtResource("5")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("6")
