@@ -324,7 +324,7 @@ func goal_state(g: Dictionary, chk = null) -> Dictionary:  # -> { text, mark: "�
 	if counted:
 		var got: int = checkout.served if g.id == "serve" else stats.signups if g.id == "signup" else stats.upsells if g.id == "upsell" else checkout.rentals
 		return { "text": text, "mark": "✓" if got >= g.n else "✗" if chk != null else "☐", "have": "%d/%d" % [mini(got, g.n), g.n] }
-	var holds: bool = stats.walkouts == 0 if g.id == "noWalk" else chk == null or chk.bin + chk.strays + chk.messes + chk.trash == 0  # (the yes/no ones only count once the day's done, but fail as soon as they fail)
+	var holds: bool = stats.walkouts == 0 if g.id == "noWalk" else chk == null or chk.bin + chk.strays + chk.messes + chk.trash + chk.lights == 0  # (the yes/no ones only count once the day's done, but fail as soon as they fail)
 	return { "text": text, "mark": "✗" if not holds else "✓" if chk != null else "☐", "have": "" }
 
 
@@ -348,10 +348,10 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 		_slip.text = "\n".join(main.get_node("Customer").slip())
 		_layer.visible = true
 		return
-	var chk := { "bin": tapes.return_bin.size(), "strays": chores.strays.size(), "messes": chores.messes.size(),
+	var chk := { "bin": tapes.return_bin.size(), "strays": chores.strays.size(), "messes": chores.messes.size(), "lights": chores.dead.size(),
 		"trash": chores.bins.filter(func(b: Dictionary) -> bool: return b.n >= b.cap * 0.75).size() + chores.bags_down.size() + chores.bag_carry.size() }  # the closing walk-through
 	chk.empty = main.get_node("Snacks").empty_spots().size()
-	var chk_pts: int = -10 * (chk.bin + chk.strays + chk.messes + chk.trash) - 2 * chk.empty
+	var chk_pts: int = -10 * (chk.bin + chk.strays + chk.messes + chk.trash + chk.lights) - 2 * chk.empty
 	checkout.score += chk_pts
 	var gs := goals.map(func(g: Dictionary) -> Dictionary: return goal_state(g, chk))
 	var met := gs.filter(func(g: Dictionary) -> bool: return g.mark == "✓").size()
@@ -405,7 +405,7 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 		_row("SHOPLIFTERS CAUGHT", s.caught), _row("TAPES STOLEN", s.stolen), line,
 		_row("RENTALS", "$%.2f" % (checkout.take - s.fees_collected - s.snack_take - s.tickets * SHOW.ticket)), _row("SNACKS", "$%.2f" % s.snack_take), _row("SHOW TICKETS", "$%.2f" % (s.tickets * SHOW.ticket - s.refunds)), _row("LATE FEES", "$%.2f" % s.fees_collected),
 		_row("FEES WAIVED", "$%.2f" % s.fees_waived), _row("TOTAL TAKE", "$%.2f" % checkout.take), _row("STORE BUDGET", "$%.2f" % budget), line, "CLOSING CHECK",
-		_row("  LEFT IN RETURNS BIN", chk.bin), _row("  MISSHELVED TAPES", chk.strays), _row("  MESSES", chk.messes), _row("  TRASH NOT TAKEN OUT", chk.trash), _row("  EMPTY RACK SPOTS", chk.empty), _row("  POINTS", chk_pts), line, "DAY GOALS",
+		_row("  LEFT IN RETURNS BIN", chk.bin), _row("  MISSHELVED TAPES", chk.strays), _row("  MESSES", chk.messes), _row("  BURNT-OUT LIGHTS", chk.lights), _row("  TRASH NOT TAKEN OUT", chk.trash), _row("  EMPTY RACK SPOTS", chk.empty), _row("  POINTS", chk_pts), line, "DAY GOALS",
 	]
 	for g: Dictionary in gs:
 		rows.append(_row(("  %s %s" % [g.mark, g.text]).left(W - 8), "+$20" if g.mark == "✓" else "-"))

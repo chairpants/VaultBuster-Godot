@@ -9,8 +9,10 @@ extends Node3D
 ## how a grotty store sits with people). Where the tools, bins and chute are: data/interact.json.
 ## And tapes put back in the wrong place (misshelve, strayTake): crooked, half out of the row. E pulls one out;
 ## it wants putting back in its own slot.
+## And ceiling lights that burn out, one every couple of shifts (lightDie, lightFix, deadLightTick): the step
+## ladder's in the janitor's closet too.
 ## Not over yet: the mop's and sweeper's pose in your hands as you work (it stands in front of you, and sways), the
-## heap rising in a bin, the bags' look and sounds, the chute's door, the step ladder and the ceiling tubes that burn out.
+## heap rising in a bin, the bags' look and sounds, the chute's door, climbing the step ladder (carry it under a dark panel and E does the rest).
 
 const MESS := {  # kind -> [what it's called, the tool it wants]
 	"spill": ["spilled soda", "mop"], "wrapper": ["candy wrapper", ""], "popcorn": ["spilled popcorn", "sweeper"],
@@ -23,6 +25,9 @@ var tool_held := ""
 var bins: Array = []  # { id, name, cap, x, z, rimY, r, towels, stand, n, acc, spilled }
 var bag_carry: Array = []  # in your hands: { bin, n }
 var bags_down: Array = []  # set down somewhere: { bin, n, node, x, z }
+var dead: Array = []  # burnt-out ceiling lights: { i (which panel), node, t (still flickering) }
+var _troffers: Array = []  # every ceiling light panel
+var _fix = null  # up the ladder at one: { d, t }
 var strays: Array = []  # tapes shoved in anywhere: { copy, node, at, ry }
 var aim := {}  # what the crosshair's on: { mess } | { tool } | { bin } | { bag } | { chute } | { stray }
 
@@ -44,6 +49,9 @@ func _ready() -> void:
 	for id: String in T.tools:
 		var t: Dictionary = T.tools[id]
 		tools[id] = { "label": t.label, "home": Vector3(t.home[0], t.home[1], t.home[2]), "size": Vector3(t.size[0], t.size[1], t.size[2]), "nodes": [] }
+	tools["ladder"] = { "label": "step ladder", "home": Vector3(T.ladder.home[0], T.ladder.home[1], T.ladder.home[2]), "size": Vector3(T.ladder.size[0], T.ladder.size[1], T.ladder.size[2]), "nodes": [] }
+	for t: Array in T.troffers:
+		_troffers.append(Vector3(t[0], t[1], t[2]))
 	for b: Dictionary in T.bins:
 		b.n = int(b.cap * 0.3 * randf())
 		b.acc = 0.0
@@ -91,8 +99,27 @@ func stray_take(s: Dictionary) -> void:  # off the shelf and into a hand
 	strays.erase(s)
 
 
-func grot() -> int:  # litter, overflowing bins, bags left lying about
-	return messes.size() + bins.filter(func(b: Dictionary) -> bool: return b.n >= b.cap).size() + bags_down.size()
+func light_die(i: int, flicker := 4.0) -> void:  # a tube goes: a few seconds' flicker, then a dark panel (lightDie)
+	if i < 0 or i >= _troffers.size() or dead.any(func(d: Dictionary) -> bool: return d.i == i):
+		return
+	var mi := MeshInstance3D.new()
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(1.78, 0.88)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color.hex(0x1d2026ff)
+	quad.material = m
+	mi.mesh = quad
+	mi.position = _troffers[i] - Vector3(0, 0.004, 0)
+	mi.rotation.x = PI  # (facing down)
+	add_child(mi)
+	dead.append({ "i": i, "node": mi, "t": flicker })
+	if flicker > 0.0:
+		hud.toast("A ceiling light just went out: the step ladder's in the janitor's closet")
+
+
+func grot() -> int:  # litter, overflowing bins, bags left lying about, dead lights
+	return dead.size() + messes.size() + bins.filter(func(b: Dictionary) -> bool: return b.n >= b.cap).size() + bags_down.size()
 
 
 # ---- messes
@@ -241,6 +268,24 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	for d: Dictionary in dead:
+		if d.t > 0.0:
+			d.t -= dt
+			d.node.visible = d.t <= 0.0 or randf() < 0.5
+	if Clock.h >= Clock.OPEN and Clock.h < Clock.LAST_IN and dead.size() < 3 and randf() < dt / 2400.0:  # one every couple of shifts
+		light_die(randi() % _troffers.size())
+	if _fix != null:
+		_fix.t += dt
+		if tool_held != "ladder" or not dead.has(_fix.d):
+			_fix = null
+		elif _fix.t >= 1.8:  # lightFix
+			_fix.d.node.queue_free()
+			dead.erase(_fix.d)
+			_fix = null
+			checkout.score += 10
+			$"../Staff".xp("you", "con", 4.0)
+			$"../Staff".xp("you", "str", 2.0)
+			hud.toast("Up the ladder: swapped the tube in a burnt-out light (+10)")
 	if Clock.h < Clock.CLOSE:  # the customers' through the lobby bin, the staff's lunches, paper towels
 		var in_store: int = shoppers.custs.size()
 		var rate := { "lobby": 0.9 * in_store, "breakroom": 0.4, "restroom": 0.08 * in_store, "counter": 0.1 }
@@ -301,6 +346,11 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 	if not hit or hit_d > 2.4:
 		return ""
 	var at: Vector3 = hit.position
+	for d: Dictionary in dead:  # a dark panel overhead
+		var tr: Vector3 = _troffers[d.i]
+		if absf(at.x - tr.x) < 0.9 and absf(at.z - tr.z) < 0.45 and at.y > tr.y - 0.3:
+			aim = { "light": d }
+			return "E — up the ladder: swap the tube" if tool_held == "ladder" else "A burnt-out light\nneeds the step ladder · janitor's closet"
 	for s: Dictionary in strays:  # a misshelved tape sticks out in front of the row
 		if at.distance_to(s.node.position) < 0.16:
 			aim = { "stray": s }
@@ -333,6 +383,12 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 func on_e() -> bool:
 	if aim.is_empty():
 		return false
+	if aim.has("light"):
+		if tool_held != "ladder":
+			hud.toast("That needs the step ladder: it's in the janitor's closet")
+		elif _fix == null:
+			_fix = { "d": aim.light, "t": 0.0 }  # both hands up on the panel: the old tube out, a new one in
+		return true
 	if aim.has("stray"):
 		if $"../Tapes".inv_make_room():
 			stray_take(aim.stray)
@@ -409,11 +465,13 @@ func snapshot() -> Dictionary:
 	var fill := {}
 	for b: Dictionary in bins:
 		fill[b.id] = b.n
-	return { "strays": strays.map(func(s: Dictionary) -> Array: return [s.copy.k, s.near]), "messes": messes.map(func(m: Dictionary) -> Array: return [m.kind, m.x, m.z]), "bins": fill,
+	return { "dead": dead.map(func(d: Dictionary) -> int: return d.i), "strays": strays.map(func(s: Dictionary) -> Array: return [s.copy.k, s.near]), "messes": messes.map(func(m: Dictionary) -> Array: return [m.kind, m.x, m.z]), "bins": fill,
 		"bags": (bags_down + bag_carry.map(func(g: Dictionary) -> Dictionary: return { "bin": g.bin, "n": g.n, "x": player.global_position.x, "z": player.global_position.z })).map(func(g: Dictionary) -> Array: return [g.bin, g.n, g.x, g.z]) }
 
 
 func restore(d: Dictionary) -> void:
+	for i in d.get("dead", []):
+		light_die(int(i), 0.0)
 	var by := {}
 	for t: Dictionary in $"../Tapes".tapes:
 		by[t.k] = t

@@ -606,7 +606,7 @@ func _check() -> void:
 		tagged = tagged or kid.state == "tagAlong" or mum.state == "tagAlong"  # (whoever's done first waits on the other)
 		await get_tree().process_frame
 	if S.custs.has(mum) or S.custs.has(kid) or not tagged:
-		bad.append("a parent and kid didn't see their visit through together (parent %s, kid %s, tagged along %s)" % [mum.state, kid.state, tagged])
+		bad.append("a parent and kid didn't see their visit through together (parent %s, kid %s, tagged along %s; clerk %s, sale %s)" % [mum.state, kid.state, tagged, $Staff.state, [$Checkout.co.by, $Checkout.co.i, $Checkout.step(), $Checkout.co.get("away", false), $Checkout.co.cust == mum] if $Checkout.co != null else "none"])
 	# the phone: a call answered right; a hold promised, set aside, and handed over when they come in for it
 	var Ph := $Phone
 	var caller: Dictionary = S.members.all[5]
@@ -929,6 +929,24 @@ func _check() -> void:
 	Clock.day = day_was
 	if hw.today.size() != 1 or hw.today[0][1] != "HALLOWEEN" or absf(hw.rush - 1.25) > 0.01 or not lead.lean.has("Horror") or not lead.today.is_empty() or not $Shift.season().lean.is_empty():
 		bad.append("the calendar's wrong about Halloween (%s / %s)" % [hw, lead])
+	# a ceiling light burns out; with the step ladder from the closet it's a new tube
+	Ch.light_die(3)
+	Ch.aim = { "light": Ch.dead[-1] }
+	Ch.on_e()
+	var no_ladder: bool = Ch._fix == null
+	if Ch.tools.ladder.nodes.is_empty():
+		bad.append("the step ladder isn't in the janitor's closet")
+	else:
+		Ch.tool_take("ladder")
+		Ch.aim = { "light": Ch.dead[-1] }
+		Ch.on_e()
+		var started: bool = Ch._fix != null
+		t0 = Time.get_ticks_msec()
+		while not Ch.dead.is_empty() and Time.get_ticks_msec() - t0 < 8000:
+			await get_tree().process_frame
+		if not no_ladder or not Ch.dead.is_empty():
+			bad.append("a burnt-out light didn't get its tube swapped (%d dead, started %s, holding %s, fix %s)" % [Ch.dead.size(), started, Ch.tool_held, Ch._fix])
+		Ch.tool_return()
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day
