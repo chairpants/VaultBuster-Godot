@@ -33,6 +33,7 @@ var _bin_spot := Vector2.ZERO
 var _flap_mid := Vector2.ZERO
 var _by_flap := false
 var _alarm_t := 0.0
+var _step_d := 0.0
 var _target = null
 
 @onready var tapes: Node = $"../Tapes"
@@ -111,6 +112,10 @@ func _process(dt: float) -> void:
 		else:
 			speed = PACE
 			dana.position += Vector3(to.x, 0.0, to.y) / d * minf(d, speed * dt)
+			_step_d += minf(d, speed * dt)
+			if _step_d > 0.7:
+				_step_d = 0.0
+				$"../Ambience".step(dana.position)
 			_ry = atan2(to.x, to.y)
 		# called away: somebody's at the counter and she's out on the floor. Home first
 		if waiting != null and checkout.co == null and state in ["toBin", "toShelf"]:

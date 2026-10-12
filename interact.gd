@@ -64,6 +64,9 @@ func _process(dt: float) -> void:
 			continue
 		d.a += ((d.openA if d.open else 0.0) - d.a) * minf(1.0, dt * 5.0)  # doors ease open and closed; a locked one rattles briefly when tried
 		d.rattle = maxf(0.0, d.rattle - dt)
+		if d.get("closing", false) and absf(d.a) < 0.04:  # (the thump comes when it meets the frame)
+			d.closing = false
+			$"../Ambience".door("wood", "close", _door_at(d))
 		d.pivot.rotation.y = d.base + d.a + (0.012 * sin(d.rattle * 70.0) if d.rattle > 0.0 else 0.0)
 	_front_door(dt)
 	if _hold >= 0.0:
@@ -90,14 +93,21 @@ func _push_door(d: Dictionary, dt: float) -> void:  # whoever's in the doorway s
 	if absf(along) < DOOR_W / 2.0 + 0.2 and absf(across) < 0.8 and absf(p.y) < 2.2:
 		if d.side == 0:
 			d.side = -1 if across > 0.0 else 1  # opens away from you; holds that way until the doorway's clear
+			if absf(d.a) < 0.15:
+				$"../Ambience".door("push", "open", _door_at(d))
 	else:
 		d.side = 0
 	var target: float = PI / 2.0 * 0.95 * d.hinge * (d.side if d.alongX else -d.side) if d.side else 0.0
 	d.v += ((90.0 if d.side else 30.0) * (target - d.a) - (16.0 if d.side else 2.2) * d.v) * dt  # pushed: quick and firm; let go: a loose spring
 	d.a += d.v * dt
+	if absf(d.v) > 0.4:
+		d.moving = true
 	if d.side == 0 and absf(d.a) < 0.002 and absf(d.v) < 0.01:
 		d.a = 0.0
 		d.v = 0.0
+		if d.get("moving", false):
+			d.moving = false
+			$"../Ambience".door("push", "settle", _door_at(d))
 	d.pivot.rotation.y = d.base + d.a
 
 
@@ -107,13 +117,19 @@ func _front_door(dt: float) -> void:  # anyone right at the door: it swings open
 	var p := player.global_position
 	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5 and not things.locked or shoppers.at_the_door()
 	if near:
+		if not front.open:  # (the chime rings)
+			$"../Ambience".door("push", "open", Vector3(0.9, 1.1, 0.1))
+			$"../Ambience".chime(Vector3(shoppers._door.x, 2.3, 0.2))
 		front.open = true
 		front.hold = 0.7
 	elif front.open:
 		front.hold -= dt
 		if front.hold <= 0.0:
 			front.open = false
+	var was: float = front.k
 	front.k = clampf(front.k + (2.2 if front.open else -1.3) * dt, 0.0, 1.0)
+	if was > 0.0 and front.k == 0.0:
+		$"../Ambience".door("push", "settle", Vector3(0.9, 1.1, 0.1))
 	front.leaf.rotation.y = front.openA * (1.0 - pow(1.0 - front.k, 2.0))
 
 
@@ -238,10 +254,19 @@ func toggle_door(d: Dictionary) -> void:
 		return  # push doors aren't opened, they're walked through
 	if d.locked:
 		d.rattle = 0.35  # just jiggles in its frame
+		$"../Ambience".door("wood", "rattle", _door_at(d))
 		return
 	if _player_in(d.shut if d.open else d.openBox):
 		return  # you're standing where it would swing to
 	d.open = not d.open
+	if d.open:
+		$"../Ambience".door("wood", "open", _door_at(d))
+	else:
+		d.closing = true
+
+
+func _door_at(d: Dictionary) -> Vector3:
+	return Vector3((d.shut.x0 + d.shut.x1) / 2.0, 1.05, (d.shut.z0 + d.shut.z1) / 2.0)
 
 
 func _player_in(c: Dictionary) -> bool:

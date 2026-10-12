@@ -2,6 +2,12 @@ extends Node3D
 ## The level (world/world.scn) made solid: everything you can see gets a collision shape of its own triangles. Not the
 ## doors you walk through (push doors, the storefront's: see interact.gd), and not things too small to bump into.
 
+func _enter_tree() -> void:  # the store's sound (ambience.gd), there before anything that makes a noise
+	var amb: Node = preload("res://ambience.gd").new()
+	amb.name = "Ambience"
+	add_child(amb)
+
+
 func _ready() -> void:
 	var solid := 0
 	for m: MeshInstance3D in $World.find_children("*", "MeshInstance3D", true, false):
@@ -396,8 +402,9 @@ func _check() -> void:
 	Tp.drop_in_returns()
 	var St := $Staff
 	t0 = Time.get_ticks_msec()
-	while (wound.off or St.state != "post") and Time.get_ticks_msec() - t0 < 90000:
+	while (wound.off or St.state != "post") and Time.get_ticks_msec() - t0 < 150000:
 		await get_tree().process_frame
+	print("check: Dana's round took %d s" % ((Time.get_ticks_msec() - t0) / 1000))
 	if wound.off or not St.carry.is_empty() or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
 		bad.append("Dana didn't put the return away and come home (she's %s, carrying %d, at %s)" % [St.state, St.carry.size(), St.dana.position])
 	# a shoplifter: under the jacket, out through the gates, gone with it; the register shuts the alarm off

@@ -293,6 +293,7 @@ func on_e() -> bool:
 			pass  # (a tap does nothing: it wants holding)
 		"cooler":
 			cooler_open = not cooler_open
+			$"../Ambience".door("cooler", "open" if cooler_open else "close", Vector3(T.cooler.pivot[0], 1.1, T.cooler.pivot[2]))
 		"lock":
 			locked = not locked
 			_block.get_child(0).disabled = not locked
@@ -301,8 +302,10 @@ func on_e() -> bool:
 		"flush":
 			if flush_t <= 0.0:
 				flush_t = 6.0
+				$"../Ambience".flush(_v(T.flush.at))
 		"sink":
 			tap = not tap
+			$"../Ambience".water(_v(T.sink.at), tap)
 			_stream.visible = tap
 		"towels":
 			hud.toast("Turn the tap off first" if tap else "You dry your hands")

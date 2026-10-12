@@ -82,6 +82,7 @@ func _ready() -> void:
 	_beeper.stream = wav
 	_beeper.volume_db = -16.0
 	_beeper.unit_size = 6.0
+	_beeper.bus = "Store"
 	_beeper.position = Vector3(0.0, 1.5, GATE_Z)
 	add_child(_beeper)
 	call_deferred("_browse_spots")  # (once the tapes have found themselves)
@@ -716,6 +717,10 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			speed = who.speed * (1.4 if cust.state == "outside" and not cust.paid and cust.holding > 0 else 1.0)  # storming out
 			var step := minf(d, speed * dt)
 			c.position += Vector3(to.x, 0.0, to.y) / d * step
+			cust.step_d = cust.get("step_d", 0.0) + step  # footsteps
+			if cust.step_d > 0.7:
+				cust.step_d = 0.0
+				$"../Ambience".step(c.position)
 			cust.ry = atan2(to.x, to.y)
 			for door: Dictionary in interact.doors:  # open any unlocked closed door right in front of them
 				if not door.open and not door.locked and not door.push:

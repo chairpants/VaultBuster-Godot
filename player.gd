@@ -19,6 +19,7 @@ var fly := false
 var seat = null  # the seat you're in (one of interact.gd's), or null
 var seat_fov := FOV  # sat down, the mouse wheel zooms; getting up puts it back
 var crouched := false
+var _step_d := 0.0
 var climb = null  # on a ladder: { dir (1 up, -1 down), L (the ladder's climb), t, ... } (see fixtures.gd)
 
 @onready var cam: Camera3D = $Camera
@@ -125,6 +126,11 @@ func _physics_process(dt: float) -> void:
 	else:
 		velocity.y -= 9.8 * dt
 	move_and_slide()
+	if is_on_floor():  # your own footsteps, quieter (you're wearing sneakers)
+		_step_d += Vector2(get_real_velocity().x, get_real_velocity().z).length() * dt
+		if _step_d > (0.95 if speed > 4.0 else 0.72):
+			_step_d = 0.0
+			$"../Ambience".step(global_position, 0.35 if crouched else 0.6)
 
 
 func _key(k: Key) -> float:
