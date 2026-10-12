@@ -1020,7 +1020,24 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 						things.cooler_open = false
 						cust.opened_cooler = false
 					c.set_pose("hold" if cust.holding > 0 else "idle")
-					_done(cust)
+					if cust.get("upsell", false):  # talked into it at the register: back to finish paying
+						cust.upsell = false
+						go(cust, "coBack", _counter)
+					else:
+						_done(cust)
+			"coBack":  # back at the register with the snack
+				cust.state = "checkout"
+				c.set_pose("wait")
+				c.set_mood("happy")
+				if checkout.co != null and checkout.co.cust == cust:
+					checkout.co.away = false
+					checkout.co.idle = 0.0
+					if cust.snacks.size() > cust.get("snacks_before", 0):
+						checkout.co.pts += 40
+					else:
+						hud.toast("%s came back empty-handed: that rack's cleaned out" % cust.name)
+					checkout.rebill()
+					checkout._skip()
 			"toAsk":  # at the counter: "excuse me..."
 				cust.state = "asking"
 				cust.t = 75.0 * who.patience

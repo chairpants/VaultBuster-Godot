@@ -22,6 +22,7 @@ const LOT := Vector3(2.6, 0.3, -3.4)  # ...and out to
 
 var wallet := 40.0
 var owed := 0.0
+var tab := 0.0  # what you've eaten and not paid for
 var trust := 0.0
 var strikes := 0
 var today := 0  # times caught today
@@ -164,7 +165,15 @@ func _price(t: Dictionary) -> float:
 
 
 func total() -> float:
-	return snappedf(_unpaid().reduce(func(a: float, t: Dictionary) -> float: return a + _price(t), 0.0) + owed, 0.01)
+	return snappedf(_unpaid().reduce(func(a: float, t: Dictionary) -> float: return a + _price(t), 0.0) + owed + tab + (_snack().price(_snack().held.u) if _snack_due() else 0.0), 0.01)
+
+
+func _snack() -> Node:
+	return $"../Snacks"
+
+
+func _snack_due() -> bool:  # one in your hand you haven't paid for (or started on)
+	return _snack().held != null and not _snack().held.paid
 
 
 func sees(e: Node3D) -> bool:  # can they see you? Looking your way (or right next to you), close enough, the light on where you are, and nothing in between. Running, they hear you instead
@@ -229,6 +238,9 @@ func pay() -> void:  # E on whoever's on the register, across the counter from t
 	day.rented += due.size()
 	day.fees += owed
 	owed = 0.0
+	tab = 0.0
+	if _snack_due():
+		_snack().held.paid = true
 	trust = minf(100.0, trust + 4.0 + due.size())
 	_who().set_mood("happy")
 	hud.toast("Dana rings you up: $%.2f%s. “Thanks! Be kind, rewind.”%s" % [sum, " (regular's discount)" if was else "", " %d tape%s, due back day %d" % [due.size(), "" if due.size() == 1 else "s", Clock.day + 3] if not due.is_empty() else ""])
@@ -244,6 +256,10 @@ func caught(why: String) -> void:  # why: "staff" (somewhere you shouldn't be) |
 	if tapes.held != null and taken.has(tapes.held):
 		tapes.release()
 	tapes.inv_stash()
+	if _snack_due():  # (back on the rack)
+		_snack().set_out(_snack().held.u, false)
+		_snack().held = null
+	tab = 0.0
 	heat = 0.0
 	strikes += 1
 	today += 1
@@ -289,7 +305,7 @@ func _process(dt: float) -> void:  # cmTick
 		things.aim = ""
 		hud.toast("10:00 AM — %s flips the sign: they're open" % (preload("res://staff.gd").speaker if _who() != null else "somebody"))
 	var inside := p.y > 3.3 or (p.z > 0.05 and p.z < 46.0 and absf(p.x) < 12.7)
-	if _inside and not inside and not _unpaid().is_empty():  # out through the doors with something you haven't paid for
+	if _inside and not inside and (not _unpaid().is_empty() or _snack_due() or tab > 0.0):  # out through the doors with something you haven't paid for
 		if seen():
 			caught("theft")
 		else:  # nobody saw: it's yours now (cmGotAway)
@@ -298,6 +314,10 @@ func _process(dt: float) -> void:  # cmTick
 				t.desens = true
 				shift.stats.stolen += 1
 				day.stolen += 1
+			if _snack_due():
+				_snack().held.paid = true
+				day.stolen += 1
+			tab = 0.0
 			hud.toast("Nobody saw a thing. It's yours now")
 	if not _inside and inside and _nagged != Clock.day and banned != Clock.day:  # in the door with something overdue: they mention it
 		var late := rented.values().filter(func(due: int) -> bool: return due > 0 and Clock.day > due).size()
@@ -751,7 +771,7 @@ func drop_e() -> bool:
 # ---- for the save
 
 func snapshot() -> Dictionary:
-	return { "wallet": wallet, "owed": owed, "trust": trust, "strikes": strikes, "today": today, "banned": banned, "card": card, "rented": rented, "day": day, "opened": _opened, "rec": rec, "record": record, "crew": crew, "fav": fav, "app": app, "fav_day": _fav_day }
+	return { "wallet": wallet, "owed": owed, "tab": tab, "trust": trust, "strikes": strikes, "today": today, "banned": banned, "card": card, "rented": rented, "day": day, "opened": _opened, "rec": rec, "record": record, "crew": crew, "fav": fav, "app": app, "fav_day": _fav_day }
 
 
 func restore(d: Dictionary) -> void:
@@ -759,6 +779,7 @@ func restore(d: Dictionary) -> void:
 		return
 	wallet = d.wallet
 	owed = d.owed
+	tab = d.get("tab", 0.0)
 	trust = d.trust
 	strikes = int(d.strikes)
 	today = int(d.today)

@@ -8,7 +8,8 @@ extends Node
 ## Members' accounts are in (members.gd): what's rung up goes on theirs, late fees are charged at the counter (or
 ## waived, with Q), and how it went is how they feel about the place after.
 ## Snacks and drinks off the racks are rung up with the tapes, or by themselves (no card, then: just the cash).
-## Not over yet: sign-ups, the snack offer and the snack offer, show
+## Q on the customer mid-sale offers them a snack: some go and get one, and come back to pay.
+## Not over yet: sign-ups and the snack offer, show
 ## tickets, the drawer opening, the receipt coming out of the printer, the terminal's own screens.
 ## E on the register with no sale waiting on it logs in to its terminal (pos.gd).
 
@@ -53,7 +54,7 @@ func _process(dt: float) -> void:
 	if not shoppers.custs.has(co.cust):  # (they've gone)
 		co = null
 		return
-	co.idle += dt
+	co.idle += 0.0 if co.get("away", false) else dt  # (off getting the snack you talked them into: the clock's stopped)
 	if co.by == "player" and co.idle > 45.0:  # left standing there mid-sale: they give up on it
 		var k: Dictionary = co.cust
 		co = null
@@ -79,6 +80,8 @@ func _steps() -> Array:
 func tip() -> String:  # what the step in hand wants doing
 	if co == null:
 		return ""
+	if co.get("away", false):
+		return "they're grabbing a snack…"
 	var n: int = co.cust.tapes.size()
 	var what: String = co.cust.tapes[0].t if n == 1 else "%d tapes" % n
 	match step()[0]:
@@ -145,7 +148,7 @@ func _skip() -> void:  # past any step this sale doesn't need
 
 
 func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
-	if co == null:
+	if co == null or co.get("away", false):
 		return false
 	var s := step()
 	if s.is_empty():
@@ -272,10 +275,55 @@ func fees(charge: bool) -> void:  # late fees on their account: charge them (mon
 
 
 func _unhandled_input(e: InputEvent) -> void:  # Q at the counter: waive their late fees (coQ)
-	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_Q and co != null and co.by == "player" and step()[0] == "fees" and shoppers.aim == co.cust:
-		fees(false)
-		co.i += 1
-		_skip()
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_Q and co != null and co.by == "player" and shoppers.aim == co.cust and not co.get("away", false):
+		if step()[0] == "fees":
+			fees(false)
+			co.i += 1
+			_skip()
+		else:
+			offer()
+
+
+func rebill() -> void:  # the total changed (a snack added): new total, what they hand over, the change (coRebill)
+	var k: Dictionary = co.cust
+	var total: float = co.fees + k.get("tickets", 0) * $"../Shift".SHOW.ticket
+	for t: Dictionary in k.tapes:
+		total += price(t)
+	for u: Dictionary in k.snacks:
+		total += $"../Snacks".price(u)
+	co.total = snappedf(total, 0.01)
+	var bills: Array = [1.0, 5.0, 10.0, 20.0, 50.0, 100.0].filter(func(b: float) -> bool: return b >= co.total)
+	co.bill = co.total if randf() < 0.25 else bills[0] if not bills.is_empty() else ceilf(co.total / 20.0) * 20.0
+	co.change = snappedf(co.bill - co.total, 0.01)
+
+
+func offer() -> void:  # "grab a snack for the movie?": they'll go get it and come back to pay (coOffer)
+	var cash_at := STEPS.map(func(s: Array) -> String: return s[0]).find("cash")
+	var racks: Array = $"../Snacks".spots.filter(func(s: Dictionary) -> bool: return s.units.any(func(u: Dictionary) -> bool: return not u.out))
+	if co.get("kind", "") == "signup" or co.get("offered", false) or co.i > cash_at or racks.is_empty():
+		return
+	var k: Dictionary = co.cust
+	var Staff := preload("res://staff.gd")
+	co.offered = true
+	k.hi = 1.6
+	var sweet := fposmod(k.who.seed * 0.6180339887, 1.0)  # (a sweet tooth: how easily a snack's talked up)
+	var yes := randf() < 0.12 + 0.6 * sweet + 0.025 * (Staff.lv("you", "cha") - 1) - (0.3 if not k.snacks.is_empty() else 0.0) - (0.2 if k.c.mood in ["impatient", "angry"] else 0.0)
+	$"../Staff".xp("you", "cha", 6.0 if yes else 1.0)
+	if not yes:
+		k.c.set_mood("meh")
+		hud.toast("Offered %s a snack: “No thanks, I'm good”" % k.name)
+		return
+	$"../Shift".stats.upsells += 1
+	hud.toast("Offered %s a snack: “Ooh, yeah. Hang on a sec”" % k.name)
+	co.away = true
+	k.upsell = true
+	k.snacks_before = k.snacks.size()
+	k.hi = 0.0
+	k.c.hold_prop(null)
+	k.c.set_mood("happy")
+	k.c.set_pose("hold" if k.holding > 0 else "idle")
+	racks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return Vector2(a.x - shoppers._counter.x, a.z - shoppers._counter.z).length() < Vector2(b.x - shoppers._counter.x, b.z - shoppers._counter.z).length())
+	shoppers.go(k, "snack", racks[0])  # the nearest rack with anything left
 
 
 # ---- the crosshair on the register, the pad or the printer (called from interact.gd)

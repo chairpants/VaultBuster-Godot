@@ -806,7 +806,10 @@ func _check() -> void:
 	Cu.rec = {}
 	Cu.recommend(St)
 	Cu.day.goals = [{ "id": "pick", "done": false, "miss": false }, { "id": "money", "done": false, "miss": false }]
-	var rec_tape: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return t.t == Cu.rec.get("title", "") and not t.off and not Tp._corners(t).is_empty())[0]
+	if Cu.rec.is_empty():
+		bad.append("nobody on staff had a pick")
+	Cu.rec = { "title": pickd.t, "cat": pickd.c, "by": St.first, "day": Clock.day, "done": false }  # (one the check can get off the shelf)
+	var rec_tape: Dictionary = pickd
 	Cu.banned = 0
 	Tp.pickup(rec_tape)
 	Cu.pay()
@@ -901,6 +904,22 @@ func _check() -> void:
 	Po.log_off()
 	if St.roster.size() != 2 or St.crew.size() != 2 or absf(budget0 - 250.0 - $Shift.budget) > 0.01 or St.hours(St.roster[1], 1) != 5 or St.crew[1].first != St.roster[1].first:
 		bad.append("hiring on the terminal didn't put somebody on the roster (%d on it, %d nodes, $%.2f spent)" % [St.roster.size(), St.crew.size(), budget0 - $Shift.budget])
+	# a snack of your own: taken, eaten, the empty in a bin. And the staff fill an empty spot from the cupboard
+	var mine: Dictionary = Sn.units.filter(func(u: Dictionary) -> bool: return not u.out)[0]
+	Sn.aim = { "take": mine }
+	Sn.on_e()
+	Sn.held.left = 0  # (eaten)
+	var empty: String = Sn.holding()
+	Ch.aim = { "bin": Ch.bins[0] }
+	Ch.on_e()
+	if not mine.out or Sn.held != null or not "take it to the trash" in empty:
+		bad.append("a snack didn't get eaten and thrown away (%s)" % empty)
+	St._ring_t = 0.0
+	t0 = Time.get_ticks_msec()
+	while mine.out and Time.get_ticks_msec() - t0 < 120000:
+		await get_tree().process_frame
+	if mine.out:
+		bad.append("nobody on staff restocked an empty rack spot (%s is %s)" % [St.first, St.state])
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

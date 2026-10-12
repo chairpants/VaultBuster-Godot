@@ -358,6 +358,11 @@ func on_e() -> bool:
 			tool_take(aim.tool)
 	elif aim.has("bin"):  # binBag
 		var b: Dictionary = aim.bin
+		var sn: Node = $"../Snacks"
+		if sn.held != null and sn.held.left <= 0:  # an empty: in it goes
+			sn.held = null
+			trash_add(b)
+			return true
 		if $"../Shift".mode == "customer":  # (a customer digs through it)
 			$"../Trail".search_bin(b)
 			return true

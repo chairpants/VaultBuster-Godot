@@ -19,7 +19,7 @@ const W := 34  # the slip's width
 const GOALS := {  # two a day. n: how many, by the day (the yes/no ones have none)
 	"serve": ["Ring up %d customers", 6, 2.0, 30], "rent": ["Rent out %d tapes", 8, 3.0, 40],
 	"noWalk": ["Nobody walks out"], "tidy": ["A clean closing check"],
-	"signup": ["Sign up %d new members", 1, 0.3334, 4],  # (simulation only)
+	"signup": ["Sign up %d new members", 1, 0.3334, 4], "upsell": ["Sell %d snacks at the counter", 2, 0.5, 8],  # (simulation only)
 }
 
 var stats := {}
@@ -83,7 +83,7 @@ func _ready() -> void:
 
 
 func _fresh() -> Dictionary:
-	return { "visitors": 0, "returns": 0, "walkouts": 0, "stolen": 0, "caught": 0, "fees_collected": 0.0, "fees_waived": 0.0, "snack_take": 0.0, "tickets": 0, "refunds": 0.0, "signups": 0 }
+	return { "visitors": 0, "returns": 0, "walkouts": 0, "stolen": 0, "caught": 0, "fees_collected": 0.0, "fees_waived": 0.0, "snack_take": 0.0, "tickets": 0, "refunds": 0.0, "signups": 0, "upsells": 0 }
 
 
 func sim() -> bool:
@@ -283,7 +283,7 @@ func goal_state(g: Dictionary, chk = null) -> Dictionary:  # -> { text, mark: "�
 	var counted: bool = GOALS[g.id].size() > 1
 	var text: String = GOALS[g.id][0] % g.n if counted else GOALS[g.id][0]
 	if counted:
-		var got: int = checkout.served if g.id == "serve" else stats.signups if g.id == "signup" else checkout.rentals
+		var got: int = checkout.served if g.id == "serve" else stats.signups if g.id == "signup" else stats.upsells if g.id == "upsell" else checkout.rentals
 		return { "text": text, "mark": "✓" if got >= g.n else "✗" if chk != null else "☐", "have": "%d/%d" % [mini(got, g.n), g.n] }
 	var holds: bool = stats.walkouts == 0 if g.id == "noWalk" else chk == null or chk.bin + chk.strays + chk.messes + chk.trash == 0  # (the yes/no ones only count once the day's done, but fail as soon as they fail)
 	return { "text": text, "mark": "✗" if not holds else "✓" if chk != null else "☐", "have": "" }
@@ -362,7 +362,7 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 		"VAULTBUSTER VIDEO #0417".lpad(28), "END OF SHIFT".lpad(23), "",
 		_row("%s %02d/%02d/%s" % [Clock.weekday(), d.month, d.day, str(d.year).right(2)], "DAY %d" % Clock.day), _row("CLOCKED OUT", Clock.fmt_clock(Clock.h)), line,
 		_row("CUSTOMERS IN", s.visitors), _row("RUNG UP", checkout.served), _row("WALKED OUT", s.walkouts),
-		_row("TAPES RENTED", checkout.rentals), _row("RETURNS CHECKED IN", s.returns),
+		_row("TAPES RENTED", checkout.rentals), _row("RETURNS CHECKED IN", s.returns), _row("SNACK UPSELLS", s.upsells),
 		_row("SHOPLIFTERS CAUGHT", s.caught), _row("TAPES STOLEN", s.stolen), line,
 		_row("RENTALS", "$%.2f" % (checkout.take - s.fees_collected - s.snack_take - s.tickets * SHOW.ticket)), _row("SNACKS", "$%.2f" % s.snack_take), _row("SHOW TICKETS", "$%.2f" % (s.tickets * SHOW.ticket - s.refunds)), _row("LATE FEES", "$%.2f" % s.fees_collected),
 		_row("FEES WAIVED", "$%.2f" % s.fees_waived), _row("TOTAL TAKE", "$%.2f" % checkout.take), _row("STORE BUDGET", "$%.2f" % budget), line, "CLOSING CHECK",

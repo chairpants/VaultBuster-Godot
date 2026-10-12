@@ -8,7 +8,8 @@ extends Node
 ## (snackLane, laneFront, laneBack) and store/checkout.js (emptySpots, stockTake, stockReturn, stockPlace). What's on
 ## the racks, and where the cupboards are: data/interact.json; each unit's own node in the level is found by where
 ## it sits.
-## Not over yet: taking one yourself (eating, drinking, the empties), warm drinks and the cooler's thermostat, the
+## E on one takes it for yourself: click to eat or drink, and the empty goes in a bin.
+## Not over yet: warm drinks and the cooler's thermostat, the
 ## snack offer at the register, ordering more (a new store has a case of everything), Dana restocking, what a
 ## customer's carrying showing in their hand.
 
@@ -20,6 +21,7 @@ var spots: Array = []  # in front of each fixture, where a shopper can reach it:
 var backstock := {}  # product name -> count in the cupboards
 var orders := {}  # ordered on the register, here tomorrow morning: product name -> how many
 var carry: Array = []  # rack units you're carrying as stock (the unit is just its look: any empty spot of that product will take it)
+var held = null  # the one in your hand: { u, left, total, paid }
 var aim := {}  # { cupboard: "drinks" | "food" } | { spot: unit }
 
 var _lanes := {}  # lane -> its units, frontmost (then topmost) first
@@ -110,8 +112,25 @@ func pick(spot: Dictionary):  # what a shopper would grab here: a product, then 
 	return null
 
 
+func holding() -> String:  # what's in your hand, for the HUD
+	if held == null:
+		return ""
+	var drink: bool = held.u.k != ""
+	return "%s · %d %s%s left · click to %s" % [held.u.n.capitalize(), held.left, "sip" if drink else "bite", "" if held.left == 1 else "s", "drink" if drink else "eat"] if held.left > 0 else "Empty %s %s · take it to the trash" % [held.u.n.capitalize(), "can" if drink else "wrapper"]
+
+
+func _unhandled_input(e: InputEvent) -> void:  # a click: a bite, a sip (consumeSnack)
+	if held == null or held.left <= 0 or $"../Tapes".held != null or not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
+	if not held.paid:  # (a customer: eaten before it's paid for goes on your tab)
+		held.paid = true
+		$"../Customer".tab += price(held.u)
+	held.left -= 1
+	get_viewport().set_input_as_handled()
+
+
 func empty_spots() -> Array:  # rack spots with nothing on them, that nobody's holding
-	return units.filter(func(u: Dictionary) -> bool: return u.out and not carry.has(u) and not shoppers.custs.any(func(k: Dictionary) -> bool: return k.snacks.has(u)))
+	return units.filter(func(u: Dictionary) -> bool: return u.out and not carry.has(u) and not (held != null and held.u == u and held.left == held.total) and not preload("res://staff.gd").crew.any(func(e: Node) -> bool: return e._restock != null and e._restock.got.has(u)) and not shoppers.custs.any(func(k: Dictionary) -> bool: return k.snacks.has(u)))
 
 
 # ---- the crosshair on a cupboard or an empty spot (called from interact.gd)
@@ -128,7 +147,19 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 			var n := empty_spots().filter(func(u: Dictionary) -> bool: return (u.k != "") == drinks).size()
 			var mine := carry.filter(func(u: Dictionary) -> bool: return (u.k != "") == drinks).size()
 			return "E — grab what the %s racks are missing (%d)" % ["drink" if drinks else "snack", n] if n > 0 else "E — put the stock back" if mine > 0 else "The %s cupboard\nthe racks are full" % ("drinks" if drinks else "snacks")
-	if carry.is_empty():
+	if held != null:
+		if held.left == held.total and at.distance_to(held.u.at) < 0.16:
+			aim = { "putback": true }
+			return "E — put the %s back" % held.u.n.capitalize()
+		return ""
+	if carry.is_empty():  # one for yourself
+		var near = null
+		for u: Dictionary in units:
+			if not u.out and u.claim == null and at.distance_to(u.at) < (0.1 if near == null else at.distance_to(near.at)):
+				near = u
+		if near != null:
+			aim = { "take": near }
+			return "E — take the %s ($%.2f)" % [near.n.capitalize(), price(near)]
 		return ""
 	var best = null
 	for u: Dictionary in units:
@@ -168,6 +199,16 @@ func on_e() -> bool:
 				carry.append(u)
 				got += 1
 		hud.toast("Grabbed %d to restock%s%s" % [got, " (hands full: come back for the rest)" if got < need.size() - out.size() else "", " · out of %s" % ", ".join(out.keys().slice(0, 2)) if not out.is_empty() else ""] if got > 0 else "Out of stock")
+		return true
+	if aim.has("take"):
+		var u: Dictionary = aim.take
+		set_out(u, true)
+		var n := 8 if u.k != "" else 4
+		held = { "u": u, "left": n, "total": n, "paid": $"../Shift".mode != "customer" }
+		return true
+	if aim.has("putback"):
+		set_out(held.u, false)
+		held = null
 		return true
 	if aim.has("spot"):  # stockPlace: out it goes, at the back of its lane
 		var want: Dictionary = aim.spot

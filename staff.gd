@@ -12,7 +12,8 @@ extends Node
 ## From the web game's store/staff.js (EMP_POST, empAt, the "post" state, toShelf / shelve, defaultSched, onDuty,
 ## danaStartJob's cleanup, JOBS and their priorities; SKILLS, MILESTONES, xpToNext, lv, has, gainXp, empWage;
 ## rollApplicant, DANA_APP, makeEmployee, hireCost, STAFF_MAX) and store/customer-mode.js (cmRoster).
-## Not over yet: the jobs with nothing here to do yet (floor help, restocking the racks), lunch, the stool, chatting,
+## They restock the racks from the cupboards too (danaRestockStart ... stockPut).
+## Not over yet: floor help (fetching what's asked for at the counter), lunch, the stool, chatting,
 ## an applicant's own look (a hire wears one of the cast's clothes), what the INT and WIS unlocks light up. They put
 ## a tape away rewound without a trip to the rewinder, and carry a bag of trash without it showing.
 
@@ -33,7 +34,7 @@ const MILESTONES := {  # level -> [name, what it does, staff get it too]
 	"con": { 5: ["Second Wind", "sprint 15% faster", false], 10: ["Neat Freak", "cleaning a mess sweeps up others within 3m", false] },
 	"wis": { 5: ["Sixth Sense", "shoplifters glow red", false], 10: ["Stern Look", "a shoplifter you stare down gives up 85% of the time", false] },
 }
-const JOBS := { "register": ["REGISTER", 1], "phone": ["PHONES", 2], "returns": ["RETURNS", 3], "cleanup": ["CLEANUP", 4] }  # [name, default priority: 1 first, 0 never]
+const JOBS := { "register": ["REGISTER", 1], "phone": ["PHONES", 2], "returns": ["RETURNS", 3], "restock": ["RESTOCK", 3], "cleanup": ["CLEANUP", 4] }  # [name, default priority: 1 first, 0 never]
 const FIRST_F := ["Dana", "Tina", "Kim", "Stacy", "Jen", "Lisa", "Amy", "Becky", "Tanya", "Rhonda", "Gina", "Missy", "Carla", "Wendy", "Trish", "Nikki", "Shawna", "Heather"]
 const FIRST_M := ["Kevin", "Troy", "Duane", "Chad", "Marcus", "Todd", "Ray", "Eddie", "Jason", "Luis", "Derek", "Kyle", "Brian", "Andre", "Shane", "Gary", "Manny", "Rob"]
 const LASTS := ["Reyes", "Kowalski", "Nguyen", "Brennan", "Okafor", "Delgado", "Murphy", "Patel", "Hendricks", "Lund", "Castillo", "Baker", "Ortiz", "Sato", "Fitzgerald", "Novak", "Harlan", "Pruitt"]
@@ -71,6 +72,8 @@ var _mess = null
 var _stray = null
 var _trash = null  # the bin, or the bag on the floor, they're after
 var _bag = null  # the bag in their hands
+var _restock = null  # filling the racks: { kind, units, got, n }
+var _opened_cooler := false
 var _on_always := not OS.get_cmdline_user_args().is_empty()  # (the tests: the first of them is always in)
 var _clock_t := 0.0
 var _target = null
@@ -218,7 +221,8 @@ func hire(w: Dictionary) -> void:  # onto the roster: five 5-hour shifts, stagge
 			w.sched[(3 + i * 2 + k) % 7] |= 31 << (3 if i % 2 == 1 else 8)  # 12-5 PM / 5-10 PM
 	if not w.has("jobs"):
 		w.jobs = {}
-		for id: String in JOBS:
+	for id: String in JOBS:  # (a job that's new since they were hired: its usual place)
+		if not w.jobs.has(id):
 			w.jobs[id] = JOBS[id][1]
 	roster.append(w)
 	if i == 0:
@@ -284,6 +288,7 @@ func send_home() -> void:  # they went home overnight: in when their shifts star
 	_mess = null
 	_trash = null
 	_bag = null
+	_restock_end(true)
 
 
 # ---- one of them
@@ -386,7 +391,8 @@ func _process(dt: float) -> void:
 				$"../Ambience".step(dana.position)
 			_ry = atan2(to.x, to.y)
 		# called away: somebody's at the counter, nobody's at the register, and they're out on the floor. Home first
-		if waiting != null and checkout.co == null and crew[0].clerk() == null and _pri("register") < 9 and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag", "toStray"]:
+		if waiting != null and checkout.co == null and crew[0].clerk() == null and _pri("register") < 9 and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag", "toStray", "stockGo", "stockTo"]:
+			_restock_end(true)
 			_trash = null
 			_mess = null
 			_go(Vector2(_post.x, _post.z), "toPost")
@@ -411,6 +417,42 @@ func _process(dt: float) -> void:
 						checkout.score += 5
 					_stray = null
 					_next()
+			"stockGo":  # at the cupboard: in for what the racks need
+				dana.reach_to(_cupboard(_restock.kind))
+				state = "stockGrab"
+				_t = 1.0
+			"stockGrab":
+				if _t <= 0.0:
+					dana.reach_to(null)
+					var sn: Node = $"../Snacks"
+					var free: Array = sn.empty_spots()
+					for u: Dictionary in _restock.units:
+						if free.has(u) and sn.backstock[u.n] > 0:
+							sn.backstock[u.n] -= 1
+							_restock.got.append(u)
+					_restock.units = []
+					_restock_next()
+			"stockTo":
+				var u: Dictionary = _restock.got[0]
+				var things: Node = $"../Things"
+				if u.k != "" and not things.cooler_open:
+					things.cooler_open = true
+					_opened_cooler = true
+				dana.reach_to(u.at)
+				state = "stockPut"
+				_t = 0.8
+			"stockPut":
+				if _t <= 0.0:
+					var u: Dictionary = _restock.got.pop_front()
+					dana.reach_to(null)
+					if u.out:
+						$"../Snacks".set_out(u, false)
+						checkout.score += 3
+						_restock.n += 1
+						crew[0].xp(self, "str", 2.0)
+					else:
+						$"../Snacks".backstock[u.n] += 1  # somebody beat them to it
+					_restock_next()
 			"toExit":  # gone home
 				dana.queue_free()
 				dana = null
@@ -570,7 +612,7 @@ func _at_post(dt: float, waiting) -> void:
 	if not carry.is_empty():  # (called away mid-round: on with it)
 		_next()
 		return
-	var jobs: Array = ["returns", "cleanup"].filter(func(j: String) -> bool: return _pri(j) < 9)  # the job board's order
+	var jobs: Array = ["returns", "restock", "cleanup"].filter(func(j: String) -> bool: return _pri(j) < 9)  # the job board's order
 	jobs.sort_custom(func(a: String, b: String) -> bool: return _pri(a) < _pri(b))
 	for job: String in jobs:
 		if job == "returns" and not tapes.return_bin.is_empty() and not crew.any(func(e: Node) -> bool: return e != self and e.state in ["toBin", "binTake"]):
@@ -582,8 +624,63 @@ func _at_post(dt: float, waiting) -> void:
 				_stray = free[0]
 				_go(Vector2(_stray.at.x + cos(_stray.ry) * 0.8, _stray.at.z - sin(_stray.ry) * 0.8), "toStray")
 				return
+		if job == "restock" and _restock_start():
+			return
 		if job == "cleanup" and _cleanup():
 			return
+
+
+func _cupboard(kind: String) -> Vector3:  # one of that kind's cupboard doors
+	var doors: Array = $"../Snacks"._doors.filter(func(d: Dictionary) -> bool: return d.kind == kind)
+	return doors[doors.size() / 2].at
+
+
+func _restock_start() -> bool:  # from the cupboard to the racks, an armful at a time (danaRestockStart). -> off to do it
+	var sn: Node = $"../Snacks"
+	if crew.any(func(e: Node) -> bool: return e != self and e._restock != null):
+		return false
+	var need: Array = sn.empty_spots().filter(func(u: Dictionary) -> bool: return sn.backstock[u.n] > 0)
+	if need.is_empty():
+		return false
+	var drinks := need.filter(func(u: Dictionary) -> bool: return u.k != "")
+	var food := need.filter(func(u: Dictionary) -> bool: return u.k == "")
+	var kind := "drinks" if drinks.size() >= food.size() else "food"
+	_restock = { "kind": kind, "units": (drinks if kind == "drinks" else food).slice(0, mini(10, 4 + lv(self, "str"))), "got": [], "n": 0 }  # (STR: a bigger armful)
+	dana.set_mood("neutral")
+	var door := _cupboard(kind)
+	_go(Vector2(door.x - 0.6, door.z), "stockGo")
+	if state == "toPost":
+		_restock = null
+		return false
+	return true
+
+
+func _restock_next() -> void:
+	if _restock.got.is_empty():
+		_restock_end(false)
+		_go(Vector2(_post.x, _post.z), "toPost")
+		return
+	var u: Dictionary = _restock.got[0]
+	dana.set_pose("hold")
+	_go(Vector2(u.at.x + u.f.x * 0.75, u.at.z + u.f.y * 0.75), "stockTo")
+	if state == "toPost":  # (no way to that one: back in the cupboard with what's left)
+		_restock_end(true)
+
+
+func _restock_end(called_away: bool) -> void:  # done, or called away: what's still in their arms goes back in the cupboard
+	if _restock == null:
+		return
+	for u: Dictionary in _restock.got:
+		$"../Snacks".backstock[u.n] += 1
+	if _opened_cooler:
+		$"../Things".cooler_open = false
+		_opened_cooler = false
+	if dana != null:
+		dana.set_pose("idle")
+		dana.reach_to(null)
+	if _restock.n > 0:
+		hud.toast("%s restocked %d item%s on the racks%s (+%d)" % [first, _restock.n, "" if _restock.n == 1 else "s", " before being needed elsewhere" if called_away else "", 3 * _restock.n])
+	_restock = null
 
 
 func _cleanup() -> bool:  # litter, spills, taking out the trash: a bag on the floor or a nearly-full bin before litter; otherwise litter first. -> off to do some
