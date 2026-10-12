@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://world/world.scn" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://interact.gd" id="5"]
 [ext_resource type="Script" path="res://hud.gd" id="6"]
 [ext_resource type="Script" path="res://video.gd" id="7"]
+[ext_resource type="Script" path="res://tapes.gd" id="8"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.25, 0.45, 0.8, 1)
@@ -66,3 +67,6 @@ script = ExtResource("6")
 
 [node name="Video" type="Node" parent="."]
 script = ExtResource("7")
+
+[node name="Tapes" type="Node" parent="."]
+script = ExtResource("8")

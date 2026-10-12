@@ -42,6 +42,15 @@ func _shot(args: PackedStringArray) -> void:
 				$Player/Camera.rotation.x = deg_to_rad(v[4])
 		elif a.begins_with("--hour="):
 			Clock.h = a.trim_prefix("--hour=").to_float()
+		elif a.begins_with("--take="):  # a tape off the shelf, by its number in data/tapes.json: held up, or (with --carry) in hand
+			$Tapes.pickup($Tapes.tapes[a.trim_prefix("--take=").to_int()])
+			$Tapes.inspecting = not "--carry" in args
+			if "--play" in args:  # ...and into the VCR, and on a few seconds
+				$Tapes.aim_tv = $Tapes.screens[0]
+				$Tapes.vcr_use()
+				var t0 := Time.get_ticks_msec()
+				while $Video.position < 6.0 and Time.get_ticks_msec() - t0 < 60000:
+					await get_tree().process_frame
 	for i in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://shot.png")
@@ -111,5 +120,16 @@ func _check() -> void:
 	I.on_e()
 	if P.seat != null:
 		bad.append("E didn't stand you up")
+	var T := $Tapes
+	var tape: Dictionary = T.tapes[0]
+	var n: int = T._corners(tape).size()
+	if n < 20:
+		bad.append("the first tape has %d corners in the shelves (22: a cover and a case)" % n)
+	T.pickup(tape)
+	if T.held != tape or not tape.off or tape.mesh.get_surface_count() < 2:
+		bad.append("a tape didn't come off the shelf whole")
+	T.put_back()
+	if T.held != null or tape.off:
+		bad.append("a tape didn't go back")
 	print("check: %s" % ("ok" if bad.is_empty() else "; ".join(bad)))
 	get_tree().quit(0 if bad.is_empty() else 1)

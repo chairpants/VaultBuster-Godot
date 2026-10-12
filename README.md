@@ -3,7 +3,8 @@
 The video store from the web game, in Godot 4, to walk round and edit. The game's coming over a piece at a time,
 each piece translated from the web game's own source (the file it came from is named at the top of each script), so
 the numbers and the behaviour are the same. So far: the clock, the sky through the day and night, the day's clouds,
-doors and seats. No customers, no register, nothing to pick up yet.
+doors and seats, and tapes: off the shelf, into the VCR, playing on the store's TV and the theater's screen. No
+customers, no register yet.
 
 Open `project.godot` in Godot 4.6 or later and press F5.
 
@@ -12,7 +13,9 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | WASD, mouse | Walk, look |
 | Shift | Run |
 | Space | Jump |
-| E | Whatever the crosshair's on: open or close a door, sit down, stand up |
+| E | Whatever the crosshair's on: open or close a door, sit down, stand up; at the TV or the theater's screen, the tape in your hand goes in (E again: out it comes) |
+| Click | A tape on the shelf: off it comes, held up to look at. Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
+| Right-click | While you're still looking at a tape you've just picked up: put it back |
 | L | Skip an hour (not past midnight) |
 | F | Fly, through walls too (Space up, Ctrl down). The ladders don't climb yet, so this is the way onto the roof |
 | Esc | Free the mouse (click to take it back) |
@@ -56,11 +59,14 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `interact.gd` | E on things: hinged doors, push doors that swing out of your way, the storefront's door, every seat (web: `store/player.js`, `store/main.js`, `store/shoppers.js`, `store/tv.js`) |
 | `data/interact.json` | The doors and seats, from the web game (`node tests/export-glb.mjs --data ../VaultBusterGodot/data/interact.json`) |
 | `hud.gd` | The day and time, the crosshair, the tip for what you're aiming at |
+| `tapes.gd` | Tapes off the shelf and back, in your hand, into the VCR and onto the screens; episodes follow on (web: `store/tv.js`, `store/checkout.js`, `store/shelves.js`). One tape at a time: no inventory yet |
+| `data/tapes.json` | Every copy on the shelves: its slot and its episodes, from the web game (written beside `interact.json`) |
 | `video.gd` | Plays a tape's file from archive.org: picture onto a texture, sound beside it, with pause and seek. No screen of its own yet. Needs `ffmpeg` on the PATH (from SpaceLife's `wall_tv.gd`; which file a tape is, from web `store/tv.js`) |
 
 `godot --path . -- --check` starts it, tries the clock, noon and night, a door and the couch, prints `check: ok` (or
 what's off) and quits. `godot --path . -- --shot` saves `shot.png` from where you spawn and quits; `--at=x,y,z,yaw,pitch`
-(degrees) looks from somewhere else, `--hour=19.5` at another time of day. `godot --path . -- "--video=item|file|seconds"`
+(degrees) looks from somewhere else, `--hour=19.5` at another time of day, `--take=0` with the first tape held up
+(`--carry`: in hand; `--play`: in the VCR and a few seconds in). `godot --path . -- "--video=item|file|seconds"`
 plays that archive.org file a few seconds from there, saves a frame as `video.png`, and says how long it took.
 
 Not carried over, and noticeable: the lights. The web game lights its rooms in its own shaders, by zone, with

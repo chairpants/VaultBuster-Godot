@@ -13,6 +13,7 @@ extends Node
 ## From the web game's store/tv.js (playEpisode, pickFile, encodePath): which file on archive.org an episode is.
 ## Unlike the web game, this can seek: ffmpeg asks archive.org for the part it wants, which a browser isn't let do.
 
+signal started  # the first frame's up
 signal ended
 signal failed(why: String)
 
@@ -239,6 +240,8 @@ func _next_frame() -> bool:
 			texture.update(Image.create_from_data(RES.x, RES.y, false, Image.FORMAT_RGB8, buf))
 			position += 1.0 / FPS
 			_shown += 1
+			if _shown == 1:
+				started.emit()
 			return true
 		_reader = null  # short read: the chunk's run out
 	return false

@@ -22,6 +22,7 @@ var stood_at := {}
 @onready var player: CharacterBody3D = $"../Player"
 @onready var cam: Camera3D = $"../Player/Camera"
 @onready var hud: CanvasLayer = $"../HUD"
+@onready var tapes: Node = $"../Tapes"
 
 
 func _ready() -> void:
@@ -107,9 +108,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	aim_door = null
 	aim_seat = null
 	if player.seat != null:
+		tapes.clear_aim()
 		hud.tip("Press E to stand up (and pull your pants up)" if player.seat.kind == "toilet" else "Press E to stand up")
 		return
 	if player.fly:
+		tapes.clear_aim()
 		hud.tip("")
 		return
 	var from := cam.global_position
@@ -126,7 +129,12 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 					aim_door = d
 			n = n.get_parent()
 	if aim_door != null:
+		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
+		return
+	var tape_tip: String = tapes.aim(from, dir, hit, hit_d)  # tapes, your tape's slot, a screen (see tapes.gd)
+	if tape_tip != "":
+		hud.tip(tape_tip)
 		return
 	if hit:  # a seat: the nearest one to where the crosshair lands, if that's on it or right by it
 		var best := 0.8
@@ -138,7 +146,7 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	if aim_seat != null:
 		hud.tip("Press E to sit on the toilet" if aim_seat.kind == "toilet" else "Press E to sit on the couch" if aim_seat.kind == "couch" else "Press E to take a seat")
 	else:
-		hud.tip("")
+		hud.tip("Holding %s" % tapes.held.t if tapes.held != null else "")
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -151,6 +159,8 @@ func on_e() -> void:
 		player.stand(stood_at.at, stood_at.yaw)
 	elif aim_door != null:
 		toggle_door(aim_door)
+	elif tapes.aim_tv != null:
+		tapes.vcr_use()
 	elif aim_seat != null:
 		stood_at = { "at": player.global_position, "yaw": player.rotation.y }
 		player.sit(aim_seat)
