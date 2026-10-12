@@ -284,13 +284,38 @@ func _check() -> void:
 			bad.append("a customer didn't get to the counter with a tape (%s, holding %d)" % [cu.state, cu.holding])
 		else:
 			var took: Dictionary = cu.tapes[0]
+			var C := $Checkout
+			$Staff._ring_t = -999.0  # (by hand, this one: Dana holds off)
 			S.aim = cu
 			S.on_e()
+			if C.co == null or C.step()[0] != "tap":
+				bad.append("E on the customer didn't start the sale (their card in hand)")
+			for where in ["register", "customer", "customer", "pad", "customer", "register"]:
+				C.act(where)
+			await get_tree().create_timer(2.6).timeout
+			for where in ["printer", "customer", "customer", "customer"]:
+				C.act(where)
+			if C.co != null or not cu.paid or cu.get("tagged", true) or C.served != 1 or C.take < 1.9:
+				bad.append("the checkout didn't run through (step %s, paid %s, served %d)" % [C.step(), cu.paid, C.served])
 			t0 = Time.get_ticks_msec()
 			while S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
 				await get_tree().process_frame
 			if S.custs.has(cu) or not took.off or S.rented.is_empty():
 				bad.append("a rung-up customer didn't leave with their tape")
+			var c2: Dictionary = S.spawn()  # ...and one for Dana
+			c2.c.position = Vector3(S._counter.x, 0, S._counter.z)
+			c2.path = []
+			c2.tapes = [S._spots[1].copies.filter(func(t: Dictionary) -> bool: return not t.off and not $Tapes._corners(t).is_empty())[0]]
+			$Tapes.set_on_shelf(c2.tapes[0], false)
+			c2.holding = 1
+			S.line.append(c2)
+			c2.state = "counter"
+			$Staff._ring_t = 0.0
+			t0 = Time.get_ticks_msec()
+			while not c2.paid and S.custs.has(c2) and Time.get_ticks_msec() - t0 < 40000:
+				await get_tree().process_frame
+			if $Staff.dana == null or not c2.paid or C.served != 2:
+				bad.append("Dana didn't ring the next one up (she's %s, served %d)" % ["there" if $Staff.dana else "not there", C.served])
 			Clock.day += 1
 			await get_tree().process_frame
 			await get_tree().process_frame

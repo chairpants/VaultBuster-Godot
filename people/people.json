@@ -161,6 +161,13 @@
    "build": 1.0981399687356315,
    "female": true,
    "gait": "plain"
+  },
+  {
+   "height": 0.939897942505777,
+   "build": 1.110031481925398,
+   "female": true,
+   "gait": "plain",
+   "staff": "Dana"
   }
  ]
 }

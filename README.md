@@ -6,8 +6,8 @@ the numbers and the behaviour are the same. So far: the clock, the sky through t
 doors and seats, tapes (off the shelf, into the VCR, playing on every screen), the counter's pass-through, both
 ladders to the roof, the light switches and lamps, the lighting itself, and the loose things (the stool, the
 standee, the cooler, the deadbolt, the toilet, the cardboard bed, the movie on the roof), the weather, and the people
-themselves: passers-by out front, and customers, who come in, browse, take tapes and queue at the counter (E on
-whoever's at the front rings them up, till there's a register). No staff, no register yet.
+themselves: passers-by out front, customers who come in, browse, take tapes and queue at the counter, the checkout
+(step by step, as the web game has it), and Dana on the register when you're not.
 
 Open `project.godot` in Godot 4.6 or later and press F5.
 
@@ -18,6 +18,7 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | Space | Jump |
 | C (hold) | Crouch: lower, and slower |
 | Mouse wheel | Sat down: zoom in and out (getting up resets it) |
+| E | At the counter, the sale's next step: on the customer (their card, their tapes, the cash, the change, the receipt, the tapes back), on the register (tap the card, ring it up), on the pad (desensitize each tape), on the printer (tear off the receipt). Top left says what's next |
 | E | Whatever the crosshair's on: a door, a seat, the counter's pass-through, a light switch, a lamp, a ladder (the closet's goes up through the hatch; the one out back has to be kicked down from the roof first); at the TV or the theater's screen, the tape in your hand goes in (E again: out it comes) |
 | Hold E | On the stool or the standee: pick it up and carry it; E sets it down |
 | Click | A tape on the shelf: off it comes, held up to look at (what you were holding goes into the inventory: up to 9). Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
@@ -69,7 +70,9 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `things.gd` | The loose things: the stool (E sits, E again spins, WASD gets up), carrying it and the standee, the cooler's door, the front doors' deadbolt, the flush and the paper towels, sleeping on the cardboard bed (3 hours, or after close through to morning), the roof's projector, VCR and bedsheet (web: `store/player.js`, `store/tv.js`, `store/staff.js`, `store/chores.js`, `store/customer-mode.js`, `store/roof.js`) |
 | `person.gd` | One of the TV-head people, posed every frame: the walk (feet that stay planted, a run over ~2 m/s, nine gaits), sitting, crouching, the arms' poses, the head, breathing, a face for every mood (web: `customers.js`). Not over: reaching, props, what the weather does to them, blinking |
 | `people.gd` | The cast, and the people going by on the walk out front (web: `store/shoppers.js`, walkerTick) |
-| `shoppers.gd` | Customers: who each one is (taste, patience, pace), how busy the day is, the visit: in the door, shelves looked over, a tape taken or put back, the line, the wait, out (web: `store/shoppers.js`). Not over: the register (E rings them up), members, snacks, questions, kids, shoplifters, cars |
+| `shoppers.gd` | Customers: who each one is (taste, patience, pace), how busy the day is, the visit: in the door, shelves looked over, a tape taken or put back, the line, the wait, out (web: `store/shoppers.js`). Not over: returns (a rental's back on the shelf next morning), members, snacks, questions, kids, shoplifters, cars |
+| `checkout.gd` | Ringing somebody up, a step at a time; what a tape rents for; how a sale's scored (web: `store/checkout.js`, `pos.js`). Not over: members, late fees, sign-ups, snacks, tickets, the terminal's screens |
+| `staff.gd` | Dana, at her post, ringing up whoever's waiting when you don't (web: `store/staff.js`). Not over: the rest of her day |
 | `nav.gd` | Finding a way round the store: the web game's grid and A* over its own floor boxes (web: `store/shoppers.js`, navGrid, navPath) |
 | `people/` | The cast: 24 people as the web game builds them (`people.glb`), a face sheet each, and who they are. `node tests/export-glb.mjs --people ../VaultBusterGodot/people` |
 | `lights.gd` | The nine light zones and their switches, fluorescents stuttering as they strike; the side lamps (web: `store/lounge.js`) |

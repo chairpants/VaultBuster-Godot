@@ -27,6 +27,7 @@ var _hold := -1.0  # how long E's been held on something that lifts (-1: it isn'
 @onready var fixtures: Node = $"../Fixtures"
 @onready var things: Node = $"../Things"
 @onready var shoppers: Node = $"../Shoppers"
+@onready var checkout: Node = $"../Checkout"
 
 
 func _ready() -> void:
@@ -160,6 +161,12 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		hud.tip(cust_tip)
 		return
 	shoppers.aim = null
+	var till_tip: String = checkout.take_aim(hit, hit_d)  # the register, the pad, the printer (see checkout.gd)
+	if till_tip != "" and not things.carrying:
+		tapes.clear_aim()
+		hud.tip(till_tip)
+		return
+	checkout.aim = ""
 	var thing_tip: String = things.take_aim(from, dir, hit, hit_d)  # the stool, the standee, the cooler, the deadbolt... (see things.gd)
 	if thing_tip != "":
 		tapes.clear_aim()
@@ -208,6 +215,8 @@ func on_e() -> void:
 	elif aim_door != null:
 		toggle_door(aim_door)
 	elif shoppers.on_e():
+		pass
+	elif checkout.on_e():
 		pass
 	elif things.on_e():
 		pass

@@ -7,8 +7,8 @@ extends Node
 ## custDwell, custDecide, custPickCopy, custDone, the line (custToLine, custLeaveLine), and the visit itself (custStep).
 ##
 ## Not over yet, and so different here:
-## - There's no register: E on whoever's at the counter rings them up on the spot. What they rent is off the shelf
-##   till the next morning (there are no returns yet); left waiting too long they walk out and it goes back.
+## - What they rent is off the shelf till the next morning (there are no returns yet); left waiting too long they
+##   walk out and it goes back. (Ringing them up: checkout.gd.)
 ## - Nobody's a member: each is a new face (the web game's are its 150 members, the same person every visit).
 ## - They reach with a fixed arm, not to the tape itself; they don't step round you or each other; no snacks, no
 ##   questions at the counter, no kids or company, no shoplifters, no cars, nobody going to the theater.
@@ -45,6 +45,7 @@ var _arrive := 3.0
 @onready var hud: CanvasLayer = $"../HUD"
 @onready var player: CharacterBody3D = $"../Player"
 @onready var interact: Node = $"../Interact"
+@onready var checkout: Node = $"../Checkout"
 
 
 func _ready() -> void:
@@ -147,7 +148,7 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 func spawn() -> Dictionary:
 	var female := randf() < 0.5
 	var who := customer_for(randi(), female)
-	var cast: Array = range(people.cast.who.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == female)
+	var cast: Array = range(people.cast.who.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == female and not people.cast.who[i].has("staff"))
 	var c: Node3D = people.spawn(cast[who.seed % cast.size()])
 	c.gait = who.gait
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
@@ -314,22 +315,20 @@ func _done(cust: Dictionary) -> void:  # out of shelves to look at: to the regis
 		go(cust, "leave", { "x": _door.x, "z": _door.y })
 
 
-func ring_up(cust: Dictionary) -> void:  # (in place of the register, for now) E on whoever's at the counter
-	cust.paid = true
-	for t: Dictionary in cust.tapes:
-		rented.append([t, Clock.day])
-	hud.toast("Rented: %s" % ", ".join(cust.tapes.map(func(t: Dictionary) -> String: return t.t)))
-	cust.c.set_mood("thanks")
-	cust.hi = 2.0
-	cust.c.set_pose("hold")
-	go(cust, "leave", { "x": _door.x, "z": _door.y })
+func waiting():  # whoever's at the counter, waiting to be rung up (or null)
+	return line[0] if not line.is_empty() and line[0].state in ["wait", "impatient", "angry"] else null
 
 
 func _gone(cust: Dictionary) -> void:
 	leave_line(cust)
-	if not cust.paid:
-		for t: Dictionary in cust.tapes:  # (the web game: walked out with, gone for good. Here, till there's a register, back on the shelf)
+	for t: Dictionary in cust.tapes:
+		if cust.paid:
+			rented.append([t, Clock.day])
+		else:  # (the web game: walked out with, gone for good, and the gates go off. Here, for now, back on the shelf)
 			tapes.set_on_shelf(t, true)
+		t.desens = false  # (its tag's armed again when it's next on the shelf)
+	if cust.paid and cust.get("tagged", false):
+		hud.toast("The gates go off: a tag wasn't desensitized")
 	cust.c.queue_free()
 	custs.erase(cust)
 
@@ -422,6 +421,12 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					hud.toast("A customer got tired of waiting and walked out")
 					c.set_pose("hold")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"checkout":  # being rung up (checkout.gd)
+				pass
+			"paid":
+				if cust.t <= 0.0:
+					c.set_mood("happy")
+					go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"leave":  # out the door, back the way they came
 				cust.path = [_inside, _outside, cust.from]
 				cust.state = "outside"
@@ -447,14 +452,19 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 			aim = k
 	if aim == null:
 		return ""
-	if aim.state in ["wait", "impatient", "angry"]:
+	if aim.state in ["wait", "impatient", "angry"] and checkout.co == null:
 		return "E — ring them up"
+	if checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
+		return "E — %s" % checkout.tip() if checkout.step()[1] == "customer" or checkout.step()[0] == "desens" else "Next: %s" % checkout.tip()
 	return "A customer\n%s" % aim.who.taste
 
 
 func on_e() -> bool:
 	if aim == null:
 		return false
-	if aim.state in ["wait", "impatient", "angry"]:
-		ring_up(aim)
+	if aim.state in ["wait", "impatient", "angry"] and checkout.co == null:  # start ringing them up
+		checkout.start("player", aim)
+		checkout.act("customer")
+	elif checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
+		checkout.act("customer")
 	return true

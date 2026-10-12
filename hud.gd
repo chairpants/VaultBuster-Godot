@@ -8,6 +8,8 @@ var _cross := _label(18)
 var _tip := _label(18)
 var _toast := _label(20)
 var _toast_t := 0.0
+
+@onready var till: Node = $"../Checkout"
 var _inv := _label(15)
 var _fade := ColorRect.new()
 var _fade_text := _label(40)
@@ -58,7 +60,9 @@ func toast(text: String) -> void:
 func _process(dt: float) -> void:
 	var s := get_viewport().get_visible_rect().size
 	_clock.text = "%s %s" % [Clock.weekday(), Clock.fmt_clock(Clock.h)]
-	_status.text = Clock.status()
+	_status.text = "%s · $%.2f · SCORE %d" % [Clock.status(), till.take, till.score] if till.served > 0 else Clock.status()
+	if till.co != null and till.co.by == "player":  # the sale in hand: what's next
+		_status.text += "\nNEXT: %s" % till.tip().to_upper()
 	_clock.position = Vector2(16, 8)
 	_status.position = Vector2(16, 44)
 	_toast_t -= dt
