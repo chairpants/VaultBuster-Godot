@@ -439,6 +439,7 @@ func _process(dt: float) -> void:
 		var p: float = minf(1.0, rewinder.t / rewinder.dur)
 		set_wind_frac(rewinder.tape, rewinder.f0 * (1.0 - p))
 		rewinder.done = p >= 1.0
+	hud.now_playing("%s%s\n%s%s%s   [ ] wind · , . episode" % ["❚❚ " if video.paused else "▶ ", playing.tape.t, "%d of %d · " % [playing.idx + 1, playing.tape.e.size()] if playing.tape.e.size() > 1 else "", _clock(video.position), " / " + _clock(video.duration) if video.duration > 0.0 else ""] if playing != null and not video.url.is_empty() else "")
 	if playing != null and not video.url.is_empty():  # the tape winds forward as it plays
 		playing.tape.ep = playing.idx
 		playing.tape.at = video.position
@@ -446,7 +447,34 @@ func _process(dt: float) -> void:
 			playing.tape.d = video.duration
 
 
+func seek_by(d: float) -> void:  # wind it on, or back, where it sits in the machine
+	if playing == null or video.url.is_empty():
+		return
+	var to := maxf(0.0, video.position + d)
+	if video.duration > 0.0 and to >= video.duration - 1.0:
+		step_episode(1)  # off the end of this one
+		return
+	video.seek(to)
+	playing.tape.at = to
+
+
+func _clock(t: float) -> String:
+	var s := int(t)
+	return "%d:%02d:%02d" % [s / 3600, s / 60 % 60, s % 60] if s >= 3600 else "%d:%02d" % [s / 60, s % 60]
+
+
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and playing != null:  # the VCR's transport: [ and ] wind it back and on (held: keeps going), , and . the one before and the next on the tape
+		match e.physical_keycode:
+			KEY_BRACKETLEFT: seek_by(-30.0)
+			KEY_BRACKETRIGHT: seek_by(30.0)
+			KEY_COMMA:
+				if not e.echo and playing.idx > 0:
+					playing.tape.at = 0.0
+					play_episode(playing.idx - 1)
+			KEY_PERIOD:
+				if not e.echo:
+					step_episode(1)
 	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode >= KEY_1 and e.physical_keycode <= KEY_9:
 		inv_select(e.physical_keycode - KEY_1)
 		return
@@ -586,6 +614,8 @@ func play_episode(idx: int, tape: Dictionary = playing.tape if playing != null e
 		return
 	idx = clampi(idx, 0, tape.e.size() - 1)
 	var at: float = tape.at if idx == tape.ep else 0.0
+	if tape.has("d") and tape.e.size() == 1 and at > tape.d - 5.0:
+		at = 0.0  # (wound right to the end: it wants rewinding, but it'll play)
 	playing = { "tape": tape, "idx": idx }
 	tape.ep = idx
 	hud.toast("Loading: %s…" % tape.t)
@@ -597,6 +627,10 @@ func play_episode(idx: int, tape: Dictionary = playing.tape if playing != null e
 func _on_started() -> void:
 	if playing == null:
 		return
+	if video.duration > 0.0:
+		playing.tape.d = video.duration
+		if video.position > video.duration - 5.0:  # (wound further than it turns out to be long: its length was a guess till now)
+			video.seek(maxf(0.0, video.duration - 60.0))
 	var bits: PackedStringArray = playing.tape.e[playing.idx][1].split(" - ")
 	var has_code := bits.size() > 1 and RegEx.create_from_string("(?i)S\\d+E\\d+").search(bits[1]) != null
 	var code := bits[1] + " · " if has_code else ""

@@ -9,6 +9,7 @@ var _cross := _label(18)
 var _tip := _label(18)
 var _toast := _label(20)
 var _toast_t := 0.0
+var _now := _label(14, Color(0.8, 0.9, 1.0))  # what's in the VCR and how far through, top right
 var _call := _label(18, Color(1, 0.83, 0))
 var _log := _label(13, Color(0.86, 0.9, 0.86))  # the day's log, bottom left: the last few things that happened (J folds it away)
 var _rows: Array[String] = []
@@ -66,6 +67,10 @@ func call_box(text: String) -> void:  # a decision waiting on you ("" clears it)
 	_call.text = text
 
 
+func now_playing(text: String) -> void:
+	_now.text = text
+
+
 func toast(text: String) -> void:  # up top for a moment, and into the log
 	_rows.append("%s  %s" % [Clock.fmt_clock(Clock.h), text.replace("\n", " ")])
 	if _rows.size() > 60:
@@ -83,6 +88,9 @@ func _process(dt: float) -> void:
 	if till.co != null and till.co.by == "player":  # the sale in hand: what's next
 		_status.text += "\nNEXT: %s" % till.tip().to_upper()
 	_clock.position = Vector2(16, 8)
+	_now.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_now.reset_size()
+	_now.position = Vector2(s.x - _now.size.x - 16.0, 10.0)
 	_status.position = Vector2(16, 44)
 	_toast_t -= dt
 	_toast.visible = _toast_t > 0.0

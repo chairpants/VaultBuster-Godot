@@ -51,7 +51,30 @@ func spawn(i := -1) -> Node3D:  # one of the cast (a random one), standing at th
 	return c
 
 
+var tony: Node3D  # behind his counter next door
+
+const TONY_AT := Vector3(16.2, 0.0, 8.3)  # (tonys/inside.js: "Tony himself, behind the counter")
+
+
+func _tony() -> void:  # the level has him as he stood when it was exported, a statue: out he goes, and a live one in his place
+	for n: Node in $"../World".find_children("*", "Node3D", true, false):
+		if n.global_position.distance_to(TONY_AT) < 0.03:
+			n.visible = false
+			for body in n.find_children("*", "CollisionObject3D", true, false):
+				body.queue_free()
+			break
+	var men: Array = range(cast.who.size()).filter(func(i: int) -> bool: return not cast.who[i].female and not cast.who[i].has("staff"))
+	tony = spawn(men[4417 % men.size()])  # ponytail: one of the cast stands in for him; his own outfit wants adding to the people export
+	tony.position = TONY_AT
+	tony.rotation.y = PI
+	tony.set_mood("neutral")
+
+
 func _process(dt: float) -> void:  # walkerTick: somebody going by
+	if tony == null and not _templates.is_empty():
+		_tony()
+	if tony != null:
+		tony.tick(dt, 0.0)
 	if _templates.is_empty():
 		return
 	var h := fmod(Clock.h, 24.0)

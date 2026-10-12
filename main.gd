@@ -728,6 +728,25 @@ func _check() -> void:
 		bad.append("the terminal didn't set tonight's feature")
 	Clock.h = noon_was
 	$Shift.show.title = ""
+	# walking at a curb steps you up onto it; and Tony is behind his counter, alive
+	$Player.global_position = Vector3(6.0, 0.3, -3.2)
+	$Player.rotation.y = PI
+	await get_tree().create_timer(0.6).timeout
+	var low: float = $Player.global_position.y
+	var walk := InputEventKey.new()
+	walk.physical_keycode = KEY_W
+	walk.pressed = true
+	Input.parse_input_event(walk)
+	await get_tree().create_timer(1.2).timeout
+	walk = InputEventKey.new()
+	walk.physical_keycode = KEY_W
+	walk.pressed = false
+	Input.parse_input_event(walk)
+	await get_tree().create_timer(0.2).timeout
+	if $Player.global_position.y < low + 0.06 or $Player.global_position.z < -1.7:
+		bad.append("walking at the curb didn't step up onto it (from %.2f to %s)" % [low, $Player.global_position])
+	if $People.tony == null or $People.tony.position.distance_to(Vector3(16.2, 0, 8.3)) > 0.1:
+		bad.append("Tony isn't behind his counter")
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

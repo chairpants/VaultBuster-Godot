@@ -127,12 +127,32 @@ func _physics_process(dt: float) -> void:
 		velocity.y = JUMP if Input.is_physical_key_pressed(KEY_SPACE) else 0.0
 	else:
 		velocity.y -= 9.8 * dt
+	_step_up(dt)
 	move_and_slide()
 	if is_on_floor():  # your own footsteps, quieter (you're wearing sneakers)
 		_step_d += Vector2(get_real_velocity().x, get_real_velocity().z).length() * dt
 		if _step_d > (0.95 if speed > 4.0 else 0.72):
 			_step_d = 0.0
 			$"../Ambience".step(global_position, 0.35 if crouched else 0.6)
+
+
+const STEP := 0.32  # as high as you'll step up without jumping: a curb, a stair
+
+
+func _step_up(dt: float) -> void:  # walking into something low: up onto it (the web game's floor is just the height under you; here it takes doing)
+	var motion := Vector3(velocity.x, 0.0, velocity.z) * dt
+	if not is_on_floor() or motion.length() < 0.001:
+		return
+	var from := global_transform
+	var probe := motion.normalized() * maxf(motion.length(), 0.12)  # (a little ahead: far enough to be over the edge)
+	if not test_move(from, probe) or test_move(from, Vector3.UP * STEP):
+		return  # nothing in the way, or no headroom
+	var raised := from.translated(Vector3.UP * STEP)
+	if test_move(raised, probe):
+		return  # still in the way that high: a wall
+	var landing := KinematicCollision3D.new()
+	if test_move(raised.translated(probe), Vector3.DOWN * STEP, landing) and landing.get_normal().y > 0.7 and landing.get_travel().length() < STEP - 0.01:
+		global_position = raised.origin + probe + landing.get_travel()
 
 
 func _key(k: Key) -> float:
