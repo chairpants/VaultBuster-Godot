@@ -801,7 +801,22 @@ func _check() -> void:
 	Cu.caught("staff")
 	if Cu.banned != Clock.day:
 		bad.append("being caught again didn't get you thrown out")
-	if not "YOUR DAY" in "\n".join(Cu.slip()):
+	Cu._day_check()
+	var pickd: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and t.e.size() == 1 and not Tp._corners(t).is_empty())[0]
+	Cu.rec = {}
+	Cu.recommend(St)
+	Cu.day.goals = [{ "id": "pick", "done": false, "miss": false }, { "id": "money", "done": false, "miss": false }]
+	var rec_tape: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return t.t == Cu.rec.get("title", "") and not t.off and not Tp._corners(t).is_empty())[0]
+	Cu.banned = 0
+	Tp.pickup(rec_tape)
+	Cu.pay()
+	Cu._day_check()
+	Tp.aim_returns = true
+	Tp.drop_in_returns()
+	if Cu.rec.is_empty() or not Cu.rec.done or not Cu.day.goals[0].done or Cu.day.goals[1].done or not "☐" in Cu.list_line():
+		bad.append("the staff's pick, rented, didn't come off the day's list (%s)" % [Cu.rec])
+	Cu.banned = Clock.day
+	if not "YOUR DAY" in "\n".join(Cu.slip()) or not "YOUR RECORD" in "\n".join(Cu.slip()):
 		bad.append("a customer's day didn't make a slip")
 	# the trail: the note, the time card, the locker's padlock, the badge; the PIN, the register as Ray, the printout, the hatch
 	var Tr := $Trail

@@ -220,6 +220,7 @@ func search_bin(b: Dictionary) -> void:  # a trash can: once a day, worth a look
 	var r := fposmod((7919 * Clock.day + b.id.length() * 31 + b.n) * 16807.0, 2147483647.0) / 2147483647.0
 	var cash: float = [0.25, 0.5, 0.35, 1.0, 0.75][int(r * 100.0) % 5] if r < 0.35 else 0.0
 	cm.wallet += cash
+	cm.day.found += cash
 	hud.toast("You dig through the %s: $%.2f in change" % [b.name, cash] if cash > 0.0 else "You dig through the %s. Nothing but trash" % b.name)
 	notice(4.0)
 
@@ -262,6 +263,7 @@ func on_e() -> bool:
 	if aim.has("bill"):
 		var b: Dictionary = aim.bill
 		cm.wallet += b.cash
+		cm.day.found += b.cash
 		b.node.queue_free()
 		_bills.erase(b)
 		hud.toast("A five, folded up on the floor. Finders keepers" if b.cash > 1.0 else "A dollar bill. Finders keepers")
@@ -293,6 +295,7 @@ func on_e() -> bool:
 			return true
 		found[id] = true
 		cm.wallet += g.get("cash", 0.0)
+		cm.day.found += g.get("cash", 0.0)
 		if g.has("item"):
 			give(g.item)
 			hud.toast("You search %s. %s" % [s[1], g.found])

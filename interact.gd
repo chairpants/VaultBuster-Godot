@@ -180,6 +180,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip(trail_tip)
 		return
+	var drop_tip: String = $"../Customer".drop_aim(hit, hit_d)  # as a customer: the night drop out front
+	if drop_tip != "":
+		tapes.clear_aim()
+		hud.tip(drop_tip)
+		return
 	var clerk_tip: String = $"../Customer".take_aim(from, dir, hit_d)  # as a customer: whoever's on the register (see customer.gd)
 	if clerk_tip != "":
 		tapes.clear_aim()
@@ -270,6 +275,8 @@ func on_e() -> void:
 	elif aim_door != null:
 		if not $"../Trail".door(aim_door):
 			toggle_door(aim_door)
+	elif $"../Customer".drop_e():
+		pass
 	elif $"../Customer".on_e():
 		pass
 	elif shoppers.on_e():

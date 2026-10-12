@@ -426,6 +426,9 @@ func rewinder_use() -> void:  # E on it: the tape in hand goes in; E again takes
 
 func put_back() -> void:  # back into its own shelf slot
 	if held != null:
+		if held.get("stray_fix", false):  # (one that had been shoved in anywhere)
+			held.stray_fix = false
+			$"../Customer".helped(held)
 		if not is_rewound(held):  # shelved unrewound: it snaps back to the start, with a word about it
 			hud.toast("Not rewound: %s · be kind, rewind!" % held.t)
 			held.ep = 0

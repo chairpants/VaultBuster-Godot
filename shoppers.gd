@@ -1086,7 +1086,8 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 		return ""
 	aim.known = true  # (walking ones too: a shoplifter doesn't stop. You've had a look at them)
 	if $"../Shift".mode == "customer":  # (another customer, to you)
-		return "%s\n%s" % [aim.name, aim.who.taste]
+		var run_in: String = $"../Customer".cust_tip(aim)
+		return run_in if run_in != "" else "%s\n%s" % [aim.name, aim.who.taste]
 	if aim.state == "tagWait":
 		return "Their tape set off the gates\nE — desensitize it"
 	if aim.state == "asking":
@@ -1108,6 +1109,8 @@ func on_e() -> bool:
 	if aim == null:
 		return false
 	if $"../Shift".mode == "customer":  # a hello
+		if $"../Customer".cust_e(aim):
+			return true
 		aim.hi = 1.4
 		aim.c.set_mood("happy")
 		return true

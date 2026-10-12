@@ -330,6 +330,7 @@ func on_e() -> bool:
 	if aim.has("stray"):
 		if $"../Tapes".inv_make_room():
 			stray_take(aim.stray)
+			aim.stray.copy.stray_fix = true
 			$"../Tapes"._take(aim.stray.copy)
 			checkout.score += 5
 		else:

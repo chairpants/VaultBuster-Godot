@@ -30,7 +30,15 @@ var heat := 0.0
 var card := false
 var rented := {}  # tape key -> the day it's due (0: one you walked out with)
 var day := {}  # the day's record
-var aim := false  # the crosshair's on the clerk
+var aim := false  # the crosshair's on somebody on staff
+var aim_emp = null
+var aim_drop := false
+var rec := {}  # the staff's pick for you today: { title, cat, by, day, done }
+var ask := {}  # a shopper waiting on you: { k, cat, name, tries }
+var thief = null  # the one you saw slide a tape under their jacket
+var record := { "days": 0, "rented": 0, "caught": 0, "perfect": 0, "told": 0, "last": 0 }
+var _ask_t := 45.0
+var _drop: StaticBody3D
 
 var _inside := false
 var _alarm_was := false
@@ -78,7 +86,7 @@ func on() -> bool:
 
 
 func _fresh() -> Dictionary:
-	return { "spent": 0.0, "fees": 0.0, "rented": 0, "returned": 0, "caught": 0, "stolen": 0 }
+	return { "spent": 0.0, "fees": 0.0, "rented": 0, "returned": 0, "caught": 0, "stolen": 0, "found": 0.0, "helped": 0, "shelved": 0, "told": 0, "asked": 0, "cats": [], "in": false, "goals": [] }
 
 
 func regular() -> bool:  # they know your name, and knock 10% off
@@ -86,7 +94,7 @@ func regular() -> bool:  # they know your name, and knock 10% off
 
 
 func status() -> String:  # for the HUD
-	return "$%.2f on you · %s%s" % [wallet, "a regular" if regular() else "friendly" if trust >= 25.0 else "a new face", " · $%.2f owed" % owed if owed > 0.0 else ""] + $"../Trail".status()
+	return "$%.2f on you · %s%s" % [wallet, "a regular" if regular() else "friendly" if trust >= 25.0 else "a new face", " · $%.2f owed" % owed if owed > 0.0 else ""] + $"../Trail".status() + ("\n" + list_line() if not day.goals.is_empty() else "")
 
 
 func become(why := "") -> void:  # the store flips to this (a new customer-mode file; or fired from a simulation)
@@ -191,6 +199,10 @@ func pay() -> void:  # E on whoever's on the register, across the counter from t
 	for t: Dictionary in due:
 		rented[t.k] = Clock.day + 3
 		t.desens = true
+		day.cats.append(t.c)
+		if rec.get("day", 0) == Clock.day and not rec.done and rec.title == t.t:  # took them up on it
+			rec.done = true
+			trust = minf(100.0, trust + 3.0)
 	var was := regular()
 	wallet -= sum
 	shift.budget += sum
@@ -302,6 +314,13 @@ func _process(dt: float) -> void:  # cmTick
 	_check_t -= dt
 	if _check_t <= 0.0:  # every half second: a rental back in the returns slot (or on its shelf) is returned, late fees and all
 		_check_t = 0.5
+		if _drop == null:
+			_build_drop()
+		if inside and p.y < 3.3:
+			day["in"] = true
+		_day_check()
+		_ask_tick(0.5)
+		_thief_tick()
 		for t: Dictionary in tapes.tapes:
 			if rented.has(t.k) and (tapes.return_bin.has(t) or not t.off):
 				_rent_return(t)
@@ -334,7 +353,9 @@ func slip() -> Array:  # the end of your day, on the same slip the staff get (cm
 		rows.append(row.call("  DUE BACK BY TOMORROW", late))
 	if owed > 0.0:
 		rows.append(row.call("LATE FEES OWED", "$%.2f" % owed))
-	rows.append_array([line, row.call("WALKED OUT WITH", "%d THING%s" % [day.stolen, "" if day.stolen == 1 else "S"] if day.stolen > 0 else "NOTHING"),
+	rows.append(line)
+	rows.append_array(_day_end())
+	rows.append_array([row.call("WALKED OUT WITH", "%d THING%s" % [day.stolen, "" if day.stolen == 1 else "S"] if day.stolen > 0 else "NOTHING"),
 		row.call("CAUGHT", "%d TIME%s" % [day.caught, "" if day.caught == 1 else "S"] if day.caught > 0 else "NEVER"),
 		row.call("THE STAFF THINK YOU'RE", "A REGULAR" if regular() else "FRIENDLY" if trust >= 25.0 else "A NEW FACE"), line])
 	var home: Array = tapes.inv.filter(func(t: Dictionary) -> bool: return rented.has(t.k))
@@ -348,35 +369,354 @@ func slip() -> Array:  # the end of your day, on the same slip the staff get (cm
 
 # ---- the crosshair on the clerk (called from interact.gd)
 
-func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
+func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:  # anyone on staff
 	aim = false
-	var body := _who() if on() else null
-	if body == null:
+	aim_emp = null
+	if not on():
 		return ""
-	var name: String = preload("res://staff.gd").speaker
-	var to: Vector3 = body.position + Vector3(0, 1.1, 0) - from
-	var t := to.dot(dir)
-	if t < 0.2 or t > 3.2 or t > hit_d + 0.6 or (to - dir * t).length() > 0.45:
+	var best := 3.2
+	for e: Node in staff.crew:
+		if e.dana == null:
+			continue
+		var to: Vector3 = e.dana.position + Vector3(0, 1.1, 0) - from
+		var t := to.dot(dir)
+		if t > 0.2 and t < best and t < hit_d + 0.6 and (to - dir * t).length() < 0.45:
+			best = t
+			aim_emp = e
+	if aim_emp == null:
 		return ""
 	aim = true
-	if staff.clerk() == null:
-		return name
-	return name + "\nE — pay $%.2f%s" % [total(), " (%s late fees)" % ("$%.2f in" % owed) if owed > 0.0 else ""] if total() > 0.0 else name + "\nE — say hi"
+	var name: String = aim_emp.first
+	if thief != null and thief.sneaking:
+		return "%s\nE — point out %s, the tape under the jacket" % [name, thief.name.get_slice(" ", 0)]
+	if _at_register(aim_emp) and total() > 0.0:
+		return name + "\nE — pay $%.2f%s" % [total(), " ($%.2f in late fees)" % owed if owed > 0.0 else ""]
+	return name + ("\nE — ask what's good" if rec.get("day", 0) != Clock.day else "\n%s" % rec.title)
+
+
+func _at_register(e: Node) -> bool:
+	return e.state == "post" and e._path.is_empty()
 
 
 func on_e() -> bool:
 	if not aim:
 		return false
-	if staff.clerk() != null:
-		_who()
+	var e: Node = aim_emp
+	preload("res://staff.gd").speaker = e.first
+	if thief != null and thief.sneaking:
+		tell(e)
+	elif _at_register(e) and total() > 0.0:
 		pay()
+	elif total() > 0.0 or Clock.after_close():
+		hud.toast("Dana: “%s”" % ("We're closed, sorry!" if Clock.after_close() else "I can ring you up at the register!"))
+	else:
+		recommend(e)
+	return true
+
+
+# ---- ask them what's good: whoever you talk to has a pick for you, once a day. Rent it and they'll remember (cmRecommend)
+
+func recommend(e: Node) -> void:
+	if rec.get("day", 0) == Clock.day:
+		hud.toast("Dana: “%s”" % ("Did you like %s?" % rec.title if rec.done else "Seriously, %s. %s. You won't regret it." % [rec.title, rec.cat]))
+		return
+	var films: Array = tapes.tapes.filter(func(t: Dictionary) -> bool: return t.e.size() == 1 and not t.off and not t.get("lib", false))
+	if films.is_empty():
+		hud.toast("Dana: “Finding everything okay?”")
+		return
+	var t: Dictionary = films[(31 * Clock.day + e.first.unicode_at(0) * 7 + 3) * 16807 % films.size()]
+	rec = { "title": t.t, "cat": t.c, "by": e.first, "day": Clock.day, "done": false }
+	hud.toast("Dana: “Have you seen %s? It's over in %s. Trust me.”" % [t.t, t.c])
+
+
+func helped(t: Dictionary) -> void:  # a good customer: a misshelved tape put back where it goes is noticed, more if someone sees you do it (cmHelped)
+	if not on():
+		return
+	var by := seen()
+	trust = minf(100.0, trust + (4.0 if by else 2.0))
+	day.shelved += 1
+	hud.toast("Dana: “Oh, thanks! People just stick them anywhere.”" if by else "Put %s back where it goes" % t.t)
+
+
+# ---- the day's list: three little things to do on your day off, and your record (CM_DAY_GOALS, cmDayGoals, cmDayCheck, cmDayEnd)
+
+func _goal_text(g: Dictionary) -> String:
+	return { "cat": "Rent a tape from %s" % g.get("cat", ""), "pick": "Ask the staff what's good, and rent it", "money": "Find some money lying around",
+		"help": "Help another customer find a movie", "shelve": "Put a misshelved tape back", "clean": "Don't get caught anywhere today" }[g.id]
+
+
+func _goal_got(g: Dictionary) -> bool:
+	match g.id:
+		"cat": return day.cats.has(g.cat)
+		"pick": return rec.get("day", 0) == Clock.day and rec.done
+		"money": return day.found > 0.0
+		"help": return day.helped > 0
+		"shelve": return day.shelved > 0
+	return day["in"] and day.caught == 0  # "clean": counted at the end of the day
+
+
+func _day_goals() -> void:  # the morning's list: three, different every day
+	var ids := ["cat", "pick", "money", "help", "shelve", "clean"]
+	ids.shuffle()
+	day.goals = []
+	for id: String in ids.slice(0, 3):
+		var g := { "id": id, "done": false, "miss": false }
+		if id == "cat":
+			var cats := {}
+			for t: Dictionary in tapes.tapes:
+				if not t.off and not t.get("lib", false):
+					cats[t.c] = true
+			g.cat = cats.keys().pick_random() if not cats.is_empty() else "Comedy"
+		day.goals.append(g)
+
+
+func _day_check(at_close := false) -> void:  # anything on the list just done, or blown?
+	if day.goals.is_empty():
+		_day_goals()
+	for g: Dictionary in day.goals:
+		if g.done or g.miss:
+			continue
+		if g.id == "clean":
+			g.miss = day.caught > 0
+			if at_close and not g.miss and _goal_got(g):
+				g.done = true
+		elif _goal_got(g):
+			g.done = true
+		if g.done:  # one off the list: the staff notice the good customer
+			trust = minf(100.0, trust + 3.0)
+			hud.toast("✓ %s%s" % [_goal_text(g), ". That's today's whole list!" if day.goals.all(func(q: Dictionary) -> bool: return q.done) else ""])
+		elif at_close:
+			g.miss = true
+
+
+func list_line() -> String:
+	return "   ".join(day.goals.map(func(g: Dictionary) -> String: return "%s %s" % ["✓" if g.done else "✗" if g.miss else "☐", _goal_text(g)]))
+
+
+func _day_end() -> Array:  # the slip's lines: today's list, and your record
+	_day_check(true)
+	var r := record
+	if r.last != Clock.day:
+		r.last = Clock.day
+		var n: int = day.goals.filter(func(g: Dictionary) -> bool: return g.done).size()
+		if day["in"]:
+			r.days += 1
+			if n == day.goals.size():
+				r.perfect += 1
+		r.rented += day.rented
+		r.caught += day.caught
+		r.told += day.told
+	var W: int = shift.W
+	var row := func(k: String, v) -> String: return k + " " + ".".repeat(maxi(1, W - k.length() - str(v).length() - 2)) + " " + str(v)
+	var rows: Array = ["TODAY'S LIST"]
+	for g: Dictionary in day.goals:
+		rows.append(("  %s %s" % ["✓" if g.done else "✗", _goal_text(g).to_upper()]).left(W))
+	rows.append_array(["-".repeat(W), "YOUR RECORD", row.call("  DAYS IN THE STORE", r.days), row.call("  TAPES RENTED", r.rented), row.call("  TIMES CAUGHT", r.caught if r.caught > 0 else "NEVER")])
+	if r.told > 0:
+		rows.append(row.call("  SHOPLIFTERS POINTED OUT", r.told))
+	rows.append_array([row.call("  WHOLE LISTS DONE", r.perfect), "-".repeat(W)])
+	return rows
+
+
+# ---- run-ins: a shopper who wants to know what's good, and one with a tape up their jacket (cmCustAskTick ... cmCustTell)
+
+func _ask_tick(dt: float) -> void:
+	var p := player.global_position
+	if not ask.is_empty():  # waiting on you
+		var k: Dictionary = ask.k
+		if not shoppers.custs.has(k) or k.state != "cmAsk":
+			ask = {}
+			return
+		k.ry = atan2(p.x - k.c.position.x, p.z - k.c.position.z)
+		if k.hi <= 0.0:
+			k.c.set_mood("ask")
+		if k.t <= 0.0 or k.c.position.distance_to(p) > 9.0 or not _inside:
+			_ask_end(k, "%s: “Never mind, I'll keep looking.”" % ask.name)
+		return
+	_ask_t -= dt
+	if not _inside or p.y > 3.3 or staff_only() != "" or banned == Clock.day or Clock.h >= Clock.LAST_IN or day.asked >= 3 or _ask_t > 0.0:
+		return
+	for k: Dictionary in shoppers.custs:
+		var d: float = k.c.position.distance_to(p)
+		if not k.kid and not k.thief and not k.get("cm_asked", false) and k.state == "browse" and not k.who.cats.is_empty() and k.holding < k.who.max_tapes and d > 0.8 and d < 5.0:
+			k.cm_asked = true  # a shopper turns to you: what's good?
+			k.state = "cmAsk"
+			k.path = []
+			k.t = 45.0
+			k.c.set_pose("hold" if k.holding > 0 else "idle")
+			k.c.set_mood("ask")
+			ask = { "k": k, "cat": k.who.cats.pick_random(), "name": k.name.get_slice(" ", 0), "tries": 0 }
+			day.asked += 1
+			_ask_t = (90.0 + randf() * 120.0) * (0.5 if day.goals.any(func(g: Dictionary) -> bool: return g.id == "help" and not g.done) else 1.0)
+			hud.toast("%s: “Hey, you look like you know movies. Anything good in %s?” (find one, and E on them with it in hand)" % [ask.name, ask.cat])
+			return
+	_ask_t = 3.0  # (nobody near: in a bit)
+
+
+func _ask_end(k: Dictionary, say := "") -> void:  # back to their browsing
+	ask = {}
+	if say != "":
+		hud.toast(say)
+	if shoppers.custs.has(k) and k.state == "cmAsk":
+		k.c.set_mood("browse")
+		k.state = "browse"
+		k.t = 0.0
+
+
+func cust_tip(k: Dictionary) -> String:  # the hover tip on another customer, if it's one of these
+	if ask.get("k") == k:
+		return "%s\nwants something in %s · E with a tape in hand" % [k.name, ask.cat]
+	if thief == k and k.sneaking:
+		return "%s\na tape under the jacket · E — give them a look" % k.name
+	return ""
+
+
+func cust_e(k: Dictionary) -> bool:  # E on another customer -> true if it was one of these
+	var name: String = k.name.get_slice(" ", 0)
+	if thief == k and k.sneaking:  # you look at them, then at the jacket
+		var what := _bust(k)
+		if seen():
+			trust = minf(100.0, trust + 2.0)
+		hud.toast("You catch %s's eye and look at the jacket. %s comes out onto the returns cart, and they're gone" % [name, what])
+		return true
+	if ask.get("k") != k:
+		return false
+	var t = tapes.held
+	if t == null:
+		hud.toast("%s: “Something in %s, maybe?” (bring them a tape, and E with it in hand)" % [name, ask.cat])
+		return true
+	if rented.has(t.k):
+		hud.toast("%s: “Oh, that one's yours. Is there another copy on the shelf?”" % name)
+		return true
+	if randf() >= (0.85 if t.c == ask.cat else 0.6 if k.who.cats.has(t.c) else 0.15):
+		k.c.set_mood("meh")
+		k.hi = 1.6
+		ask.tries += 1
+		if ask.tries >= 2:
+			_ask_end(k, "%s: “Nah... thanks anyway. I'll keep looking.”" % name)
+		else:
+			hud.toast("%s: “%s? Hmm, not really my thing.”" % [name, t.t])
+		return true
+	tapes.release()
+	k.tapes.append(t)
+	k.holding = k.tapes.size()
+	k.c.hold_tape(mini(3, k.holding))
+	k.c.set_pose("hold")
+	k.c.set_mood("love")
+	k.hi = 2.0
+	ask = {}
+	k.state = "browse"
+	k.stops_left = 0
+	shoppers._done(k)  # ...and off to pay for it
+	day.helped += 1
+	shoppers.members.loyal(k.member, 2)
+	var by := seen()
+	trust = minf(100.0, trust + (3.0 if by else 1.0))
+	hud.toast("%s: “%s? Ooh, okay. I'll give it a try, thanks!”%s" % [name, t.t, " (%s saw that)" % preload("res://staff.gd").speaker if by else ""])
+	return true
+
+
+func _thief_tick() -> void:
+	if thief != null:  # the one you saw: still going, or out the door with it
+		if not shoppers.custs.has(thief) or not thief.sneaking or thief.c.position.z < 0.0:
+			thief = null
+		return
+	if not _inside or player.global_position.y > 3.3:
+		return
+	for k: Dictionary in shoppers.custs:  # one in view, close enough to see what they're doing
+		if not k.sneaking or k.get("cm_spotted", false) or k.tapes.is_empty() or k.c.position.z < 0.5 or k.c.position.distance_to(player.global_position) > 9.0:
+			continue
+		var q := PhysicsRayQueryParameters3D.create(player.global_position + Vector3(0, 1.5, 0), k.c.position + Vector3(0, 1.5, 0))
+		q.exclude = [player.get_rid()]
+		if not player.get_world_3d().direct_space_state.intersect_ray(q).is_empty():
+			continue
+		k.cm_spotted = true
+		thief = k
+		hud.toast("%s just slid a tape under their jacket and is making for the door. Tell somebody on staff? (E on them)" % k.name.get_slice(" ", 0))
+		return
+
+
+func _bust(k: Dictionary) -> String:  # the tapes come back out of the jacket, and they're on their way
+	var what: String = k.tapes[0].t if k.tapes.size() == 1 else "%d tapes" % k.tapes.size()
+	tapes.return_bin.append_array(k.tapes)
+	k.tapes = []
+	k.holding = 0
+	k.tagged = false
+	k.sneaking = false
+	k.thief = false
+	k.c.hold_tape(0)
+	k.c.set_mood("shock")
+	k.hi = 2.0
+	if thief == k:
+		thief = null
+	shoppers.go(k, "leave", { "x": shoppers._door.x, "z": shoppers._door.y })
+	return what
+
+
+func tell(e: Node) -> void:  # E on someone on staff with a shoplifter in sight: you point them out
+	var k: Dictionary = thief
+	var what := _bust(k)
+	e.dana.set_mood("angry")
+	trust = minf(100.0, trust + 8.0)
+	day.told += 1
+	hud.toast("You point %s out to %s, who heads them off at the door: “The jacket. Come on.” Out comes %s. “Thanks. Seriously.”" % [k.name.get_slice(" ", 0), e.first, what])
+
+
+# ---- the night drop: a steel box on the walk left of the doors, for when they're shut or you'd rather not go in (cmRentBuild, cmRentDrop)
+
+const DROP := Vector3(-2.75, 0.0, -0.4)
+
+
+func _build_drop() -> void:
+	_drop = StaticBody3D.new()
+	_drop.position = DROP
+	for part: Array in [[Vector3(0.56, 0.84, 0.42), Vector3(0, 0.48, 0), 0x1b3fa0ff], [Vector3(0.56, 0.2, 0.42), Vector3(0, 0.98, 0), 0x1b3fa0ff], [Vector3(0.4, 0.13, 0.02), Vector3(0, 0.8, -0.215), 0x15171aff], [Vector3(0.48, 0.12, 0.012), Vector3(0, 0.6, -0.215), 0xffd400ff]]:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = part[0]
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color.hex(part[2])
+		box.material = m
+		mi.mesh = box
+		mi.position = part[1]
+		_drop.add_child(mi)
+	var shape := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = Vector3(0.6, 1.15, 0.46)
+	shape.shape = bs
+	shape.position = Vector3(0, 0.57, 0)
+	_drop.add_child(shape)
+	add_child(_drop)
+
+
+func drop_aim(hit: Dictionary, hit_d: float) -> String:
+	aim_drop = on() and _drop != null and hit and hit_d < 2.4 and hit.position.distance_to(DROP + Vector3(0, 0.6, 0)) < 0.75 and player.global_position.z < 0.0
+	if not aim_drop:
+		return ""
+	return ("E — drop %s down the chute" % tapes.held.t if tapes.held != null else "The night drop") + "\nvideo returns%s" % (" · before 10 AM, it counts as yesterday" if Clock.h < Clock.OPEN else "")
+
+
+func drop_e() -> bool:
+	if not aim_drop:
+		return false
+	var t = tapes.held
+	if t == null:
+		hud.toast("Tapes go down the chute: take one in hand")
+		return true
+	if rented.get(t.k, 0) > 0 and Clock.h < Clock.OPEN and Clock.day > rented[t.k]:
+		rented[t.k] += 1  # before they've opened: last night's
+	tapes.release()
+	tapes.return_bin.append(t)
+	hud.toast("Down the chute: %s. Clunk" % t.t)
+	if rented.has(t.k):
+		_rent_return(t)  # (checked in now: nobody's waiting on the slot to notice)
 	return true
 
 
 # ---- for the save
 
 func snapshot() -> Dictionary:
-	return { "wallet": wallet, "owed": owed, "trust": trust, "strikes": strikes, "today": today, "banned": banned, "card": card, "rented": rented, "day": day, "opened": _opened }
+	return { "wallet": wallet, "owed": owed, "trust": trust, "strikes": strikes, "today": today, "banned": banned, "card": card, "rented": rented, "day": day, "opened": _opened, "rec": rec, "record": record }
 
 
 func restore(d: Dictionary) -> void:
@@ -391,5 +731,11 @@ func restore(d: Dictionary) -> void:
 	card = d.card
 	_opened = int(d.get("opened", 0))
 	day.merge(d.day, true)
+	rec = d.get("rec", {})
+	record.merge(d.get("record", {}), true)
+	for k: String in record:
+		record[k] = int(record[k])
+	for k in ["rented", "returned", "caught", "stolen", "helped", "shelved", "told", "asked"]:
+		day[k] = int(day[k])
 	for k: String in d.rented:
 		rented[k] = int(d.rented[k])
