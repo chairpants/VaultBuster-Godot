@@ -2,14 +2,14 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c2bpk3e7mjl4n"
+uid="uid://e6e76mlkmnqi"
 path.s3tc="res://.godot/imported/vaultbuster_147.jpg-e0084c09229c50a1b71fe5e25d4cd683.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "130ba616487199421832d215627213e4"
+"md5": "531aa2a440b5fbb112e76d6ad7d8f156"
 }
 
 [deps]

@@ -24,6 +24,12 @@ func _is_door(n: Node) -> bool:
 
 
 func _shot() -> void:
+	for a in OS.get_cmdline_user_args():  # --at=x,y,z,yaw (degrees): from somewhere else, flying (so nothing's in the way)
+		if a.begins_with("--at="):
+			var v := a.trim_prefix("--at=").split_floats(",")
+			$Player.fly = true
+			$Player.global_position = Vector3(v[0], v[1], v[2])
+			$Player.rotation.y = deg_to_rad(v[3])
 	for i in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://shot.png")

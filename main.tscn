@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1"]
-[ext_resource type="PackedScene" path="res://world/vaultbuster.glb" id="2"]
+[ext_resource type="PackedScene" path="res://world/world.scn" id="2"]
 [ext_resource type="Script" path="res://player.gd" id="3"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
