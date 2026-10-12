@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://world/world.scn" id="2"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://lights.gd" id="9"]
 [ext_resource type="Script" path="res://fixtures.gd" id="10"]
 [ext_resource type="Script" path="res://room.gd" id="11"]
+[ext_resource type="Script" path="res://things.gd" id="12"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.25, 0.45, 0.8, 1)
@@ -82,3 +83,6 @@ script = ExtResource("10")
 
 [node name="Room" type="Node" parent="."]
 script = ExtResource("11")
+
+[node name="Things" type="Node3D" parent="."]
+script = ExtResource("12")

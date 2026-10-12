@@ -1,0 +1,278 @@
+extends Node
+## The loose things and the small ones: the spinning stool (sit, spin, carry it off), the standee (carry it off), the
+## cooler's door, the front doors' deadbolt, the toilet's lever and the paper towels, the cardboard bed out back, and
+## the movie on the roof (the projector, its VCR, the bedsheet).
+## From the web game: store/player.js (the stool: stoolSit, stoolPush, stoolStand, stoolTick, and carrying it and the
+## standee), store/tv.js (onE: the toilet, the towels, the lamp, the cooler), store/staff.js (setFrontLock),
+## store/chores.js (bathTick), store/customer-mode.js (cmSleep), store/roof.js (the projector and cineTick),
+## store/checkout.js (how near, and the words of the tips). Where they are, and the stool's numbers: data/interact.json.
+## Different here: anyone can sleep on the cardboard (the web game: customers only), and it's the clock that moves,
+## nothing else happens while you're out; the deadbolt keeps the door shut but the signs in the glass don't turn; the
+## cooler has no thermometer; the tap doesn't run; a thing set down goes where there's a clear line to it, not by
+## the web game's test of the floor.
+
+const HOLD := 0.45  # hold E this long to lift the stool or the standee
+
+var T := {}  # data/interact.json's things
+var aim := ""
+var on_stool := false
+var carrying := ""  # "stool" | "cutout" | ""
+var cooler_open := false
+var locked := false
+var cine_on := false
+var flush_t := 0.0
+var lifting := false  # E's being held on something that lifts (interact.gd)
+
+var _stool: Node3D
+var _stool_top: Node3D
+var _cutout: Node3D
+var _cooler: Node3D
+var _turn: Node3D
+var _water: Node3D
+var _water_y := 0.0
+var _vel := 0.0
+var _angle := 0.0
+var _spot_ok := true
+var _stood := {}
+var _wake := -1.0  # the hour you'll wake at, asleep on the cardboard
+var _block := StaticBody3D.new()  # the front doors, bolted
+var _sheet := MeshInstance3D.new()
+var _sheet_mat := StandardMaterial3D.new()
+
+@onready var player: CharacterBody3D = $"../Player"
+@onready var hud: CanvasLayer = $"../HUD"
+@onready var tapes: Node = $"../Tapes"
+@onready var sky: Node3D = $"../Sky"
+@onready var video: Node = $"../Video"
+
+
+func _ready() -> void:
+	T = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things
+	for n: Node3D in $"../World".find_children("*", "Node3D", true, false):
+		var p := n.global_position
+		if n is MeshInstance3D:
+			if p.distance_to(_v(T.lock.turn)) < 0.01:
+				_turn = n
+			elif T.flush.water != null and p.distance_to(_v(T.flush.water)) < 0.01:
+				_water = n
+				_water_y = n.position.y
+		elif n.get_child_count():
+			if p.distance_to(Vector3(T.stool.x, 0, T.stool.z)) < 0.02:
+				_stool = n
+				for c in n.get_children():
+					if c is Node3D and not c is MeshInstance3D and absf(c.position.y - T.stool.SEAT) < 0.01:
+						_stool_top = c  # everything that turns
+			elif p.distance_to(Vector3(T.cutout.x, 0, T.cutout.z)) < 0.02:
+				_cutout = n
+			elif p.distance_to(_v(T.cooler.pivot)) < 0.02:
+				_cooler = n
+	for what in [["the stool", _stool], ["the standee", _cutout], ["the cooler's door", _cooler], ["the deadbolt", _turn]]:
+		if what[1] == null:
+			push_warning("%s isn't where the web game has it in the level (moved, or deleted?)" % what[0])
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(1.9, 2.3, 0.1)
+	shape.shape = box
+	shape.disabled = true
+	_block.position = Vector3(0.9, 1.15, 0.1)
+	_block.add_child(shape)
+	add_child(_block)
+	var s: Dictionary = T.cine.sheet  # the picture on the bedsheet: only the part of it the projector lands on, added to the cloth
+	var quad := QuadMesh.new()
+	quad.size = Vector2(s.w * s.img[2], s.h * s.img[3])
+	_sheet_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_sheet_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_sheet_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_sheet_mat.albedo_texture = video.texture
+	quad.material = _sheet_mat
+	_sheet.mesh = quad
+	_sheet.basis = Basis(Quaternion(s.q[0], s.q[1], s.q[2], s.q[3]))
+	_sheet.position = _v(s.p) + _sheet.basis.y * (s.img[1] - 0.5) * s.h + _sheet.basis.z * 0.012
+	_sheet.visible = false
+	add_child(_sheet)
+
+
+func _v(a: Array) -> Vector3:
+	return Vector3(a[0], a[1], a[2])
+
+
+func _stool_at() -> Vector3:
+	return _stool.global_position if _stool else Vector3(T.stool.x, 0, T.stool.z)
+
+
+func _process(dt: float) -> void:
+	# the stool: bearing friction winds the spin down (a constant drag plus a little that grows with speed); you turn with the seat
+	if _vel > 0.0:
+		var drag: float = (T.stool.DRAG + T.stool.VISC * _vel) * (1.0 if on_stool else T.stool.EMPTY) * dt
+		var v := maxf(0.0, _vel - drag)
+		var d := (_vel + v) / 2.0 * dt  # averaged over the step, so a stop lands smoothly
+		_vel = v
+		_angle += d
+		if on_stool:
+			player.rotation.y += d
+	if _stool_top:
+		_stool_top.rotation.y = _angle
+	if on_stool and (Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_D)):
+		_stool_stand()  # any move key gets you up
+	if carrying != "":  # carried a little ahead of you; where it would go down, if there's a clear line there
+		var n: Node3D = _stool if carrying == "stool" else _cutout
+		var fwd := -player.global_basis.z
+		var spot: Vector3 = player.global_position + fwd * T.stool.CARRY_D
+		n.global_position = Vector3(spot.x, player.global_position.y, spot.z)
+		n.rotation.y = player.rotation.y
+		var q := PhysicsRayQueryParameters3D.create(player.global_position + Vector3(0, 0.6, 0), spot + fwd * 0.3 + Vector3(0, 0.6, 0))
+		q.exclude = [player.get_rid()]
+		_spot_ok = player.get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+	if _cooler:
+		_cooler.rotation.y += ((T.cooler.openA if cooler_open else 0.0) - _cooler.rotation.y) * minf(1.0, dt * 5.0)  # swings out ~100 degrees
+	if flush_t > 0.0 and _water:  # the bowl drains and refills after a flush
+		flush_t = maxf(0.0, flush_t - dt)
+		var t := 6.0 - flush_t
+		_water.position.y = _water_y - T.flush.drop * (t / 1.3 if t < 1.3 else maxf(0.0, 1.0 - (t - 1.3) / 3.8))
+		_water.rotation.z += dt * (5.0 if t < 2.5 else 0.0)  # swirl
+	elif flush_t > 0.0:
+		flush_t = maxf(0.0, flush_t - dt)
+	if _wake >= 0.0 and (Clock.h >= _wake or Clock.warp <= Clock.h):  # morning, or near enough
+		_wake = -1.0
+		hud.fade("")
+		player.set_physics_process(true)
+	# the movie on the roof: in the sun it's barely there; after dark it's the picture
+	var k := (0.06 + 0.9 * pow(1.0 - sky.level, 1.5)) if cine_on and tapes.playing != null else 0.0
+	_sheet.visible = k > 0.0
+	_sheet_mat.albedo_color = Color(k, k, k)
+
+
+# ---- what the crosshair's on (called from interact.gd, after the doors); returns the tip, "" if it's nothing of ours
+
+func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> String:
+	aim = ""
+	if carrying != "":
+		aim = "carry"
+		var what := "stool" if carrying == "stool" else "standee"
+		return "E — set the %s down" % what if _spot_ok else "No room for the %s here" % what
+	if player.global_position.y > 3.4:  # up on the roof: the projector and its VCR
+		for part in [["proj", T.cine.proj], ["vcr", T.cine.vcr]]:
+			var to := _v(part[1]) - from
+			var t := to.dot(dir)
+			if t > 0.2 and t < 2.4 and (to - dir * t).length() < 0.28:
+				aim = part[0]
+				if aim == "proj":
+					return "E — turn the projector %s" % ("off" if cine_on else "on")
+				if tapes.held != null:
+					return "E — put %s in" % tapes.held.t
+				return ("E — eject" + ("" if cine_on else "\nthe projector's off")) if tapes.playing != null else "The VCR\nbring a tape up"
+	if not hit:
+		return ""
+	var at: Vector3 = hit.position
+	if hit_d < 2.2:
+		if _stool and Vector2(at.x - _stool_at().x, at.z - _stool_at().z).length() < 0.34 and at.y < _stool_at().y + 0.9:
+			aim = "stool"
+			return "Lifting…" if lifting else "E — sit on the stool\nHold E — pick it up"
+		if at.distance_to(_v(T.lock.at)) < 0.2:
+			aim = "lock"
+			return "E — %s the front doors" % ("unlock" if locked else "lock")
+		if at.distance_to(_v(T.flush.at)) < 0.16:
+			aim = "flush"
+			return "Flushing…" if flush_t > 0.0 else "E — flush"
+		if T.towels != null and at.distance_to(_v(T.towels.at)) < 0.25:
+			aim = "towels"
+			return "E — take a paper towel"
+	if hit_d < 2.6:
+		if _cutout and Vector2(at.x - _cutout.global_position.x, at.z - _cutout.global_position.z).length() < 0.5 and at.y < 2.0:
+			aim = "cutout"
+			return "Lifting…" if lifting else "Hold E — pick up the standee"
+		if at.distance_to(_v(T.cooler.hit)) < 0.75 or (_cooler and cooler_open and at.distance_to(_cooler.global_position + Vector3(0, 1.0, 0)) < 0.9):
+			aim = "cooler"
+			return "E — %s the cooler" % ("close" if cooler_open else "open")
+		var b := _v(T.bed.at)
+		if absf(at.x - b.x) < 0.6 and absf(at.z - b.z) < 1.2 and at.y < 0.6:
+			aim = "bed"
+			return ("E — sleep it off till morning" if Clock.after_close() else "E — lie down a while (3 hours)") + "\nsomebody's cardboard bed"
+	return ""
+
+
+func holdable() -> bool:  # E held on these lifts them
+	return carrying == "" and not on_stool and (aim == "stool" or aim == "cutout")
+
+
+func pick_up() -> void:  # (the hold came good)
+	if not holdable():
+		return
+	carrying = aim
+	if carrying == "stool":
+		_vel = 0.0
+	_solid(_stool if carrying == "stool" else _cutout, false)
+
+
+func _solid(n: Node, on: bool) -> void:  # what's in your arms doesn't bump into things
+	for b: StaticBody3D in n.find_children("*", "StaticBody3D", true, false):
+		b.collision_layer = 1 if on else 0
+
+
+func on_e_first() -> bool:  # before anything else gets E: on the stool it's a shove; with your arms full it's putting that down
+	if on_stool:
+		_vel = minf(T.stool.MAX, _vel + T.stool.PUSH)
+		return true
+	if carrying != "":
+		if _spot_ok:
+			_solid(_stool if carrying == "stool" else _cutout, true)
+			carrying = ""
+		return true
+	return false
+
+
+func on_e() -> bool:
+	match aim:
+		"stool":  # sit facing the way you were looking
+			_stood = { "at": player.global_position, "yaw": player.rotation.y }
+			_angle = player.rotation.y
+			on_stool = true
+			player.sit({ "kind": "stool", "x": _stool_at().x, "y": _stool_at().y, "z": _stool_at().z, "ry": player.rotation.y - PI, "hipY": T.stool.SEAT + 0.05 })
+		"cutout":
+			pass  # (a tap does nothing: it wants holding)
+		"cooler":
+			cooler_open = not cooler_open
+		"lock":
+			locked = not locked
+			_block.get_child(0).disabled = not locked
+			if _turn:
+				_turn.rotation.z = PI / 2 if locked else 0.0
+		"flush":
+			if flush_t <= 0.0:
+				flush_t = 6.0
+		"towels":
+			hud.toast("You dry your hands")
+		"bed":
+			if Clock.after_close():  # through to the morning
+				hud.toast("You curl up on the cardboard. Morning comes soon enough")
+				Clock.day += 1
+				Clock.h = Clock.OPEN - 0.25
+				Clock.warp = 0.0
+			else:  # a few hours go by
+				_wake = minf(Clock.CLOSE, Clock.h + 3.0)
+				Clock.warp = _wake
+				hud.fade("Zzz…")
+				player.set_physics_process(false)
+		"proj":
+			cine_on = not cine_on
+		"vcr":
+			tapes.vcr_use()
+			if tapes.playing != null:
+				cine_on = true  # (a tape in: the projector comes on with it)
+		_:
+			return false
+	return true
+
+
+func _stool_stand() -> void:  # step off toward where you're facing, or anywhere clear, or back where you came from
+	on_stool = false
+	var c := _stool_at()
+	for da in [0.0, 1.2, -1.2, 2.4, -2.4, PI]:
+		var a: float = player.rotation.y + da
+		var to := Vector3(c.x - sin(a) * 0.62, c.y, c.z - cos(a) * 0.62)
+		var q := PhysicsRayQueryParameters3D.create(c + Vector3(0, 1.0, 0), to + Vector3(0, 1.0, 0))
+		q.exclude = [player.get_rid()]
+		if player.get_world_3d().direct_space_state.intersect_ray(q).is_empty():
+			player.stand(to, player.rotation.y)
+			return
+	player.stand(_stood.at, _stood.yaw)

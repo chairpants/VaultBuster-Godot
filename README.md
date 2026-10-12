@@ -4,7 +4,8 @@ The video store from the web game, in Godot 4, to walk round and edit. The game'
 each piece translated from the web game's own source (the file it came from is named at the top of each script), so
 the numbers and the behaviour are the same. So far: the clock, the sky through the day and night, the day's clouds,
 doors and seats, tapes (off the shelf, into the VCR, playing on every screen), the counter's pass-through, both
-ladders to the roof, the light switches and lamps, and the lighting itself. No customers, no register yet.
+ladders to the roof, the light switches and lamps, the lighting itself, and the loose things (the stool, the
+standee, the cooler, the deadbolt, the toilet, the cardboard bed, the movie on the roof). No customers, no register yet.
 
 Open `project.godot` in Godot 4.6 or later and press F5.
 
@@ -14,6 +15,7 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | Shift | Run |
 | Space | Jump |
 | E | Whatever the crosshair's on: a door, a seat, the counter's pass-through, a light switch, a lamp, a ladder (the closet's goes up through the hatch; the one out back has to be kicked down from the roof first); at the TV or the theater's screen, the tape in your hand goes in (E again: out it comes) |
+| Hold E | On the stool or the standee: pick it up and carry it; E sets it down |
 | Click | A tape on the shelf: off it comes, held up to look at. Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
 | Right-click | While you're still looking at a tape you've just picked up: put it back |
 | L | Skip an hour (not past midnight) |
@@ -58,6 +60,7 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `sky.gd`, `sky.gdshader` | The sky for the hour, the sun and moon, stars, the day's clouds drifting, the same weather plan per day as the web game (web: `store/shift.js`, `exterior/sky.js`). Rain, snow and fog aren't over yet |
 | `interact.gd` | E on things: hinged doors, push doors that swing out of your way, the storefront's door, every seat (web: `store/player.js`, `store/main.js`, `store/shoppers.js`, `store/tv.js`) |
 | `fixtures.gd` | E on the fixed things: the counter's pass-through, light switches, lamps, both ladders (web: `store/player.js`, `store/clock.js`, `store/tv.js`, `store/roof.js`) |
+| `things.gd` | The loose things: the stool (E sits, E again spins, WASD gets up), carrying it and the standee, the cooler's door, the front doors' deadbolt, the flush and the paper towels, sleeping on the cardboard bed (3 hours, or after close through to morning), the roof's projector, VCR and bedsheet (web: `store/player.js`, `store/tv.js`, `store/staff.js`, `store/chores.js`, `store/customer-mode.js`, `store/roof.js`) |
 | `lights.gd` | The nine light zones and their switches, fluorescents stuttering as they strike; the side lamps (web: `store/lounge.js`) |
 | `room.gd` | The lighting: a surface is lit by which room it's in and whether that room's switch is on, daylight through the glass, sun and moon outside. The web game's room shader, put into every lit material as the game starts (web: `store/core.js` ROOM_FRAG) |
 | `data/interact.json` | Doors, seats, screens, the pass-through, ladders, switches, lamps and the rooms' boxes, from the web game (`node tests/export-glb.mjs --data ../VaultBusterGodot/data/interact.json`) |

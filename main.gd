@@ -145,6 +145,50 @@ func _check() -> void:
 		await get_tree().create_timer(F.ladders.dur + 0.6).timeout
 		if F.on_roof() or absf(P.global_position.x - F.ladders.back.climb.down.x) > 0.5:
 			bad.append("the back ladder didn't get you down (at %s)" % P.global_position)
+	var Th := $Things
+	if Th._stool == null or Th._stool_top == null or Th._cooler == null or Th._turn == null:
+		bad.append("not every loose thing was found in the level (stool %s, its seat %s, cooler %s, deadbolt %s, standee %s)" % [Th._stool != null, Th._stool_top != null, Th._cooler != null, Th._turn != null, Th._cutout != null])
+	else:
+		P.global_position = Vector3(-4.5, 0, 3.2)
+		P.rotation.y = 0.0
+		Th.aim = "stool"
+		I.on_e()
+		I.on_e()
+		await get_tree().create_timer(0.4).timeout
+		if not Th.on_stool or Th._vel <= 0.0 or Th._angle == 0.0:
+			bad.append("the stool: not sat on it and spinning")
+		Th._stool_stand()
+		if Th.on_stool or P.seat != null:
+			bad.append("didn't get up off the stool")
+		Th.aim = "stool"
+		Th.pick_up()
+		await get_tree().create_timer(0.3).timeout
+		if Th.carrying != "stool" or Th._stool.global_position.distance_to(P.global_position) > 1.5:
+			bad.append("the stool isn't being carried")
+		P.global_position = Vector3(0, 0, 10)
+		P.rotation.y = 0.0
+		await get_tree().create_timer(0.3).timeout
+		I.on_e()
+		if Th.carrying != "" or Th._stool.global_position.distance_to(Vector3(0, 0, 10 - 0.95)) > 0.3:
+			bad.append("the stool wasn't set down ahead of you (%s, room %s)" % [Th._stool.global_position, Th._spot_ok])
+		Th.aim = "cooler"
+		Th.on_e()
+		Th.aim = "lock"
+		Th.on_e()
+		Th.aim = "flush"
+		Th.on_e()
+		await get_tree().create_timer(1.0).timeout
+		if absf(Th._cooler.rotation.y - 1.75) > 0.1 or not Th.locked or Th.flush_t <= 0.0:
+			bad.append("the cooler, the deadbolt or the flush didn't take")
+		Th.aim = "lock"
+		Th.on_e()
+		Clock.h = 12.0
+		Clock.warp = 0.0
+		Th.aim = "bed"
+		Th.on_e()
+		await get_tree().create_timer(8.5).timeout
+		if absf(Clock.h - 15.0) > 0.2 or Th._wake >= 0.0:
+			bad.append("three hours on the cardboard came to %s" % Clock.fmt_clock(Clock.h))
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

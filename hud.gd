@@ -8,6 +8,8 @@ var _cross := _label(18)
 var _tip := _label(18)
 var _toast := _label(20)
 var _toast_t := 0.0
+var _fade := ColorRect.new()
+var _fade_text := _label(40)
 
 
 func _label(size: int, color := Color.WHITE) -> Label:
@@ -23,11 +25,20 @@ func _label(size: int, color := Color.WHITE) -> Label:
 
 func _ready() -> void:
 	_cross.text = "+"
+	_fade.color = Color.BLACK
+	_fade.visible = false
+	add_child(_fade)
+	move_child(_fade_text, -1)
 	Clock.toast.connect(toast)
 
 
 func tip(text: String) -> void:
 	_tip.text = text
+
+
+func fade(text: String) -> void:  # the screen gone black with a word on it ("" brings it back)
+	_fade.visible = text != ""
+	_fade_text.text = text
 
 
 func toast(text: String) -> void:
@@ -43,8 +54,11 @@ func _process(dt: float) -> void:
 	_status.position = Vector2(16, 44)
 	_toast_t -= dt
 	_toast.visible = _toast_t > 0.0
-	for l: Label in [_cross, _tip, _toast]:
+	for l: Label in [_cross, _tip, _toast, _fade_text]:
 		l.reset_size()
+	_fade.size = s
+	_fade_text.visible = _fade.visible
+	_fade_text.position = (s - _fade_text.size) / 2.0
 	_cross.position = (s - _cross.size) / 2.0
 	_tip.position = Vector2((s.x - _tip.size.x) / 2.0, s.y * 0.78)
 	_toast.position = Vector2((s.x - _toast.size.x) / 2.0, s.y * 0.12)

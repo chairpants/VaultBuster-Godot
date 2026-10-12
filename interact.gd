@@ -18,12 +18,14 @@ var no_collide: Array[Node] = []  # what you walk through: push doors, the store
 var aim_door = null
 var aim_seat = null
 var stood_at := {}
+var _hold := -1.0  # how long E's been held on something that lifts (-1: it isn't)
 
 @onready var player: CharacterBody3D = $"../Player"
 @onready var cam: Camera3D = $"../Player/Camera"
 @onready var hud: CanvasLayer = $"../HUD"
 @onready var tapes: Node = $"../Tapes"
 @onready var fixtures: Node = $"../Fixtures"
+@onready var things: Node = $"../Things"
 
 
 func _ready() -> void:
@@ -62,6 +64,11 @@ func _process(dt: float) -> void:
 		d.rattle = maxf(0.0, d.rattle - dt)
 		d.pivot.rotation.y = d.base + d.a + (0.012 * sin(d.rattle * 70.0) if d.rattle > 0.0 else 0.0)
 	_front_door(dt)
+	if _hold >= 0.0:
+		_hold += dt
+		if _hold >= things.HOLD:
+			_hold = -1.0
+			things.pick_up()
 
 
 func _physics_process(_dt: float) -> void:
@@ -93,7 +100,7 @@ func _front_door(dt: float) -> void:  # anyone right at the door: it swings open
 	if front.is_empty():
 		return
 	var p := player.global_position
-	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5
+	var near: bool = Vector2(p.x - front.near.x, p.z - front.near.z).length() < front.near.r and p.y < 2.5 and not things.locked
 	if near:
 		front.open = true
 		front.hold = 0.7
@@ -112,6 +119,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 	if player.climb != null:
 		tapes.clear_aim()
 		hud.tip("")
+		return
+	things.lifting = _hold >= 0.0
+	if things.on_stool:
+		tapes.clear_aim()
+		hud.tip("Press E to spin · tap it fast to spin harder · WASD to get up")
 		return
 	if player.seat != null:
 		tapes.clear_aim()
@@ -138,6 +150,11 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
 		return
+	var thing_tip: String = things.take_aim(from, dir, hit, hit_d)  # the stool, the standee, the cooler, the deadbolt... (see things.gd)
+	if thing_tip != "":
+		tapes.clear_aim()
+		hud.tip(thing_tip)
+		return
 	var fix_tip: String = fixtures.take_aim(from, dir, hit, hit_d)  # the flap, switches, lamps, ladders (see fixtures.gd)
 	if fix_tip != "":
 		tapes.clear_aim()
@@ -161,15 +178,27 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_E:
+	if not e is InputEventKey or e.echo or e.physical_keycode != KEY_E:
+		return
+	if e.pressed:
+		if things.holdable():
+			_hold = 0.0  # a tap does one thing, a hold lifts it: wait and see which
+		else:
+			on_e()
+	elif _hold >= 0.0:
+		_hold = -1.0
 		on_e()
 
 
 func on_e() -> void:
+	if things.on_e_first():
+		return
 	if player.seat != null:  # E always stands you up
 		player.stand(stood_at.at, stood_at.yaw)
 	elif aim_door != null:
 		toggle_door(aim_door)
+	elif things.on_e():
+		pass
 	elif fixtures.on_e():
 		pass
 	elif tapes.aim_tv != null:
