@@ -5,7 +5,8 @@ extends Node
 ## beforeunload); what's in it here is what's over here so far: the day and the hour, where you are, the lights, the
 ## doors and the pass-through, the back ladder, the cooler, the deadbolt, where the stool and the standee were put,
 ## and the tapes: what's out on rental and when it's due, what's in the Returns bin, what you're carrying, what's in
-## the VCR, how far each tape's wound and which were stolen; and the till. Whoever was in the store isn't: they've gone when you're back.
+## the VCR, how far each tape's wound and which were stolen; the till; and the members' accounts (what
+## they owe, how they feel about the place, who's banned). Whoever was in the store isn't: they've gone when you're back.
 ## Not when it's run with arguments (--check, --shot): those always start fresh, and leave the save alone.
 
 const PATH := "user://store.json"
@@ -71,7 +72,7 @@ func snapshot() -> Dictionary:
 		"fixtures": { "flap": F.flap_open, "back": F.back_down },
 		"things": { "cooler": Th.cooler_open, "locked": Th.locked, "cine": Th.cine_on, "stool": _xf(Th._stool), "cutout": _xf(Th._cutout) },
 		"tapes": {
-			"rented": S.rented.map(func(r: Array) -> Array: return [r[0].k, r[1], r[2]]),
+			"rented": S.rented.map(func(r: Array) -> Array: return [r[0].k, r[1], r[2], r[3] if r.size() > 3 else 0]),
 			"bin": T.return_bin.map(func(t: Dictionary) -> String: return t.k),
 			"inv": T.inv.map(func(t: Dictionary) -> String: return t.k), "sel": T.inv_sel,
 			"playing": [T.playing.tape.k, T.playing.idx] if T.playing != null else [],
@@ -80,6 +81,7 @@ func snapshot() -> Dictionary:
 			"rewinder": T.rewinder.tape.k if not T.rewinder.is_empty() and T.rewinder.tape != null else "",
 			"dana": main.get_node("Staff").carry.map(func(t: Dictionary) -> String: return t.k),
 		},
+		"members": S.members.records(),
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
 
@@ -151,7 +153,7 @@ func apply(d: Dictionary) -> void:
 	for r: Array in d.tapes.rented:
 		if by_key.has(r[0]):
 			T.set_on_shelf(by_key[r[0]], false)
-			S.rented.append([by_key[r[0]], int(r[1]), int(r[2])])
+			S.rented.append([by_key[r[0]], int(r[1]), int(r[2]), int(r[3]) if r.size() > 3 and S.members.by_num.has(int(r[3])) else S.members.all.pick_random().num])  # (out before there were members: on somebody's account)
 	T.return_bin.clear()
 	for k: String in d.tapes.bin:
 		if by_key.has(k):
@@ -188,6 +190,7 @@ func apply(d: Dictionary) -> void:
 		T.inv_stash()
 	if in_vcr != null:
 		T.play_episode(int(d.tapes.playing[1]), in_vcr)  # (on from where it had got to)
+	S.members.restore(d.get("members", {}))
 	C.served = int(d.till.served)
 	C.rentals = int(d.till.rentals)
 	C.take = d.till.take

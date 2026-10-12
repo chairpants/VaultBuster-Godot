@@ -8,6 +8,7 @@ var _cross := _label(18)
 var _tip := _label(18)
 var _toast := _label(20)
 var _toast_t := 0.0
+var _call := _label(18, Color(1, 0.83, 0))
 
 @onready var till: Node = $"../Checkout"
 var _inv := _label(15)
@@ -52,6 +53,10 @@ func inventory(names: Array, sel: int) -> void:  # what you're carrying, numbere
 	_inv.text = "   ".join(parts) if names.size() > 1 else ""
 
 
+func call_box(text: String) -> void:  # a decision waiting on you ("" clears it)
+	_call.text = text
+
+
 func toast(text: String) -> void:
 	_toast.text = text
 	_toast_t = 4.0
@@ -67,8 +72,9 @@ func _process(dt: float) -> void:
 	_status.position = Vector2(16, 44)
 	_toast_t -= dt
 	_toast.visible = _toast_t > 0.0
-	for l: Label in [_cross, _tip, _toast, _fade_text, _inv]:
+	for l: Label in [_cross, _tip, _toast, _fade_text, _inv, _call]:
 		l.reset_size()
+	_call.position = Vector2((s.x - _call.size.x) / 2.0, s.y * 0.2)
 	_fade.size = s
 	_fade_text.visible = _fade.visible
 	_fade_text.position = (s - _fade_text.size) / 2.0

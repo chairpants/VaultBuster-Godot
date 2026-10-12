@@ -5,12 +5,14 @@ extends Node
 ## From the web game's store/checkout.js (CO_STEPS, coStart, coAct, coSkip, how a sale's scored), pos.js (what a
 ## tape rents for: $3.99 a new release, $1.99 the rest) and store/tv.js (E on the register, the pad, the printer).
 ## Where the register, the pad and the printer are: data/interact.json.
-## Not over yet: members and their accounts (so no late fees, no sign-ups), snacks and the snack offer, show
+## Members' accounts are in (members.gd): what's rung up goes on theirs, late fees are charged at the counter (or
+## waived, with Q), and how it went is how they feel about the place after.
+## Not over yet: sign-ups, snacks and the snack offer, show
 ## tickets, the drawer opening, the receipt coming out of the printer, the terminal's own screens.
 ## E on the register shuts the gate alarm off (the web game: logging in to its terminal does).
 
 const STEPS := [  # [id, where it's done]
-	["card", "customer"], ["tap", "register"], ["cardBack", "customer"], ["tapes", "customer"], ["desens", "pad"],
+	["card", "customer"], ["tap", "register"], ["cardBack", "customer"], ["fees", "customer"], ["tapes", "customer"], ["desens", "pad"],
 	["cash", "customer"], ["ring", "register"], ["tear", "printer"], ["change", "customer"], ["receipt", "customer"], ["handback", "customer"],
 ]
 
@@ -53,7 +55,8 @@ func _process(dt: float) -> void:
 		var k: Dictionary = co.cust
 		co = null
 		score -= 100
-		hud.toast("A customer gave up on the checkout and walked out")
+		hud.toast("%s gave up on the checkout and walked out" % k.name)
+		shoppers.members.loyal(k.member, -15)
 		k.c.set_mood("angry")
 		k.c.hold_prop(null)
 		k.c.hold_tape(k.tapes.size())
@@ -74,6 +77,7 @@ func tip() -> String:  # what the step in hand wants doing
 		"card": return "take their member card"
 		"tap": return "tap the member card on the register"
 		"cardBack": return "hand their card back"
+		"fees": return "charge the $%.2f in late fees (Q waives them)" % co.cust.member.owed
 		"tapes": return "take %s" % what
 		"desens":
 			var left: Array = co.cust.tapes.filter(func(t: Dictionary) -> bool: return not t.get("desens", false))
@@ -98,7 +102,8 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 			break
 	if randf() < 0.25:
 		bill = total  # exact change now and then
-	co = { "by": by, "cust": cust, "i": 0, "total": total, "bill": bill, "change": snappedf(bill - total, 0.01), "start": _now, "idle": 0.0 }
+	co = { "by": by, "cust": cust, "i": 0, "total": total, "bill": bill, "change": snappedf(bill - total, 0.01), "start": _now, "idle": 0.0, "pts": 0, "fees": 0.0 }
+	shoppers.regular_says(cust, "counter", "you" if by == "player" else "dana")
 	cust.state = "checkout"
 	cust.c.set_mood("happy")
 	cust.c.set_pose("wait")
@@ -106,7 +111,7 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 
 
 func _skip() -> void:  # past any step this sale doesn't need
-	while co != null and co.i < STEPS.size() and STEPS[co.i][0] == "change" and co.change <= 0.0:
+	while co != null and co.i < STEPS.size() and ((STEPS[co.i][0] == "change" and co.change <= 0.0) or (STEPS[co.i][0] == "fees" and co.cust.member.owed <= 0.0)):
 		co.i += 1
 	if co != null:  # what they're holding out for this one
 		var id: String = step()[0] if not step().is_empty() else ""
@@ -131,6 +136,13 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 	var k: Dictionary = co.cust
 	var again := false
 	match s[0]:
+		"tap":  # their account comes up
+			var m: Dictionary = k.member
+			var late: int = shoppers.rentals_of(m).filter(func(r: Array) -> bool: return r[2] < Clock.day).size()
+			if co.by == "player":
+				hud.toast("#%d %s: %s" % [m.num, k.name, ", ".join(PackedStringArray(["$%.2f in late fees due" % m.owed if m.owed > 0.0 else "", "%d tape%s out late" % [late, "" if late == 1 else "s"] if late > 0 else ""].filter(func(x: String) -> bool: return x != ""))) if m.owed > 0.0 or late > 0 else "account OK"])
+		"fees":
+			fees(true)
 		"tapes":
 			k.c.hold_tape(0)
 		"desens":
@@ -143,16 +155,19 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			served += 1
 			rentals += k.tapes.size()
 			take += co.total
+			for t: Dictionary in k.tapes:  # on their account: a new release is out two nights, the rest five
+				shoppers.rented.append([t, Clock.day, Clock.day + (2 if t.n else 5), k.member.num])
 			_printing = 2.2
 		"handback":  # done: how'd that go (yours, or Dana's)
 			var secs: float = _now - co.start
 			var missed: int = k.tapes.filter(func(t: Dictionary) -> bool: return not t.get("desens", false)).size()
-			var got := 100 + maxi(0, roundi((90.0 - secs) * 2.0)) - 75 * missed
+			var got: int = 100 + maxi(0, roundi((90.0 - secs) * 2.0)) + co.pts - 75 * missed
+			shoppers.members.loyal(k.member, 7 if secs < 40.0 else 4)
 			score += got
 			k.c.hold_tape(k.tapes.size())
 			k.tagged = missed > 0  # anything still tagged sets the gates off
 			k.paid = true
-			hud.toast("%s: %s, $%.2f%s (+%d)" % ["Dana rang up" if co.by == "dana" else "Rang up", "1 tape" if k.tapes.size() == 1 else "%d tapes" % k.tapes.size(), co.total, ", %d tag%s missed" % [missed, "" if missed == 1 else "s"] if missed else "", got])
+			hud.toast("%s %s: %s, $%.2f%s (+%d)" % ["Dana rang up" if co.by == "dana" else "Rang up", k.name, "1 tape" if k.tapes.size() == 1 else "%d tapes" % k.tapes.size(), co.total, ", %d tag%s missed" % [missed, "" if missed == 1 else "s"] if missed else "", got])
 			k.c.hold_prop("receipt")
 			k.c.set_mood("thanks")
 			k.c.set_pose("hold")
@@ -164,6 +179,33 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 		co.i += 1
 		_skip()
 	return true
+
+
+func fees(charge: bool) -> void:  # late fees on their account: charge them (money, a grumpier customer) or waive them (goodwill) (coFees)
+	var m: Dictionary = co.cust.member
+	var amt: float = m.owed
+	m.owed = 0.0
+	co.cust.hi = 1.6
+	shoppers.members.loyal(m, -3 if charge else 6)
+	if charge:
+		co.fees += amt
+		co.pts += 20
+		co.total = snappedf(co.total + amt, 0.01)  # a new total, what they hand over, the change (coRebill)
+		var bills: Array = [1.0, 5.0, 10.0, 20.0, 50.0, 100.0].filter(func(b: float) -> bool: return b >= co.total)
+		co.bill = co.total if randf() < 0.25 else bills[0] if not bills.is_empty() else ceilf(co.total / 20.0) * 20.0
+		co.change = snappedf(co.bill - co.total, 0.01)
+		co.cust.c.set_mood("meh")
+		hud.toast("%s %s their late fees ($%.2f)" % ["Dana charged" if co.by == "dana" else "Charged", co.cust.name, amt])
+	else:
+		co.cust.c.set_mood("love")
+		hud.toast("Waived %s's $%.2f in late fees" % [co.cust.name, amt])
+
+
+func _unhandled_input(e: InputEvent) -> void:  # Q at the counter: waive their late fees (coQ)
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_Q and co != null and co.by == "player" and step()[0] == "fees" and shoppers.aim == co.cust:
+		fees(false)
+		co.i += 1
+		_skip()
 
 
 # ---- the crosshair on the register, the pad or the printer (called from interact.gd)

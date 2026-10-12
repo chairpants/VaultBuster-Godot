@@ -301,7 +301,7 @@ func _check() -> void:
 			t0 = Time.get_ticks_msec()
 			while S.custs.has(cu) and Time.get_ticks_msec() - t0 < 25000:
 				await get_tree().process_frame
-			if S.custs.has(cu) or not took.off or S.rented.is_empty():
+			if S.custs.has(cu) or not took.off or S.member_of(took) != cu.member:
 				bad.append("a rung-up customer didn't leave with their tape")
 			var c2: Dictionary = S.spawn()  # ...and one for Dana
 			c2.c.position = Vector3(S._counter.x, 0, S._counter.z)
@@ -320,7 +320,7 @@ func _check() -> void:
 			Clock.day += 6  # past due: somebody brings it back, through the slot, into the bin
 			var back := false
 			for n in 40:
-				var r: Dictionary = S.spawn()
+				var r: Dictionary = S.spawn(S.member_of(took))
 				if r.returning.has(took):
 					back = true
 					r.c.position = Vector3(S._door.x, 0, S._door.y)
@@ -334,6 +334,9 @@ func _check() -> void:
 					break
 				S._gone(r)
 			Clock.day -= 6
+			if back and cu.member.owed <= 0.0:
+				bad.append("a tape back late didn't put a fee on their account")
+			cu.member.owed = 0.0
 			if not back or not $Tapes.return_bin.has(took):
 				bad.append("a rental past due didn't come back through the Returns slot (found one bringing it: %s; out: %d; states: %s)" % [back, S.rented.size(), S.custs.map(func(k: Dictionary) -> String: return "%s/%d/%.1f,%.1f" % [k.state, k.returning.size(), k.c.position.x, k.c.position.z])])
 			else:

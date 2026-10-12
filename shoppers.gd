@@ -8,12 +8,12 @@ extends Node
 ##
 ## Not over yet, and so different here:
 ## - What they rent comes back when it's due (two nights a new release, five the rest): somebody walks in with it and
-##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd). Nobody's late, so no fees.
+##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd).
 ## - Shoplifters and the gates are the web game's (custSneak, custCatch, custWatched, wisTick, empCatch, tagFix,
-##   custHearAlarm, custGone's stolen tapes; title.js's startGateAlarm), but for what needs members: nobody's got a
-##   name or a record, so one you catch is let off with a warning (no 1-5 call), and a stolen tape's just gone (no
-##   ordering a replacement). The gates' lights don't flash; they're never switched off.
-## - Nobody's a member: each is a new face (the web game's are its 150 members, the same person every visit).
+##   custHearAlarm, custGone's stolen tapes; title.js's startGateAlarm), the 1-5 call on one you've caught among them;
+##   a stolen tape's just gone (no ordering a replacement). The gates' lights don't flash; they're never switched off.
+## - Everybody's a member (members.gd): the same person every visit, coming in on their own rhythm, what they rent
+##   on their account, three out at most, late fees when it's back late. Nobody signs up; nobody's phoned.
 ## - No snacks, no questions at the counter, no kids or company, no cars, nobody going to the theater.
 
 const Nav := preload("res://nav.gd")
@@ -31,7 +31,10 @@ const GAIT_ODDS := [["plain", 30.0], ["brisk", 14.0], ["stroll", 10.0], ["bouncy
 var custs: Array[Dictionary] = []
 var line: Array[Dictionary] = []  # the checkout line: line[0] is the one at the counter
 var aim = null  # the customer the crosshair's on
-var rented: Array = []  # what's out: [tape, the day it went out, the day it's due]
+var rented: Array = []  # what's out: [tape, the day it went out, the day it's due, whose account it's on]
+var members := preload("res://members.gd").new()
+var catch_call = null  # the shoplifter you've stopped, waiting on what happens to them
+var _last_member = null
 var _slot := {}  # in the lane, facing the drop slot
 var alarm_on := false  # the gates going off
 var alarm_t := 0.0
@@ -171,30 +174,36 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 	return r
 
 
-func spawn() -> Dictionary:
-	var female := randf() < 0.5
-	var who := customer_for(randi(), female)
+func spawn(member = null) -> Dictionary:  # custSpawn
+	if member == null:
+		member = _pick_member(true)
+	var female: bool = member.female
+	var who := customer_for(_imul(member.num, 2654435761), female)  # member # -> the same person every time
+	_last_member = member
+	member.last_visit = Clock.day + Clock.h / 24.0
+	who.patience *= 1.0 + member.loyalty / 200.0  # regulars will wait a bit longer; the fed-up, less
+	if Clock.h >= 23.0 and randf() < 0.5:  # the 11:30 walk-in, in no hurry at all
+		who.stops = 7 + randi() % 4
+		who.dwell *= 1.5
+	if member.loyalty >= 40.0:
+		hud.toast("%s, one of the regulars, came in" % members.name_of(member))
+	var out := rentals_of(member)
+	var back: Array = out.filter(func(r: Array) -> bool: return r[2] <= Clock.day or (r[2] == Clock.day + 1 and randf() < 0.5)).map(func(r: Array) -> Dictionary: return r[0])  # what's due (or late) comes back; the rest stays out
+	who.max_tapes = mini(who.max_tapes, maxi(0, members.RENT_MAX - (out.size() - back.size())))  # 3 out at a time, counting what they're keeping
 	var cast: Array = range(people.cast.who.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == female and not people.cast.who[i].has("staff"))
 	var c: Node3D = people.spawn(cast[who.seed % cast.size()])
 	c.gait = who.gait
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
-	var cust := { "who": who, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
+	var cust := { "who": who, "member": member, "name": members.name_of(member), "said": {}, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
 		"thief": randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
 		"squeeze": 0.0, "stuck": 0.0, "detour": false, "bump_t": 0.0, "bump_detour": false, "wait_for": null }
-	# about half the time it's someone with tapes out, bringing them back: what's due (or late), and half the time what's due tomorrow
-	var due := rented.filter(func(r: Array) -> bool: return r[2] <= Clock.day or (r[2] == Clock.day + 1 and randf() < 0.5))
-	cust.returning = []
-	if not due.is_empty() and randf() < 0.5:
-		due.shuffle()
-		for r: Array in due.slice(0, 1 + randi() % 3):
-			rented.erase(r)
-			cust.returning.append(r[0])
+	if not back.is_empty():
 		c.set_pose("hold")
-		c.hold_tape(mini(3, cust.returning.size()))
+		c.hold_tape(mini(3, back.size()))
 	custs.append(cust)
 	return cust
 
@@ -210,7 +219,9 @@ func _process(dt: float) -> void:
 			if custs.any(func(k: Dictionary) -> bool: return Vector2(k.c.position.x - _door.x, k.c.position.z - _door.y).length() < 1.2):
 				_arrive = 1.0  # someone's in the doorway: give them a sec
 			else:
-				spawn()
+				var m = _pick_member()
+				if m != null:  # (nobody due in: a quiet spell)
+					spawn(m)
 				_arrive = (6.0 + randf() * 20.0) / rush_level()
 	var you: Vector3 = player.global_position
 	if you.y < 2.0 and absf(you.z - _you_z) < 1.0 and absf(you.x) < 2.0 and (_you_z - GATE_Z) * (you.z - GATE_Z) < 0.0 and tapes.inv.any(func(t: Dictionary) -> bool: return not t.get("desens", false)):
@@ -303,7 +314,7 @@ func _watched(cust: Dictionary, dt: float) -> void:  # sneaking out, they notice
 	cust.c.set_pose("hold")
 	cust.c.set_mood("meh")
 	cust.hi = 2.0
-	hud.toast("A customer saw you watching and brought %s to the counter" % (cust.tapes[0].t if cust.tapes.size() == 1 else "the tapes"))
+	hud.toast("%s saw you watching and brought %s to the counter" % [cust.name, cust.tapes[0].t if cust.tapes.size() == 1 else "the tapes"])
 	line.append(cust)
 	to_line(cust)
 
@@ -320,13 +331,133 @@ func catch(cust: Dictionary, by: String) -> void:  # stopped before they're out 
 	cust.c.set_mood("shock")
 	cust.hi = 1.5
 	checkout.score += 150
-	hud.toast("%s a customer sneaking out with %s (back in the returns bin, a warning) (+150)" % ["Dana caught" if by == "dana" else "Caught", what])
-	if by == "dana":
+	if by == "dana":  # a warning, and out
+		hud.toast("Dana caught %s sneaking out with %s (back in the returns bin, a warning) (+150)" % [cust.name, what])
 		go(cust, "leave", { "x": _door.x, "z": _door.y })
-	else:  # a word with them, then out
-		cust.path = []
-		cust.state = "caught"
-		cust.t = 2.0
+		return
+	hud.toast("Caught %s sneaking out with %s (back in the returns bin) (+150)" % [cust.name, what])
+	if catch_call != null:
+		catch_decide(5)  # one at a time: the last one gets a warning
+	cust.path = []
+	cust.state = "caught"
+	cust.t = 20.0
+	catch_call = cust
+	hud.call_box("CAUGHT · %s #%d · %s\n%s" % [cust.name, cust.member.num, what, "   ".join(range(5).map(func(i: int) -> String: return "%d %s" % [i + 1, CATCH_CALLS[i][0]]))])
+
+
+# what happens to them: you decide (1-5), or after 20 s they get a warning
+const CATCH_CALLS := [["Ban 1 week", "banned for a week", "banned", 7], ["Ban 1 month", "banned for a month", "banned", 30], ["Cancel membership", "membership cancelled", "cancelled", 0],
+	["Call the police", "arrested", "arrested", 0], ["Let them go with a warning", "let off with a warning", "", 0]]
+
+
+func catch_decide(key: int) -> void:
+	var cust = catch_call
+	if cust == null:
+		return
+	catch_call = null
+	hud.call_box("")
+	var k: Array = CATCH_CALLS[key - 1]
+	if k[2] != "":
+		cust.member.status = k[2]
+		cust.member.until = Clock.day + k[3]
+	hud.toast("%s: %s" % [cust.name, k[1]])
+	if custs.has(cust):  # ...and out
+		cust.c.set_mood("alarm" if key == 4 else "meh")
+		cust.hi = 0.0
+		go(cust, "leave", { "x": _door.x, "z": _door.y })
+
+
+func _unhandled_input(e: InputEvent) -> void:
+	if catch_call != null and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode >= KEY_1 and e.physical_keycode <= KEY_5:
+		catch_decide(e.physical_keycode - KEY_0)
+		get_viewport().set_input_as_handled()  # (not the tape in slot 1-5 as well)
+
+
+# ---- members: what's on whose account, who comes in when
+
+func rentals_of(m: Dictionary) -> Array:
+	return rented.filter(func(r: Array) -> bool: return r.size() > 3 and r[3] == m.num)
+
+
+func member_of(t: Dictionary):  # whose account a tape's out on (or null)
+	for r: Array in rented:
+		if r[0] == t and r.size() > 3:
+			return members.by_num.get(r[3])
+	return null
+
+
+func check_in(t: Dictionary) -> void:  # dropped back off: the rental's closed out. Back late: the fee goes on their account, settled at their next checkout
+	for r: Array in rented:
+		if r[0] == t:
+			var late := maxi(0, Clock.day - int(r[2]))
+			if late > 0 and r.size() > 3 and members.by_num.has(r[3]):
+				members.by_num[r[3]].owed = snappedf(members.by_num[r[3]].owed + late * (2.0 if t.n else 1.0), 0.01)  # $2 a day a new release, $1 the rest
+			rented.erase(r)
+			return
+
+
+func _weighted(items: Array, w: Array):
+	var r: float = randf() * w.reduce(func(a: float, b: float) -> float: return a + b, 0.0)
+	var i := 0
+	while i < items.size() - 1:
+		r -= w[i]
+		if r <= 0.0:
+			break
+		i += 1
+	return items[i]
+
+
+func _pick_member(anyone := false):  # who comes in (custPickMember). About half the time it's someone with tapes out, bringing them back: most likely whoever's due today or late
+	var now := Clock.day + Clock.h / 24.0
+	var ms: Array = members.all.filter(func(m: Dictionary) -> bool: return m != _last_member and not custs.any(func(k: Dictionary) -> bool: return k.member == m) and members.can_visit(m) and m.loyalty > -60.0)  # not someone who's already in here, banned, or fed up with the place
+	if ms.is_empty():
+		return null
+	var soon := {}  # member # -> days till their soonest rental's due
+	for r: Array in rented:
+		if r.size() > 3:
+			soon[r[3]] = mini(soon.get(r[3], 99), int(r[2]) - Clock.day)
+	var due := ms.filter(func(m: Dictionary) -> bool: return soon.get(m.num, 99) <= 1 and now - m.last_visit > 0.25)  # bringing tapes back (just not twice in a few hours)
+	if not due.is_empty() and randf() < 0.5:
+		return _weighted(due, due.map(func(m: Dictionary) -> float: return 3.0 if soon[m.num] <= 0 else 1.0))
+	# everyone else has their own rhythm: most come in every couple of days or so, regulars more, the fed-up less.
+	# Whoever's picked might not be due yet; then nobody comes this time
+	var ok := ms if anyone else ms.filter(func(m: Dictionary) -> bool: return now - m.last_visit >= 0.4)
+	if ok.is_empty():
+		return null
+	var m: Dictionary = _weighted(ok, ok.map(func(q: Dictionary) -> float: return maxf(0.2, 1.0 + q.loyalty / 40.0)))  # regulars come in more often
+	var cadence: float = 2.5 / maxf(0.4, 1.0 + m.loyalty / 50.0)
+	return m if anyone or randf() < pow(minf(1.0, (now - m.last_visit) / cadence), 2.0) else null  # (seen yesterday: unlikely today)
+
+
+const REG_LINES := {
+	"hi": ["Hey! How's it going?", "Back again, I know.", "Look who's working today.", "Hey, you're here! Good.", "Busy one today?"],
+	"hiTaste": ["Get anything new in %s?", "What's good in %s lately?", "I'm out of %s I haven't seen. Help me out."],
+	"counter": ["The usual, I think.", "Anything good come in this week?", "What would you watch tonight?", "Long day?", "I'll have these back on time. Probably.", "Every Friday, right?"],
+	"ofYou": ["Tell %s I said hi.", "%s told me to rent this one."],
+	"unhappy": ["Just these.", "Can we hurry this up?"],
+}
+const TASTE_WORDS := { "horror fan": "horror", "parent": "the kids' section", "couch potato": "TV shows", "action junkie": "action", "date night": "romance", "anime kid": "anime" }
+
+
+func regular_says(cust: Dictionary, when: String, by := "you") -> void:  # a regular has a word for you (once a visit, each); somebody fed up has a short one
+	if cust.said.has(when):
+		return
+	var loy: float = cust.member.loyalty
+	var line: String
+	if loy <= -30.0 and when == "counter":
+		line = REG_LINES.unhappy.pick_random()
+	elif loy < 35.0:
+		return
+	elif when == "hi":
+		var t: String = TASTE_WORDS.get(cust.who.taste, "")
+		line = REG_LINES.hiTaste.pick_random() % t if t != "" and randf() < 0.5 else REG_LINES.hi.pick_random()
+	else:
+		line = REG_LINES.ofYou.pick_random() % "Dana" if by != "dana" and randf() < 0.2 else REG_LINES.counter.pick_random()
+	cust.said[when] = true
+	cust.hi = 2.0
+	cust.c.set_mood("meh" if loy <= -30.0 else "happy")
+	if by == "you":
+		hud.toast("%s: \u201c%s\u201d" % [cust.name, line])
 
 
 func tag_fix(cust: Dictionary, by: String) -> void:  # their tapes over the desensitizer, and on their way
@@ -336,7 +467,7 @@ func tag_fix(cust: Dictionary, by: String) -> void:  # their tapes over the dese
 	cust.tagged = false
 	cust.c.set_mood("meh")
 	cust.hi = 1.5
-	hud.toast("%s fixed a customer's tag: they're on their way" % ("Dana" if by == "dana" else "You"))
+	hud.toast("%s fixed %s's tag: they're on their way" % ["Dana" if by == "dana" else "You", cust.name])
 	go(cust, "leave", { "x": _door.x, "z": _door.y })
 
 
@@ -551,13 +682,16 @@ func waiting():  # whoever's at the counter, waiting to be rung up (or null)
 
 func _gone(cust: Dictionary) -> void:
 	leave_line(cust)
+	if catch_call == cust:
+		catch_call = null
+		hud.call_box("")
 	var stolen: bool = cust.tagged and not cust.paid and not cust.tapes.is_empty()  # walked out with them unpaid: gone for good. A paid one with a missed tag is still just a rental
 	if stolen:
 		checkout.score -= 75 * cust.tapes.size()
-		hud.toast("Someone walked out with %s: stolen (%d)" % [_what(cust), -75 * cust.tapes.size()])
+		hud.toast("%s walked out with %s: stolen (%d)" % [cust.name if cust.known else "Someone", _what(cust), -75 * cust.tapes.size()])
 	for t: Dictionary in cust.tapes:
 		if cust.paid:
-			rented.append([t, Clock.day, Clock.day + (2 if t.n else 5)])  # a new release is out two nights, the rest five
+			pass  # (on their account since it was rung up: checkout.gd)
 		elif stolen:
 			t.lost = true
 		else:
@@ -595,7 +729,8 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			if cust.paid and not cust.sneaking:  # a paying customer: you missed a tag. Back to the counter, not happy about it
 				checkout.score -= 25
 				cust.hi = 2.5
-				hud.toast("A customer set off the gates: a tag wasn't desensitized. They're coming back to have it fixed (-25)")
+				members.loyal(cust.member, -4)
+				hud.toast("%s set off the gates: a tag wasn't desensitized. They're coming back to have it fixed (-25)" % cust.name)
 				go(cust, "tagBack", { "x": _counter.x + 0.9, "z": _counter.z, "ry": PI })  # beside the line
 		if cust.path.is_empty() and cust.spot != null and cust.spot.has("ry"):
 			cust.ry = cust.spot.ry
@@ -629,8 +764,9 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					for t: Dictionary in cust.returning:
 						if randf() < 0.4:  # (not everybody's kind)
 							tapes.set_wind_frac(t, 0.15 + randf() * 0.85)
+						check_in(t)
 						tapes.return_bin.append(t)
-					hud.toast("A customer returned %s" % (cust.returning[0].t if n == 1 else "%d tapes" % n))
+					hud.toast("%s returned %s" % [cust.name, cust.returning[0].t if n == 1 else "%d tapes" % n])
 					if tapes.return_bin.size() >= 15 and tapes.return_bin.size() - n < 15:
 						hud.toast("Returns are piling up: %d in the bin" % tapes.return_bin.size())
 					cust.returning = []
@@ -691,7 +827,8 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					cust.t = 6.0
 			"angry":
 				if cust.t <= 0.0:
-					hud.toast("A customer got tired of waiting and walked out (-100)")
+					hud.toast("%s got tired of waiting and walked out (-100)" % cust.name)
+					members.loyal(cust.member, -15)
 					checkout.score -= 100
 					cust.tagged = not cust.tapes.is_empty()
 					cust.alarmed = false
@@ -714,12 +851,13 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					checkout.score -= 50
 					c.set_mood("angry")
 					cust.tagged = false
-					hud.toast("A customer gave up waiting to have their tag fixed and left (-50)")
+					members.loyal(cust.member, -8)
+					hud.toast("%s gave up waiting to have their tag fixed and left (-50)" % cust.name)
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"caught":
-				if cust.t <= 0.0:
-					c.set_mood("meh")
-					go(cust, "leave", { "x": _door.x, "z": _door.y })
+				if cust.t <= 0.0:  # (no call made: a warning)
+					catch_call = cust
+					catch_decide(5)
 			"leave":  # out the door, back the way they came
 				cust.path = [_inside, _outside, cust.from]
 				cust.state = "outside"
@@ -753,7 +891,7 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 		return "E — ring them up"
 	if checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
 		return "E — %s" % checkout.tip() if checkout.step()[1] == "customer" or checkout.step()[0] == "desens" else "Next: %s" % checkout.tip()
-	return "A customer\n%s" % aim.who.taste
+	return "%s\n%s" % [aim.name, "Caught · 1-5 to decide" if catch_call == aim else aim.who.taste]
 
 
 func on_e() -> bool:
@@ -771,6 +909,8 @@ func on_e() -> bool:
 	elif aim.state != "caught":  # just saying hi
 		aim.hi = 1.4
 		aim.c.set_mood("happy")
+		if not aim.greeted:
+			regular_says(aim, "hi")
 		if aim.thief and not aim.greeted and randf() < 0.7:
 			aim.thief = false  # a friendly hello: suddenly they'd rather just rent it
 		aim.greeted = true
