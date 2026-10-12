@@ -10,7 +10,7 @@ const OPEN := 10.0
 const LAST_IN := 23.75
 const CLOSE := 24.0
 const SHIFT_MIN := 21.0  # the web game's SETTINGS.shiftMin: a ~21 minute shift
-const HOUR := SHIFT_MIN * 60.0 / 14.0  # real seconds per store hour while open
+var HOUR := SHIFT_MIN * 60.0 / 14.0  # real seconds per store hour while open (the settings' shift length changes it: menu.gd)
 const WEEKDAYS: Array[String] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
 
 var h := START  # hours since the shift day's midnight

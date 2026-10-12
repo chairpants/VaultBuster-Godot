@@ -18,6 +18,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var snacks: Node = preload("res://snacks.gd").new()  # (and the candy racks and the cooler: snacks.gd)
 	snacks.name = "Snacks"
 	add_child(snacks)
+	var menu: Node = preload("res://menu.gd").new()  # (and the main menu, which is also the pause screen: menu.gd)
+	menu.name = "Menu"
+	add_child(menu)
 
 
 func _ready() -> void:
@@ -515,6 +518,13 @@ func _check() -> void:
 		bad.append("the snacks aren't all found in the level (%d of %d; %d places to stand)" % [Sn.units.filter(func(u: Dictionary) -> bool: return u.node != null).size(), Sn.units.size(), Sn.spots.size()])
 	else:
 		$Staff._ring_t = -999.0  # (by hand, this one)
+		for k: Dictionary in S.custs.duplicate():  # (and the floor to ourselves: nobody ahead in the line)
+			if not k.paid:
+				for t: Dictionary in k.tapes:
+					Tp.set_on_shelf(t, true)
+				k.tapes = []
+			k.tagged = false
+			S._gone(k)
 		var sc: Dictionary = S.spawn()
 		sc.c.position = Vector3(Sn.spots[0].x, 0, Sn.spots[0].z)
 		sc.path = []
@@ -539,13 +549,18 @@ func _check() -> void:
 				$Checkout.act(where)
 			if not sc.paid or $Shift.stats.snack_take < 0.9:
 				bad.append("a snack didn't ring up by itself (step %s, $%.2f)" % [$Checkout.step(), $Shift.stats.snack_take])
+			var empty0: int = Sn.units.filter(func(u: Dictionary) -> bool: return u.out).size()  # (a walk-in may have had one too)
 			Sn.aim = { "cupboard": "drinks" if bar.k != "" else "food" }
 			Sn.on_e()
 			var carried: int = Sn.carry.size()
 			Sn.aim = { "spot": bar }
 			Sn.on_e()
-			if carried != 1 or not Sn.carry.is_empty() or not Sn.empty_spots().is_empty() or Sn.backstock[bar.n] != 11:
-				bad.append("the empty spot didn't get restocked from the cupboard (carried %d, %d empty)" % [carried, Sn.empty_spots().size()])
+			if carried < 1 or Sn.carry.size() != carried - 1 or Sn.units.filter(func(u: Dictionary) -> bool: return u.out).size() != empty0 - 1 or Sn.backstock[bar.n] != 11:
+				bad.append("the empty spot didn't get restocked from the cupboard (carried %d, %d of %d still empty)" % [carried, Sn.units.filter(func(u: Dictionary) -> bool: return u.out).size(), empty0])
+			Sn.aim = { "cupboard": "drinks" if bar.k != "" else "food" }  # (and whatever else was grabbed goes out too)
+			for u: Dictionary in Sn.carry.duplicate():
+				Sn.aim = { "spot": u }
+				Sn.on_e()
 		$Staff._ring_t = 0.0
 	# the phone: a call answered right; a hold promised, set aside, and handed over when they come in for it
 	var Ph := $Phone
@@ -584,6 +599,13 @@ func _check() -> void:
 			bad.append("the caller didn't get their hold at the counter (%s, %d holds)" % [pk.state, Ph.holds.size()])
 		S._gone(pk)
 	Tp.set_on_shelf(loot, true)
+	# the menu's up: the store stops; and goes again
+	var Mn := $Menu
+	Mn.open()
+	var stopped: bool = get_tree().paused and Mn.visible
+	Mn.resume()
+	if not stopped or get_tree().paused or Mn.visible or Mn.info(3) != "" and not "day" in Mn.info(3):
+		bad.append("the menu didn't stop the store and let it go again")
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

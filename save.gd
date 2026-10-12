@@ -1,5 +1,5 @@
 extends Node
-## The store kept between sessions: saved every ten seconds and on the way out, to user://store.json; picked up again
+## The store kept between sessions: saved every ten seconds and on the way out, to its store file; picked up again
 ## at the start. F9 starts over (a fresh store).
 ## The web game keeps its store the same way (store/main.js, saveState: a JSON blob, every few seconds and on
 ## beforeunload); what's in it here is what's over here so far: the day and the hour, where you are, the lights, the
@@ -7,9 +7,10 @@ extends Node
 ## and the tapes: what's out on rental and when it's due, what's in the Returns bin, what you're carrying, what's in
 ## the VCR, how far each tape's wound and which were stolen; the till; and the members' accounts (what
 ## they owe, how they feel about the place, who's banned). Whoever was in the store isn't: they've gone when you're back.
+## Three store files (menu.gd): user://store_1.json and so on.
 ## Not when it's run with arguments (--check, --shot): those always start fresh, and leave the save alone.
 
-const PATH := "user://store.json"
+const Menu := preload("res://menu.gd")  # (which store file's in play)
 
 var _t := 0.0
 var _live := false
@@ -38,7 +39,8 @@ func _notification(what: int) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if _live and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_F9:  # a fresh store
 		_live = false
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Menu.path(Menu.slot)))
+		Menu.go = true  # (straight back in)
 		get_tree().reload_current_scene()
 		Clock.h = Clock.START
 		Clock.day = 1
@@ -91,15 +93,15 @@ func snapshot() -> Dictionary:
 
 
 func save_store() -> void:
-	var f := FileAccess.open(PATH, FileAccess.WRITE)
+	var f := FileAccess.open(Menu.path(Menu.slot), FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(snapshot()))
 
 
 func load_store() -> bool:
-	if not FileAccess.file_exists(PATH):
+	if not FileAccess.file_exists(Menu.path(Menu.slot)):
 		return false
-	var d = JSON.parse_string(FileAccess.get_file_as_string(PATH))
+	var d = JSON.parse_string(FileAccess.get_file_as_string(Menu.path(Menu.slot)))
 	if not d is Dictionary or d.get("v") != 1:
 		return false
 	apply(d)

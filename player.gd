@@ -19,6 +19,8 @@ var fly := false
 var seat = null  # the seat you're in (one of interact.gd's), or null
 var seat_fov := FOV  # sat down, the mouse wheel zooms; getting up puts it back
 var crouched := false
+var sens_k := 1.0  # the settings' mouse sensitivity (menu.gd)
+var invert_y := false
 var _step_d := 0.0
 var climb = null  # on a ladder: { dir (1 up, -1 down), L (the ladder's climb), t, ... } (see fixtures.gd)
 
@@ -32,8 +34,8 @@ func _ready() -> void:
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-e.relative.x * SENS)
-		cam.rotation.x = clampf(cam.rotation.x - e.relative.y * SENS, -1.5, 1.5)
+		rotate_y(-e.relative.x * SENS * sens_k)
+		cam.rotation.x = clampf(cam.rotation.x - e.relative.y * SENS * sens_k * (-1.0 if invert_y else 1.0), -1.5, 1.5)
 	elif e is InputEventMouseButton and e.pressed and e.button_index <= MOUSE_BUTTON_MIDDLE and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and OS.get_cmdline_user_args().is_empty():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()  # (the click that takes the mouse back doesn't also pick something up)
