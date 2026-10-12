@@ -47,6 +47,8 @@ func _shot(args: PackedStringArray) -> void:
 			if "--lamps-off" in args:
 				for l in $Lights.lamps:
 					$Lights.set_lamp(l, false)
+		elif a == "--cine":  # the roof's projector on
+			$Things.cine_on = true
 		elif a.begins_with("--hour="):
 			Clock.h = a.trim_prefix("--hour=").to_float()
 		elif a.begins_with("--take="):  # a tape off the shelf, by its number in data/tapes.json: held up, or (with --carry) in hand
@@ -199,6 +201,29 @@ func _check() -> void:
 		await get_tree().create_timer(8.5).timeout
 		if absf(Clock.h - 15.0) > 0.2 or Th._wake >= 0.0:
 			bad.append("three hours on the cardboard came to %s" % Clock.fmt_clock(Clock.h))
+	P.global_position = Vector3(0, 0, 10)
+	var ev := InputEventKey.new()
+	ev.physical_keycode = KEY_C
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	await get_tree().create_timer(0.8).timeout
+	if not P.crouched or $Player/Camera.position.y > 1.1:
+		bad.append("C didn't crouch you (camera at %.2f)" % $Player/Camera.position.y)
+	ev = InputEventKey.new()
+	ev.physical_keycode = KEY_C
+	ev.pressed = false
+	Input.parse_input_event(ev)
+	await get_tree().create_timer(0.8).timeout
+	if P.crouched or $Player/Camera.position.y < 1.55:
+		bad.append("letting go of C didn't stand you up")
+	P.sit(I.seats[1])
+	P.seat_fov = 40.0
+	await get_tree().create_timer(0.8).timeout
+	var zoomed: float = $Player/Camera.fov
+	P.stand(Vector3(0, 0, 10), 0.0)
+	await get_tree().create_timer(0.8).timeout
+	if zoomed > 45.0 or $Player/Camera.fov < 68.0:
+		bad.append("the seat's zoom: %.0f sat down, %.0f stood up" % [zoomed, $Player/Camera.fov])
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

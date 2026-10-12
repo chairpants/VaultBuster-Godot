@@ -12,6 +12,32 @@ extends Node
 ## the web game's test of the floor.
 
 const HOLD := 0.45  # hold E this long to lift the stool or the standee
+# The projector's light on the sheet: the web game's (store/roof.js, the sheet's material). A see-through picture, a
+# little soft (the focus), brighter in the middle and falling off to the corners, its edge ragged where it lands on the
+# folds, a faint spill past the frame; a touch of keystone, since it's aimed up a little. No tape: the VCR's blue.
+const SHEET := """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
+uniform sampler2D uVid : source_color, filter_linear, repeat_disable;
+uniform vec4 uImg = vec4(0.5, 0.5, 1.0, 1.0);   // where the frame lands on the sheet: its middle, its size (the sheet = 1)
+uniform float uProj = 0.0;                       // how strong: barely there in the sun, the picture after dark
+uniform float uBlue = 1.0;
+uniform float uFlip = 0.0;                       // (the cloth's own UVs run up it, as the web game's do; the flat stand-in's run down)
+
+void fragment() {
+	vec2 pu = (vec2(UV.x, mix(UV.y, 1.0 - UV.y, uFlip)) - uImg.xy) / uImg.zw + 0.5;   // where on the picture this bit of sheet is
+	pu.x = (pu.x - 0.5) / (1.0 + 0.035 * (pu.y - 0.5)) + 0.5;
+	float n = 0.006 * sin(pu.y * 41.0) + 0.004 * sin(pu.y * 97.0 + 1.7) + 0.005 * sin(pu.x * 57.0 + 0.4);
+	float m = smoothstep(-0.012, 0.025, pu.x + n) * (1.0 - smoothstep(0.975, 1.012, pu.x - n)) * smoothstep(-0.012, 0.03, pu.y - n) * (1.0 - smoothstep(0.97, 1.012, pu.y + n));
+	vec2 q = pu - 0.5;
+	float hot = 1.05 - 0.55 * dot(q, q) * 4.0;
+	vec2 c = clamp(vec2(pu.x, 1.0 - pu.y), 0.0, 1.0), px = vec2(1.6 / 528.0, 1.6 / 352.0);   // (a little soft: four taps round the one)
+	vec3 vid = (texture(uVid, c).rgb * 2.0 + texture(uVid, c + px * vec2(1.0, 0.0)).rgb + texture(uVid, c - px * vec2(1.0, 0.0)).rgb + texture(uVid, c + px * vec2(0.0, 1.0)).rgb + texture(uVid, c - px * vec2(0.0, 1.0)).rgb) / 6.0;
+	vec3 img = mix(vid, vec3(0.06, 0.16, 0.78), uBlue);
+	float halo = (1.0 - m) * 0.06 * (1.0 - smoothstep(0.0, 0.12, max(max(-pu.x, pu.x - 1.0), max(-pu.y, pu.y - 1.0))));
+	ALBEDO = (img * m * hot + vec3(halo)) * uProj * 1.15 * 0.85;   // (0.85: the cloth it lands on)
+}
+"""
 
 var T := {}  # data/interact.json's things
 var aim := ""
@@ -37,7 +63,9 @@ var _stood := {}
 var _wake := -1.0  # the hour you'll wake at, asleep on the cardboard
 var _block := StaticBody3D.new()  # the front doors, bolted
 var _sheet := MeshInstance3D.new()
-var _sheet_mat := StandardMaterial3D.new()
+var _sheet_mat := ShaderMaterial.new()
+var _blue := 1.0  # no tape in: the VCR's blue
+var _cloth: MeshInstance3D
 
 @onready var player: CharacterBody3D = $"../Player"
 @onready var hud: CanvasLayer = $"../HUD"
@@ -77,19 +105,26 @@ func _ready() -> void:
 	_block.position = Vector3(0.9, 1.15, 0.1)
 	_block.add_child(shape)
 	add_child(_block)
-	var s: Dictionary = T.cine.sheet  # the picture on the bedsheet: only the part of it the projector lands on, added to the cloth
+	var s: Dictionary = T.cine.sheet  # the picture on the bedsheet: light added to the cloth, over the whole sheet (the shader knows where the frame lands)
 	var quad := QuadMesh.new()
-	quad.size = Vector2(s.w * s.img[2], s.h * s.img[3])
-	_sheet_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_sheet_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	_sheet_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_sheet_mat.albedo_texture = video.texture
+	quad.size = Vector2(s.w, s.h)
+	var sh := Shader.new()
+	sh.code = SHEET
+	_sheet_mat.shader = sh
+	_sheet_mat.set_shader_parameter("uVid", video.texture)
+	_sheet_mat.set_shader_parameter("uImg", Vector4(s.img[0], s.img[1], s.img[2], s.img[3]))
 	quad.material = _sheet_mat
 	_sheet.mesh = quad
 	_sheet.basis = Basis(Quaternion(s.q[0], s.q[1], s.q[2], s.q[3]))
-	_sheet.position = _v(s.p) + _sheet.basis.y * (s.img[1] - 0.5) * s.h + _sheet.basis.z * 0.012
+	_sheet.position = _v(s.p) + _sheet.basis.z * 0.05
 	_sheet.visible = false
-	add_child(_sheet)
+	for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
+		if mi.global_position.distance_to(_v(s.p)) < 0.02:
+			_cloth = mi  # the sheet itself: the light goes on it, folds and all (a flat picture in front would cut through them)
+	if _cloth == null:
+		push_warning("the bedsheet isn't where the web game has it: the picture's on a flat stand-in")
+		_sheet_mat.set_shader_parameter("uFlip", 1.0)
+		add_child(_sheet)
 
 
 func _v(a: Array) -> Vector3:
@@ -137,9 +172,13 @@ func _process(dt: float) -> void:
 		hud.fade("")
 		player.set_physics_process(true)
 	# the movie on the roof: in the sun it's barely there; after dark it's the picture
-	var k := (0.06 + 0.9 * pow(1.0 - sky.level, 1.5)) if cine_on and tapes.playing != null else 0.0
+	var k := (0.06 + 0.9 * pow(1.0 - sky.level, 1.5)) if cine_on else 0.0
+	_blue += ((0.0 if tapes.playing != null and video._shown > 0 else 1.0) - _blue) * minf(1.0, dt * 4.0)
 	_sheet.visible = k > 0.0
-	_sheet_mat.albedo_color = Color(k, k, k)
+	if _cloth:
+		_cloth.material_overlay = _sheet_mat if k > 0.0 else null
+	_sheet_mat.set_shader_parameter("uProj", k)
+	_sheet_mat.set_shader_parameter("uBlue", _blue)
 
 
 # ---- what the crosshair's on (called from interact.gd, after the doors); returns the tip, "" if it's nothing of ours

@@ -14,6 +14,8 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | WASD, mouse | Walk, look |
 | Shift | Run |
 | Space | Jump |
+| C (hold) | Crouch: lower, and slower |
+| Mouse wheel | Sat down: zoom in and out (getting up resets it) |
 | E | Whatever the crosshair's on: a door, a seat, the counter's pass-through, a light switch, a lamp, a ladder (the closet's goes up through the hatch; the one out back has to be kicked down from the roof first); at the TV or the theater's screen, the tape in your hand goes in (E again: out it comes) |
 | Hold E | On the stool or the standee: pick it up and carry it; E sets it down |
 | Click | A tape on the shelf: off it comes, held up to look at. Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
