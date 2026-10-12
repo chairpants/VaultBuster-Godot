@@ -172,7 +172,7 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 	var k: float = weather.k  # the weather: a wet afternoon is slow, a wet evening's a movie night
 	if k > 0.0:
 		r *= (1.0 - 0.4 * k if h < 17.0 else 1.0) if weather.kind == "snow" else (1.0 - 0.3 * k if h < 17.0 else 1.0 + 0.25 * k)
-	return r
+	return r * $"../Shift".rep_mult()  # (a better name brings more people in)
 
 
 func spawn(member = null) -> Dictionary:  # custSpawn
@@ -181,6 +181,7 @@ func spawn(member = null) -> Dictionary:  # custSpawn
 	var female: bool = member.female
 	var who := customer_for(_imul(member.num, 2654435761), female)  # member # -> the same person every time
 	_last_member = member
+	$"../Shift".stats.visitors += 1
 	member.last_visit = Clock.day + Clock.h / 24.0
 	who.patience *= 1.0 + member.loyalty / 200.0  # regulars will wait a bit longer; the fed-up, less
 	if Clock.h >= 23.0 and randf() < 0.5:  # the 11:30 walk-in, in no hurry at all
@@ -338,6 +339,7 @@ func catch(cust: Dictionary, by: String) -> void:  # stopped before they're out 
 	cust.c.set_mood("shock")
 	cust.hi = 1.5
 	checkout.score += 150
+	$"../Shift".stats.caught += 1
 	if by == "dana":  # a warning, and out
 		hud.toast("Dana caught %s sneaking out with %s (back in the returns bin, a warning) (+150)" % [cust.name, what])
 		go(cust, "leave", { "x": _door.x, "z": _door.y })
@@ -400,6 +402,7 @@ func check_in(t: Dictionary) -> void:  # dropped back off: the rental's closed o
 			if late > 0 and r.size() > 3 and members.by_num.has(r[3]):
 				members.by_num[r[3]].owed = snappedf(members.by_num[r[3]].owed + late * (2.0 if t.n else 1.0), 0.01)  # $2 a day a new release, $1 the rest
 			rented.erase(r)
+			$"../Shift".stats.returns += 1
 			return
 
 
@@ -694,6 +697,7 @@ func _gone(cust: Dictionary) -> void:
 		hud.call_box("")
 	var stolen: bool = cust.tagged and not cust.paid and not cust.tapes.is_empty()  # walked out with them unpaid: gone for good. A paid one with a missed tag is still just a rental
 	if stolen:
+		$"../Shift".stats.stolen += cust.tapes.size()
 		checkout.score -= 75 * cust.tapes.size()
 		hud.toast("%s walked out with %s: stolen (%d)" % [cust.name if cust.known else "Someone", _what(cust), -75 * cust.tapes.size()])
 	for t: Dictionary in cust.tapes:
@@ -840,6 +844,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					hud.toast("%s got tired of waiting and walked out (-100)" % cust.name)
 					members.loyal(cust.member, -15)
+					$"../Shift".stats.walkouts += 1
 					checkout.score -= 100
 					cust.tagged = not cust.tapes.is_empty()
 					cust.alarmed = false

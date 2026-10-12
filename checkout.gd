@@ -56,6 +56,7 @@ func _process(dt: float) -> void:
 		co = null
 		score -= 100
 		hud.toast("%s gave up on the checkout and walked out" % k.name)
+		$"../Shift".stats.walkouts += 1
 		shoppers.members.loyal(k.member, -15)
 		k.c.set_mood("angry")
 		k.c.hold_prop(null)
@@ -155,6 +156,7 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			served += 1
 			rentals += k.tapes.size()
 			take += co.total
+			$"../Shift".budget += co.total
 			for t: Dictionary in k.tapes:  # on their account: a new release is out two nights, the rest five
 				shoppers.rented.append([t, Clock.day, Clock.day + (2 if t.n else 5), k.member.num])
 			_printing = 2.2
@@ -189,6 +191,7 @@ func fees(charge: bool) -> void:  # late fees on their account: charge them (mon
 	shoppers.members.loyal(m, -3 if charge else 6)
 	if charge:
 		co.fees += amt
+		$"../Shift".stats.fees_collected += amt
 		co.pts += 20
 		co.total = snappedf(co.total + amt, 0.01)  # a new total, what they hand over, the change (coRebill)
 		var bills: Array = [1.0, 5.0, 10.0, 20.0, 50.0, 100.0].filter(func(b: float) -> bool: return b >= co.total)
@@ -197,6 +200,7 @@ func fees(charge: bool) -> void:  # late fees on their account: charge them (mon
 		co.cust.c.set_mood("meh")
 		hud.toast("%s %s their late fees ($%.2f)" % ["Dana charged" if co.by == "dana" else "Charged", co.cust.name, amt])
 	else:
+		$"../Shift".stats.fees_waived += amt
 		co.cust.c.set_mood("love")
 		hud.toast("Waived %s's $%.2f in late fees" % [co.cust.name, amt])
 

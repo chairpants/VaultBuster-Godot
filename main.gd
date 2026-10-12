@@ -9,6 +9,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var chores: Node = preload("res://chores.gd").new()  # (and the cleaning up: chores.gd)
 	chores.name = "Chores"
 	add_child(chores)
+	var shift: Node = preload("res://shift.gd").new()  # (and the day's goals and its end: shift.gd)
+	shift.name = "Shift"
+	add_child(shift)
 
 
 func _ready() -> void:
@@ -492,6 +495,25 @@ func _check() -> void:
 		await get_tree().process_frame
 	if St.dana == null or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
 		bad.append("Dana didn't come in for her shift and get to her post")
+	# the end of the day: the slip, then the next morning with the doors locked
+	var Sh := $Shift
+	var was_day := Clock.day
+	var was_hour := Clock.h
+	var was_at: Vector3 = $Player.global_position
+	Sh.stats.visitors = 4
+	Sh.clock_out()
+	if not Sh.report or not "SHIFT GRADE" in Sh._slip.text or not "DAY GOALS" in Sh._slip.text:
+		bad.append("clocking out didn't print the shift's slip")
+	Sh.next_shift()
+	await get_tree().process_frame
+	if Sh.report or Clock.day != was_day + 1 or absf(Clock.h - 9.0) > 0.05 or not $Things.locked or not S.custs.is_empty() or Sh.goals.size() != 2 or $Checkout.served != 0:
+		bad.append("the next morning didn't start right (day %d, %.2f, locked %s, %d in)" % [Clock.day, Clock.h, $Things.locked, S.custs.size()])
+	Clock.day = was_day
+	Clock.h = was_hour
+	$Player.global_position = was_at
+	$Things.aim = "lock"
+	$Things.on_e()
+	$Things.aim = ""
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

@@ -83,6 +83,7 @@ func snapshot() -> Dictionary:
 		},
 		"members": S.members.records(),
 		"chores": main.get_node("Chores").snapshot(),
+		"shift": main.get_node("Shift").snapshot(),
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
 
@@ -193,6 +194,7 @@ func apply(d: Dictionary) -> void:
 		T.play_episode(int(d.tapes.playing[1]), in_vcr)  # (on from where it had got to)
 	S.members.restore(d.get("members", {}))
 	main.get_node("Chores").restore(d.get("chores", {}))
+	main.get_node("Shift").restore(d.get("shift", {}))
 	C.served = int(d.till.served)
 	C.rentals = int(d.till.rentals)
 	C.take = d.till.take

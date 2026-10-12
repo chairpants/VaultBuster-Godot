@@ -312,9 +312,7 @@ func on_e() -> bool:
 		"bed":
 			if Clock.after_close():  # through to the morning
 				hud.toast("You curl up on the cardboard. Morning comes soon enough")
-				Clock.day += 1
-				Clock.h = Clock.OPEN - 0.25
-				Clock.warp = 0.0
+				$"../Shift".clock_out()  # (the day's slip, then the morning)
 			else:  # a few hours go by
 				_wake = minf(Clock.CLOSE, Clock.h + 3.0)
 				Clock.warp = _wake

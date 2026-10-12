@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## What's on the screen: the day and the time top left (the first line of the web game's HUD, and whether the store's
-## open), a crosshair, the line for whatever you're aiming at, and toasts (the clock's, for now).
+## open), a crosshair, the line for whatever you're aiming at, toasts, and the day's log bottom left (the web
+## game's logAct: here every toast goes in it; J folds it away).
 
 var _clock := _label(26)
 var _status := _label(14, Color(1, 0.83, 0))
@@ -9,6 +10,9 @@ var _tip := _label(18)
 var _toast := _label(20)
 var _toast_t := 0.0
 var _call := _label(18, Color(1, 0.83, 0))
+var _log := _label(13, Color(0.86, 0.9, 0.86))  # the day's log, bottom left: the last few things that happened (J folds it away)
+var _rows: Array[String] = []
+var _log_open := true
 
 @onready var till: Node = $"../Checkout"
 var _inv := _label(15)
@@ -36,6 +40,11 @@ func _ready() -> void:
 	Clock.toast.connect(toast)
 
 
+func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_J:
+		_log_open = not _log_open
+
+
 func tip(text: String) -> void:
 	_tip.text = text
 
@@ -57,7 +66,11 @@ func call_box(text: String) -> void:  # a decision waiting on you ("" clears it)
 	_call.text = text
 
 
-func toast(text: String) -> void:
+func toast(text: String) -> void:  # up top for a moment, and into the log
+	_rows.append("%s  %s" % [Clock.fmt_clock(Clock.h), text.replace("\n", " ")])
+	if _rows.size() > 60:
+		_rows.pop_front()
+	_log.text = "\n".join(_rows.slice(-7))
 	_toast.text = text
 	_toast_t = 4.0
 
@@ -66,6 +79,7 @@ func _process(dt: float) -> void:
 	var s := get_viewport().get_visible_rect().size
 	_clock.text = "%s %s" % [Clock.weekday(), Clock.fmt_clock(Clock.h)]
 	_status.text = "%s · $%.2f · SCORE %d" % [Clock.status(), till.take, till.score] if till.served > 0 else Clock.status()
+	_status.text += "\n" + $"../Shift".goal_line()  # the day's two goals
 	if till.co != null and till.co.by == "player":  # the sale in hand: what's next
 		_status.text += "\nNEXT: %s" % till.tip().to_upper()
 	_clock.position = Vector2(16, 8)
@@ -75,6 +89,10 @@ func _process(dt: float) -> void:
 	for l: Label in [_cross, _tip, _toast, _fade_text, _inv, _call]:
 		l.reset_size()
 	_call.position = Vector2((s.x - _call.size.x) / 2.0, s.y * 0.2)
+	_log.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_log.visible = _log_open
+	_log.reset_size()
+	_log.position = Vector2(16.0, s.y - _log.size.y - 16.0)
 	_fade.size = s
 	_fade_text.visible = _fade.visible
 	_fade_text.position = (s - _fade_text.size) / 2.0

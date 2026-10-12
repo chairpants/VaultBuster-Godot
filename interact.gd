@@ -194,6 +194,12 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip(fix_tip)
 		return
+	var home_tip: String = $"../Shift".take_aim(hit, hit_d)  # the front doors, near close: the way home (see shift.gd)
+	if home_tip != "" and not things.carrying:
+		tapes.clear_aim()
+		hud.tip(home_tip)
+		return
+	$"../Shift".aim = false
 	var chore_tip: String = $"../Chores".take_aim(hit, hit_d)  # a mess, the mop, a bin, the chute (see chores.gd)
 	if chore_tip != "" and not things.carrying:
 		tapes.clear_aim()
@@ -246,6 +252,8 @@ func on_e() -> void:
 	elif fixtures.on_e():
 		pass
 	elif $"../Chores".on_e():
+		pass
+	elif $"../Shift".on_e():
 		pass
 	elif tapes.aim_rewinder:
 		tapes.rewinder_use()
