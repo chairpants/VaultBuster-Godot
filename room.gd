@@ -115,8 +115,15 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 	for pair in [["uFloorBox", b.floor], ["uBohBox", b.boh], ["uLobbyBox", b.lobby], ["uThBox", b.theater]]:
 		RS.global_shader_parameter_set(pair[0], Vector4(pair[1][0], pair[1][1], pair[1][2], pair[1][3]))
 	RS.global_shader_parameter_set("uBohSplit", Vector2(b.bohSplit[0], b.bohSplit[1]))
+	var swapped := light($"../World")
+	print("room light: %d surfaces, %d materials, %d shaders" % [swapped, _made.size(), _shaders.size()])
+	# the light's all in the materials now: no sun lamp, no ambient (see sky.gd, which still turns the sky)
+	$"../Sun".visible = false
+
+
+func light(root: Node) -> int:  # everything lit under there, onto the room's light (the level; the cast of people)
 	var swapped := 0
-	for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
+	for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
 		if mi.mesh == null:
 			continue
 		for s in mi.mesh.get_surface_count():
@@ -124,9 +131,7 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 			if m is StandardMaterial3D and m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
 				mi.mesh.surface_set_material(s, _room_material(m, mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR != 0))
 				swapped += 1
-	print("room light: %d surfaces, %d materials, %d shaders" % [swapped, _made.size(), _shaders.size()])
-	# the light's all in the materials now: no sun lamp, no ambient (see sky.gd, which still turns the sky)
-	$"../Sun".visible = false
+	return swapped
 
 
 func _lin(hex: int, k: float) -> Vector3:

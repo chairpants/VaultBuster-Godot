@@ -1,0 +1,166 @@
+{
+ "moods": [
+  "neutral",
+  "browse",
+  "happy",
+  "love",
+  "meh",
+  "wait",
+  "impatient",
+  "angry",
+  "alarm",
+  "thanks",
+  "shifty",
+  "ask",
+  "off",
+  "on",
+  "shock",
+  "watch"
+ ],
+ "who": [
+  {
+   "height": 0.9895143905514852,
+   "build": 0.9751507607637905,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 0.9337103233765811,
+   "build": 1.0461633332655764,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0631139225931838,
+   "build": 0.9886512736324221,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0278482411522418,
+   "build": 1.023245567898266,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0216911410493776,
+   "build": 1.1240205378038808,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0325755352713168,
+   "build": 0.9793396647204645,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.046010950296186,
+   "build": 1.1051984385470859,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 0.9632376386132092,
+   "build": 0.9693535705213435,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 0.9644476019823924,
+   "build": 1.1223867183201945,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0393106136238204,
+   "build": 0.9318682176293805,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0567747566616164,
+   "build": 0.9344886311795563,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 0.9880379690369592,
+   "build": 0.9909949046908878,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0508595645148309,
+   "build": 0.9640979288727977,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0673500871052966,
+   "build": 0.923992212896701,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0372883717948571,
+   "build": 0.9601804929901846,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 0.9571487072948367,
+   "build": 1.0735230394406243,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0547955247573555,
+   "build": 0.9254672677838244,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.069023090978153,
+   "build": 0.9011525564477779,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0353362278966234,
+   "build": 1.0724041927955112,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0474679586663842,
+   "build": 0.9994483980466612,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0235148726124317,
+   "build": 0.9229112974484451,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0373694820236414,
+   "build": 0.9587583090527915,
+   "female": true,
+   "gait": "plain"
+  },
+  {
+   "height": 1.0241833905130626,
+   "build": 1.0580825280980206,
+   "female": false,
+   "gait": "plain"
+  },
+  {
+   "height": 0.9714197848038748,
+   "build": 1.0981399687356315,
+   "female": true,
+   "gait": "plain"
+  }
+ ]
+}

@@ -50,6 +50,18 @@ func _shot(args: PackedStringArray) -> void:
 		elif a.begins_with("--weather="):  # rain | snow | fog | clear, straight to it
 			var w := a.trim_prefix("--weather=")
 			$Weather.set_now("clear" if w == "fog" else w, 0.9, 0.8 if w == "fog" else 0.0)
+		elif a == "--people":  # a line-up out front: one standing, one walking on the spot, one running, one sat, one crouched, one at a counter
+			var poses := [["idle", 0.0, "happy"], ["walk", 1.3, "neutral"], ["walk", 3.0, "alarm"], ["sit", 0.0, "love"], ["crouch", 0.0, "shifty"], ["wait", 0.0, "impatient"], ["hold", 1.2, "thanks"], ["read", 0.0, "browse"]]
+			for i in poses.size():
+				var c: Node3D = $People.spawn(i)
+				c.position = Vector3(-3.5 + i * 1.0, -0.12, -8.0)
+				c.rotation.y = PI
+				c.set_pose(poses[i][0], { "hipY": 0.5 })
+				c.set_mood(poses[i][2])
+				if poses[i][0] == "hold":
+					c.hold_tape(2)
+				var sp: float = poses[i][1]
+				get_tree().process_frame.connect(func() -> void: c.tick(get_process_delta_time(), sp))
 		elif a == "--cine":  # the roof's projector on
 			$Things.cine_on = true
 		elif a.begins_with("--hour="):
@@ -235,6 +247,17 @@ func _check() -> void:
 	if not $Weather._rain[0].visible or $Sky.wx_k < 0.5 or $Weather._ground.size() < 3:
 		bad.append("rain: not falling, or the ground's not found (%d of its materials)" % $Weather._ground.size())
 	$Weather.set_now("clear")
+	var someone: Node3D = $People.spawn(0)
+	if someone == null:
+		bad.append("the cast isn't there (people/people.glb not imported?)")
+	else:
+		for n in 30:
+			someone.tick(0.033, 1.3)
+		var hip: Node3D = someone._legs[0][0]
+		var head: Node3D = someone._head
+		if hip == null or head == null or absf(hip.rotation.x) < 0.01 or absf(head.position.y - 1.63 * someone.height) > 0.2:
+			bad.append("a person isn't walking right (hip %.2f, head at %.2f)" % [hip.rotation.x, head.position.y])
+		someone.queue_free()
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

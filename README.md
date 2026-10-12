@@ -5,7 +5,8 @@ each piece translated from the web game's own source (the file it came from is n
 the numbers and the behaviour are the same. So far: the clock, the sky through the day and night, the day's clouds,
 doors and seats, tapes (off the shelf, into the VCR, playing on every screen), the counter's pass-through, both
 ladders to the roof, the light switches and lamps, the lighting itself, and the loose things (the stool, the
-standee, the cooler, the deadbolt, the toilet, the cardboard bed, the movie on the roof). No customers, no register yet.
+standee, the cooler, the deadbolt, the toilet, the cardboard bed, the movie on the roof), the weather, and the people
+themselves: so far only walking past out front. No customers, no staff, no register yet.
 
 Open `project.godot` in Godot 4.6 or later and press F5.
 
@@ -65,6 +66,9 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 | `interact.gd` | E on things: hinged doors, push doors that swing out of your way, the storefront's door, every seat (web: `store/player.js`, `store/main.js`, `store/shoppers.js`, `store/tv.js`) |
 | `fixtures.gd` | E on the fixed things: the counter's pass-through, light switches, lamps, both ladders (web: `store/player.js`, `store/clock.js`, `store/tv.js`, `store/roof.js`) |
 | `things.gd` | The loose things: the stool (E sits, E again spins, WASD gets up), carrying it and the standee, the cooler's door, the front doors' deadbolt, the flush and the paper towels, sleeping on the cardboard bed (3 hours, or after close through to morning), the roof's projector, VCR and bedsheet (web: `store/player.js`, `store/tv.js`, `store/staff.js`, `store/chores.js`, `store/customer-mode.js`, `store/roof.js`) |
+| `person.gd` | One of the TV-head people, posed every frame: the walk (feet that stay planted, a run over ~2 m/s, nine gaits), sitting, crouching, the arms' poses, the head, breathing, a face for every mood (web: `customers.js`). Not over: reaching, props, what the weather does to them, blinking |
+| `people.gd` | The cast, and the people going by on the walk out front (web: `store/shoppers.js`, walkerTick) |
+| `people/` | The cast: 24 people as the web game builds them (`people.glb`), a face sheet each, and who they are. `node tests/export-glb.mjs --people ../VaultBusterGodot/people` |
 | `lights.gd` | The nine light zones and their switches, fluorescents stuttering as they strike; the side lamps (web: `store/lounge.js`) |
 | `room.gd` | The lighting: a surface is lit by which room it's in and whether that room's switch is on, daylight through the glass, sun and moon outside. The web game's room shader, put into every lit material as the game starts (web: `store/core.js` ROOM_FRAG) |
 | `data/interact.json` | Doors, seats, screens, the pass-through, ladders, switches, lamps and the rooms' boxes, from the web game (`node tests/export-glb.mjs --data ../VaultBusterGodot/data/interact.json`) |
@@ -76,7 +80,7 @@ update. People, lights, the sky and the weather aren't exported: the scene here 
 `godot --path . -- --check` starts it, tries the clock, noon and night, a door and the couch, prints `check: ok` (or
 what's off) and quits. `godot --path . -- --shot` saves `shot.png` from where you spawn and quits; `--at=x,y,z,yaw,pitch`
 (degrees) looks from somewhere else, `--hour=19.5` at another time of day, `--dark` with the store's lights off
-(`--lamps-off` too), `--weather=rain` (or `snow`, `fog`), `--wait=8` first, `--cine` with the roof's projector on, `--take=0` with the first tape held up (`--carry`: in hand; `--play`: in the VCR and a few
+(`--lamps-off` too), `--weather=rain` (or `snow`, `fog`), `--wait=8` first, `--cine` with the roof's projector on, `--people` with a line-up of the cast out front, `--take=0` with the first tape held up (`--carry`: in hand; `--play`: in the VCR and a few
 seconds in; `--from=600`: wound on to there first). `godot --path . -- "--video=item|file|seconds"`
 plays that archive.org file a few seconds from there, saves a frame as `video.png`, and says how long it took.
 
