@@ -9,7 +9,7 @@ extends CanvasLayer
 ## From the web game's pos.js: the same screens (listScreen, prompt, titleDetail, custDetail, MENU, mainMenu's
 ## commands) over this store's tapes and members. It's all on a screen over the game here, in one colour.
 ## Not over yet: the picture on the register's own monitor, the login's badge-and-password show, the sale window,
-## the overdue calls and their post-its, the theater's feature, the upgrades that have nothing to switch on yet, the staff's schedule, SYSRESET (F9 does
+## the overdue calls and their post-its, the upgrades that have nothing to switch on yet, the staff's schedule, SYSRESET (F9 does
 ## that), deliveries as boxes by the door (an order's just in the cupboards, a replacement tape in the returns bin).
 
 const COLS := 80
@@ -437,6 +437,18 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 									_back()
 									_msg = "PURCHASED: %s. BUDGET NOW $%.2f." % [u[1], shift.budget] }),
 				"NO UPGRADES AVAILABLE."))
+		"T":
+			_copies("")
+			var films: Array = _titles.keys().filter(func(t: String) -> bool: return _titles[t][0].e.size() == 1 and _in(t) > 0)
+			films.sort()
+			var f: Dictionary = shift.show
+			_go(_list(("THEATER - %s" % ("%s: %s (%d SOLD)" % ["TONIGHT" if f.day == Clock.day else "TOMORROW", f.title.to_upper(), f.sold] if f.title != "" and f.day >= Clock.day else "NO FEATURE SET")).left(COLS - 20), "      FILM", films,
+				func(t: String, n: int) -> String: return " %s  %s" % [R(n, 3), L(t.to_upper(), 60)],
+				func(t: String) -> void:
+					var err: String = shift.set_show(t)
+					_back()
+					_msg = err if err != "" else "FEATURE SET: %s AT 8 PM. TICKETS $4.00 AT THE REGISTER." % t.to_upper(),
+				"THE THEATER ISN'T OPEN YET." if not shift.owned("theater") else "NO FILMS ON THE SHELF."))
 		"0": log_off()
 		_: return false
 	return true
@@ -448,9 +460,9 @@ func _main_menu() -> Dictionary:
 			var unread := notes.filter(func(n: Dictionary) -> bool: return not n.read).size()
 			var left := [" INVENTORY", "  1  TITLE SEARCH", "  2  BROWSE BY SECTION", "  7  RETURNS BIN QUEUE", "  B  REPLACEMENT COPIES", " MEMBERS", "  3  MEMBER LOOKUP", "  4  ALL ACCOUNTS", "  5  OVERDUE / LATE FEES",
 				" REPORTS", "  6  RENTALS OUT", "  8  DAILY SUMMARY", "  M  MESSAGES%s" % (" (%d NEW)" % unread if unread > 0 else "")]
-			var right := [" STORE", "  O  ORDER SUPPLIES", "  U  STORE UPGRADES", "  9  PREVIEW STATION", " SECURITY", "  S  GATE SYSTEM", " SYSTEM", "  H  HELP / COMMANDS", "  0  LOG OFF"]
+			var right := [" STORE", "  O  ORDER SUPPLIES", "  U  STORE UPGRADES", "  T  TONIGHT'S FEATURE", "  9  PREVIEW STATION", " SECURITY", "  S  GATE SYSTEM", " SYSTEM", "  H  HELP / COMMANDS", "  0  LOG OFF"]
 			if shoppers.alarm_on:
-				right.insert(5, "  A  *** SILENCE GATE ALARM ***")
+				right.insert(6, "  A  *** SILENCE GATE ALARM ***")
 			var out: Array = [""]
 			for i in left.size():
 				out.append(L(left[i], 40) + (right[i] if i < right.size() else ""))
@@ -469,7 +481,7 @@ func _main_menu() -> Dictionary:
 			elif cmd == "VER":
 				_msg = "POS/NET 2.3 (C) 1993 VIDEOTRAK SYSTEMS INC.  LICENSED TO VAULTBUSTER VIDEO #0417"
 			else:
-				var alias: String = { "OVERDUE": "5", "OUT": "6", "RETURNS": "7", "REPORT": "8", "HELP": "H", "?": "H", "LOGOFF": "0", "EXIT": "0", "LOGOUT": "0", "SUPPLIES": "O", "ORDER": "O", "MESSAGES": "M", "MSGS": "M", "GATES": "S", "REPLACE": "B", "UPGRADES": "U", "UPGRADE": "U" }.get(cmd, "")
+				var alias: String = { "OVERDUE": "5", "OUT": "6", "RETURNS": "7", "REPORT": "8", "HELP": "H", "?": "H", "LOGOFF": "0", "EXIT": "0", "LOGOUT": "0", "SUPPLIES": "O", "ORDER": "O", "MESSAGES": "M", "MSGS": "M", "GATES": "S", "REPLACE": "B", "UPGRADES": "U", "UPGRADE": "U", "THEATER": "T", "FEATURE": "T" }.get(cmd, "")
 				if alias == "" or not _pick(alias):
 					_msg = "UNKNOWN COMMAND: %s.  TYPE H FOR HELP." % v }
 

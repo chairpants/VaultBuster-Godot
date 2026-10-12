@@ -213,7 +213,7 @@ func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a 
 	var from := Vector2((-1.0 if randf() < 0.5 else 1.0) * (14.0 + randf() * 6.0), -0.9)  # up the sidewalk
 	c.position = Vector3(from.x, 0.0, from.y)
 	c.set_mood("on")
-	var cust := { "who": who, "member": member, "name": members.name_of(member) if kid_of == null else "%s's kid" % members.name_of(member), "kid": kid_of != null, "party": [], "tag_t": 0.0, "said": {}, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
+	var cust := { "who": who, "member": member, "name": members.name_of(member) if kid_of == null else "%s's kid" % members.name_of(member), "kid": kid_of != null, "party": [], "tag_t": 0.0, "said": {}, "th_seat": null, "watched": false, "mood_t": 0.0, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
 		"thief": kid_of == null and randf() < 0.06 * (0.6 if $"../Shift".owned("cameras") else 1.0) * (0.7 if $"../Shift".owned("sign") else 1.0), "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
@@ -699,6 +699,8 @@ func _done(cust: Dictionary) -> void:  # out of shelves to look at: to the regis
 		if not racks.is_empty() and randf() < (0.4 if cust.holding > 0 else 0.25):
 			go(cust, "snack", racks.pick_random())
 			return
+	if cust.holding == 0 and not cust.watched and randf() < (0.75 if tapes.playing != null else 0.35) and _pick_theater_seat(cust):
+		return
 	if cust.holding > 0 or not cust.snacks.is_empty():
 		cust.c.set_mood("happy")
 		line.append(cust)
@@ -761,6 +763,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				cust.step_d = 0.0
 				$"../Ambience".step(c.position)
 			cust.ry = atan2(to.x, to.y)
+			c.position.y = _floor_y(c.position) if c.position.z > 28.5 else 0.0  # (the theater's ramp)
 			for door: Dictionary in interact.doors:  # open any unlocked closed door right in front of them
 				if not door.open and not door.locked and not door.push:
 					var mid := Vector2((door.shut.x0 + door.shut.x1) / 2.0, (door.shut.z0 + door.shut.z1) / 2.0)
@@ -799,8 +802,14 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					elif cust.pickup != null:  # here for their hold: they ask at the counter
 						cust.want = { "kind": "hold", "title": cust.pickup.title, "hold": cust.pickup }
 						_ask_go(cust)
+					elif cust.get("moviegoer", false):  # ticket in hand: straight in
+						if not _pick_theater_seat(cust):
+							cust.moviegoer = false
+							_next_stop(cust)
 					elif not cust.kid and _want(cust):
 						_ask_go(cust)
+					elif not cust.kid and cust.party.is_empty() and randf() < (0.5 if tapes.playing != null else 0.25) and _pick_theater_seat(cust):
+						pass
 					else:
 						_next_stop(cust)
 			"dropoff":  # at the slot: a hand out to it
@@ -896,6 +905,57 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"tagAlong":
 				_tag_tick(cust)
+			"thAisle":
+				cust.state = "thRow"
+			"thRow", "thRowOut":  # sidestep from the center ramp into their stadium row; and back out of it
+				var s: Dictionary = cust.th_seat
+				var out: bool = cust.state == "thRowOut"
+				var to := Vector3(-2.87 if out else s.x, s.y, s.z + 0.42) - c.position
+				to.y = 0.0
+				if to.length() < 0.05:
+					if out:
+						if randf() < 0.4:
+							$"../Chores".mess_add("cup", s.x, s.z, s.y)  # left their cup under the seat
+						cust.th_seat = null
+						cust.watched = true
+						if cust.holding == 0 and cust.snacks.is_empty() and cust.stops_left > 0 and randf() < 0.5:
+							_next_stop(cust)
+						elif cust.holding > 0 or not cust.snacks.is_empty():
+							line.append(cust)
+							to_line(cust)
+						else:
+							go(cust, "leave", { "x": _door.x, "z": _door.y })
+					else:
+						c.set_pose("sit", { "hipY": s.hipY })
+						cust.from3 = c.position
+						cust.state = "thSitDown"
+						cust.t = 0.6
+						cust.ry = 0.0
+				else:
+					speed = who.speed * 0.85
+					c.position += to.normalized() * minf(to.length(), speed * dt)
+					c.position.y = s.y
+					cust.ry = atan2(to.x, to.z)
+			"thSitDown":
+				var s: Dictionary = cust.th_seat
+				c.position = cust.from3.lerp(Vector3(s.x, s.y, s.z), 1.0 - maxf(0.0, cust.t) / 0.6)
+				cust.ry = 0.0
+				if cust.t <= 0.0:
+					cust.state = "thWatch"
+					cust.t = INF if cust.get("moviegoer", false) and $"../Shift".show.status in ["arriving", "late", "on"] else 40.0 + who.rnd.call() * 80.0  # here for the show: till it lets out
+					cust.mood_t = 4.0
+					c.set_mood("watch" if tapes.playing != null else "neutral")
+			"thWatch":
+				if cust.t <= 0.0 or player.seat == cust.th_seat:  # done; or you've sat right in their seat
+					c.set_pose("idle")
+					c.set_mood("happy" if tapes.playing != null else "neutral")
+					c.position = Vector3(cust.th_seat.x, cust.th_seat.y, cust.th_seat.z + 0.42)
+					cust.state = "thRowOut"
+				else:
+					cust.mood_t -= dt
+					if cust.mood_t <= 0.0:
+						cust.mood_t = 5.0 + who.rnd.call() * 8.0
+						c.set_mood(["watch", "watch", "happy", "love"].pick_random() if tapes.playing != null else ["neutral", "meh"].pick_random())
 			"snack":  # at the rack: a hand to the one they want
 				cust.snack_unit = $"../Snacks".pick(cust.spot)
 				if cust.snack_unit != null:
@@ -1325,3 +1385,28 @@ func _tag_tick(cust: Dictionary) -> void:  # standing by: near whoever's still g
 	c.set_mood("browse" if randf() < 0.3 else "neutral")
 	cust.state = "tagAlong"
 	cust.t = 2.0 + randf() * 2.0
+
+
+# ---- the theater (custPickTheaterSeat; the thAisle ... thRowOut states)
+
+func open_way(box: Dictionary) -> void:  # a door that was chained shut isn't any more: the way through it's on the map
+	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).nav
+	d.colliders = d.colliders.filter(func(c: Array) -> bool: return not (absf(c[0] - box.x0) < 0.01 and absf(c[1] - box.x1) < 0.01 and absf(c[2] - box.z0) < 0.01 and absf(c[3] - box.z1) < 0.01))
+	_nav = Nav.new(d)
+
+
+func _floor_y(at: Vector3) -> float:
+	var q := PhysicsRayQueryParameters3D.create(Vector3(at.x, at.y + 1.0, at.z), Vector3(at.x, at.y - 2.0, at.z))
+	var hit := player.get_world_3d().direct_space_state.intersect_ray(q)
+	return hit.position.y if hit else at.y
+
+
+func _pick_theater_seat(cust: Dictionary) -> bool:  # an open stadium seat; they walk to its row on the center ramp
+	if not $"../Shift".owned("theater"):
+		return false
+	var open: Array = interact.seats.filter(func(s: Dictionary) -> bool: return s.kind == "theater" and s != player.seat and not custs.any(func(k: Dictionary) -> bool: return k != cust and k.th_seat == s))
+	if open.is_empty():
+		return false
+	cust.th_seat = open[int(cust.who.rnd.call() * open.size())]
+	go(cust, "thAisle", { "x": -2.87, "z": cust.th_seat.z + 0.42, "ry": 0.0 })
+	return true

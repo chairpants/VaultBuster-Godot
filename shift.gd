@@ -8,7 +8,8 @@ extends Node
 ## And what the store's bought with its budget, on the register (UPGRADES, upgBuy, LIBRARY): a new store carries
 ## only part of the library, and has no cameras, no signs, slow rewinders.
 ## Different here: sleeping it off on the cardboard after close ends the day the same way.
-## Not over yet: what isn't here to count (snack upsells, show tickets, burnt-out lights, empty rack
+## And the theater's show (SHOW, showTick, showSet, ticketChance): the theater's an upgrade.
+## Not over yet: what isn't here to count (snack upsells, burnt-out lights, empty rack
 ## spots, wages), whose points were whose.
 
 const W := 34  # the slip's width
@@ -27,10 +28,16 @@ var upg := { "library": 0 }  # what the store's bought (the register's U): id ->
 const LIBRARY := [  # the library comes in tiers, each after the one before: the sections a new store doesn't carry yet
 	["Kids & Educational", "Holiday", "Reality TV", "Music", "Broadcast Blocks"], ["Classic Sitcoms", "Sketch Comedy & Late Night"], ["Anime", "Horror & Anthology", "MonsterVision"]]
 const UPGRADES := [  # [id, name, cost, what it is] (the ones that do something here yet)
+	["theater", "OPEN THE THEATER", 600.0, "UNLOCK THE LOBBY AND THE AUDITORIUM"],
 	["lib1", "LIBRARY UPGRADE 1", 200.0, "KIDS, HOLIDAY, REALITY TV, MUSIC"], ["lib2", "LIBRARY UPGRADE 2", 350.0, "CLASSIC SITCOMS, SKETCH & LATE NIGHT"],
 	["lib3", "LIBRARY UPGRADE 3", 500.0, "ANIME, HORROR ANTHOLOGY, MONSTERVISION"], ["cameras", "SECURITY CAMERAS", 450.0, "EVERY SHOPLIFTER ON TAPE; FEWER TRY"],
 	["sign", "ANTI-THEFT SIGNAGE", 60.0, "\"SHOPLIFTERS WILL BE PROSECUTED\""], ["rewinders", "HIGH-SPEED REWINDERS", 300.0, "HALF THE TIME"], ["ad", "NEWSPAPER AD", 120.0, "+REPUTATION (ONE A DAY)"]]
 var _stocked := false
+
+# tonight's feature: pick a film on the register; customers buy tickets at checkout; ticket holders come in at 7:45
+# and take their seats. It has to be playing by 8:15, or it's refunds all round
+const SHOW := { "at": 20.0, "grace": 0.25, "len": 1.75, "ticket": 4.0 }
+var show := { "title": "", "day": 0, "sold": 0, "status": "", "spawned": 0 }  # status: "" | arriving | late | on | failed | done
 var aim := false  # the crosshair's on the way home
 
 var _layer := CanvasLayer.new()
@@ -67,7 +74,7 @@ func _ready() -> void:
 
 
 func _fresh() -> Dictionary:
-	return { "visitors": 0, "returns": 0, "walkouts": 0, "stolen": 0, "caught": 0, "fees_collected": 0.0, "fees_waived": 0.0, "snack_take": 0.0 }
+	return { "visitors": 0, "returns": 0, "walkouts": 0, "stolen": 0, "caught": 0, "fees_collected": 0.0, "fees_waived": 0.0, "snack_take": 0.0, "tickets": 0, "refunds": 0.0 }
 
 
 func owned(id: String) -> bool:
@@ -115,8 +122,89 @@ func buy(id: String) -> String:  # upgBuy. -> "" if bought, else why not
 	if owned(id):
 		return "ALREADY INSTALLED."
 	upg[id] = true
-	hud.toast("Installed: %s" % id)
+	open_theater()
+	hud.toast("The theater's open for business" if id == "theater" else "Installed: %s" % id)
 	return ""
+
+
+func open_theater() -> void:  # bought: the lobby's door comes unchained, and people can find their way in
+	if not owned("theater"):
+		return
+	for d: Dictionary in main.get_node("Interact").doors:
+		if d.push and d.locked:
+			d.locked = false
+			for body in d.pivot.find_children("*", "CollisionObject3D", true, false):
+				body.queue_free()
+			shoppers.open_way(d.shut)
+
+
+func film_on() -> bool:
+	return show.title != "" and tapes.playing != null and not main.get_node("Video").paused and tapes.playing.tape.t == show.title
+
+
+func set_show(title: String) -> String:  # from the register: today's 8 PM if there's time to sell tickets, else tomorrow's (showSet). -> "" or why not
+	if not owned("theater"):
+		return "THE THEATER ISN'T OPEN YET."
+	var day := Clock.day if Clock.h < 18.0 else Clock.day + 1
+	if show.day == day and show.sold > 0:
+		return "TICKETS ALREADY SOLD FOR %s." % show.title.to_upper()
+	show = { "title": title, "day": day, "sold": 0, "status": "", "spawned": 0 }
+	hud.toast("Tonight's feature%s: %s at 8 PM" % ["" if day == Clock.day else " (tomorrow)", title])
+	return ""
+
+
+func ticket_chance() -> float:
+	return 0.12 * (0.8 + rep / 250.0) if show.title != "" and show.day == Clock.day and show.status == "" and Clock.h < SHOW.at - 0.3 else 0.0
+
+
+func _show_tick() -> void:  # showTick
+	if show.title == "" or show.day != Clock.day or show.status in ["failed", "done"]:
+		return
+	var h := Clock.h
+	var goers: Array = shoppers.custs.filter(func(k: Dictionary) -> bool: return k.get("moviegoer", false))
+	if show.status == "" and h >= SHOW.at - 0.25:
+		show.status = "arriving"
+		hud.toast("Ticket holders arriving for %s (%d)" % [show.title, show.sold] if show.sold > 0 else "No tickets sold for %s tonight" % show.title)
+		if show.sold == 0:
+			show.status = "done"
+			return
+	if show.status == "arriving" and show.spawned < show.sold and h >= SHOW.at - 0.25 + show.spawned * 0.02:  # they trickle in
+		var k: Dictionary = shoppers.spawn()
+		k.moviegoer = true
+		k.returning = []
+		k.thief = false
+		k.c.hold_tape(0)
+		k.c.set_pose("idle")
+		show.spawned += 1
+	if show.status == "arriving" and h >= SHOW.at:
+		show.status = "on" if film_on() else "late"
+		hud.toast("Showtime: %s is playing" % show.title if film_on() else "8:00 — %s should be starting! Put it in the VCR" % show.title)
+	if show.status == "late":
+		if film_on():
+			show.status = "on"
+			hud.toast("%s started late" % show.title)
+		elif h >= SHOW.at + SHOW.grace:  # refunds, and a lot of unhappy people
+			show.status = "failed"
+			budget -= show.sold * SHOW.ticket
+			stats.refunds += show.sold * SHOW.ticket
+			checkout.score -= 20 * show.sold
+			for k: Dictionary in goers:
+				shoppers.members.loyal(k.member, -6)
+				k.c.set_mood("angry")
+				k.hi = 2.0
+				if k.state == "thWatch":
+					k.t = 0.0
+				elif not k.state in ["thRow", "thSitDown", "thRowOut"]:
+					shoppers.go(k, "leave", { "x": shoppers._door.x, "z": shoppers._door.y })
+			hud.toast("%s never started: refunded %d ticket%s (-$%.2f)" % [show.title, show.sold, "" if show.sold == 1 else "s", show.sold * SHOW.ticket])
+	if show.status == "on" and h >= SHOW.at + SHOW.len:
+		show.status = "done"
+		checkout.score += 10 * goers.size()
+		for k: Dictionary in goers:
+			shoppers.members.loyal(k.member, 3)
+			if k.state == "thWatch":
+				k.t = 0.0
+		hud.toast("%s let out: %d happy moviegoer%s (+%d)" % [show.title, goers.size(), "" if goers.size() == 1 else "s", 10 * goers.size()])
 
 
 func rep_stars() -> int:
@@ -174,7 +262,7 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 	var tried: int = checkout.served + s.walkouts
 	var sc: float = (100.0 * checkout.served / tried if tried > 0 else 100.0) - 15.0 * s.stolen
 	var grade := "A" if sc >= 93.0 else "B" if sc >= 85.0 else "C" if sc >= 75.0 else "D" if sc >= 60.0 else "F"
-	var rep_d := 0 if s.visitors == 0 else clampi({ "A": 5, "B": 3, "C": 1, "D": -2, "F": -5 }[grade] - 2 * s.stolen - (chk.messes + chk.trash) / 2, -10, 8)
+	var rep_d := 0 if s.visitors == 0 else clampi({ "A": 5, "B": 3, "C": 1, "D": -2, "F": -5 }[grade] - 2 * s.stolen - (chk.messes + chk.trash) / 2 - (3 if s.refunds > 0.0 else 0) + (2 if show.status == "done" and show.sold > 0 else 0), -10, 8)
 	rep = clampf(rep + rep_d, 0.0, 100.0)
 	var d := Clock.date()
 	var line := "-".repeat(W)
@@ -192,7 +280,7 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 		_row("CUSTOMERS IN", s.visitors), _row("RUNG UP", checkout.served), _row("WALKED OUT", s.walkouts),
 		_row("TAPES RENTED", checkout.rentals), _row("RETURNS CHECKED IN", s.returns),
 		_row("SHOPLIFTERS CAUGHT", s.caught), _row("TAPES STOLEN", s.stolen), line,
-		_row("RENTALS", "$%.2f" % (checkout.take - s.fees_collected - s.snack_take)), _row("SNACKS", "$%.2f" % s.snack_take), _row("LATE FEES", "$%.2f" % s.fees_collected),
+		_row("RENTALS", "$%.2f" % (checkout.take - s.fees_collected - s.snack_take - s.tickets * SHOW.ticket)), _row("SNACKS", "$%.2f" % s.snack_take), _row("SHOW TICKETS", "$%.2f" % (s.tickets * SHOW.ticket - s.refunds)), _row("LATE FEES", "$%.2f" % s.fees_collected),
 		_row("FEES WAIVED", "$%.2f" % s.fees_waived), _row("TOTAL TAKE", "$%.2f" % checkout.take), _row("STORE BUDGET", "$%.2f" % budget), line, "CLOSING CHECK",
 		_row("  LEFT IN RETURNS BIN", chk.bin), _row("  MISSHELVED TAPES", chk.strays), _row("  MESSES", chk.messes), _row("  TRASH NOT TAKEN OUT", chk.trash), _row("  EMPTY RACK SPOTS", chk.empty), _row("  POINTS", chk_pts), line, "DAY GOALS",
 	]
@@ -261,6 +349,8 @@ func _process(dt: float) -> void:
 		if not OS.get_cmdline_user_args().is_empty():
 			upg.library = LIBRARY.size()  # (the tests: a full library)
 		stock_library()
+		open_theater()
+	_show_tick()
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -296,7 +386,7 @@ func on_e() -> bool:
 # ---- for the save
 
 func snapshot() -> Dictionary:
-	return { "stats": stats, "goals": goals, "rep": rep, "budget": budget, "upg": upg }
+	return { "stats": stats, "goals": goals, "rep": rep, "budget": budget, "upg": upg, "show": show }
 
 
 func restore(d: Dictionary) -> void:
@@ -307,4 +397,8 @@ func restore(d: Dictionary) -> void:
 	goals = d.goals.filter(func(g: Dictionary) -> bool: return GOALS.has(g.id)).map(func(g: Dictionary) -> Dictionary: return { "id": g.id, "n": int(g.n) })
 	rep = d.rep
 	budget = d.budget
+	if d.has("show"):
+		show = d.show
+		for k in ["day", "sold", "spawned"]:
+			show[k] = int(show[k])
 	upg = d.get("upg", { "library": LIBRARY.size(), "lib1": true, "lib2": true, "lib3": true, "cameras": true, "sign": true, "rewinders": true })  # (a store saved back when a sandbox had everything: it keeps it)

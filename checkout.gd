@@ -99,6 +99,11 @@ func start(by: String, cust: Dictionary) -> void:  # coStart
 		total += price(t)
 	for u: Dictionary in cust.snacks:
 		total += $"../Snacks".price(u)
+	var show: Dictionary = $"../Shift".show
+	if not cust.get("moviegoer", false) and not cust.has("tickets"):  # "two for tonight's show while you're at it"
+		var want := (2 if randf() < 0.4 else 1) if randf() < $"../Shift".ticket_chance() else 0
+		cust.tickets = clampi(want, 0, 10 - show.sold)
+	total += cust.get("tickets", 0) * $"../Shift".SHOW.ticket
 	var bill := 50.0
 	for b in [1.0, 5.0, 10.0, 20.0, 50.0]:
 		if b >= total:
@@ -159,6 +164,9 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			served += 1
 			rentals += k.tapes.size()
 			take += co.total
+			if k.get("tickets", 0) > 0:  # (sold)
+				$"../Shift".show.sold += k.tickets
+				$"../Shift".stats.tickets += k.tickets
 			for u: Dictionary in k.snacks:
 				$"../Shift".stats.snack_take += $"../Snacks".price(u)
 			$"../Shift".budget += co.total
@@ -195,6 +203,8 @@ func _bought(k: Dictionary) -> String:
 		parts.append("1 tape" if k.tapes.size() == 1 else "%d tapes" % k.tapes.size())
 	if not k.snacks.is_empty():
 		parts.append("1 snack" if k.snacks.size() == 1 else "%d snacks" % k.snacks.size())
+	if k.get("tickets", 0) > 0:
+		parts.append("1 show ticket" if k.tickets == 1 else "%d show tickets" % k.tickets)
 	return ", ".join(parts)
 
 

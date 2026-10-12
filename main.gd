@@ -682,7 +682,7 @@ func _check() -> void:
 	Po.log_in()
 	budget0 = $Shift.budget
 	Po.type("upgrades")
-	Po.type("5")
+	Po.type(str($Shift.UPGRADES.map(func(u: Array) -> String: return u[0]).find("sign") + 1))
 	Po.type("Y")
 	Po.log_off()
 	if not $Shift.owned("sign") or absf(budget0 - 60.0 - $Shift.budget) > 0.01:
@@ -694,6 +694,40 @@ func _check() -> void:
 	var why: String = $Shift.buy("lib3")
 	if on1 >= on0 or why != "" or Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off).size() != on0:
 		bad.append("the library's last tier didn't come off the shelves and back (%d, %d, %s)" % [on0, on1, why])
+	# the theater: bought, its door's unchained and somebody finds a seat; a feature set on the terminal sells a ticket
+	var chained: Array = $Interact.doors.filter(func(d: Dictionary) -> bool: return d.push and d.locked)
+	$Shift.upg.theater = true
+	$Shift.open_theater()
+	var goer: Dictionary = S.spawn()
+	goer.c.position = Vector3(S._door.x, 0, S._door.y)
+	goer.path = []
+	goer.who.speed = 9.0
+	goer.thief = false
+	goer.returning = []
+	if chained.size() != 1 or chained[0].locked or not S._pick_theater_seat(goer):
+		bad.append("the theater didn't open (%d chained doors)" % chained.size())
+	else:
+		t0 = Time.get_ticks_msec()
+		while goer.state != "thWatch" and S.custs.has(goer) and Time.get_ticks_msec() - t0 < 40000:
+			await get_tree().process_frame
+		if goer.state != "thWatch" or goer.c.position.distance_to(Vector3(goer.th_seat.x, goer.th_seat.y, goer.th_seat.z)) > 0.1:
+			bad.append("nobody got to a seat in the theater (%s at %s)" % [goer.state, goer.c.position])
+		goer.t = 0.0
+		t0 = Time.get_ticks_msec()
+		while S.custs.has(goer) and Time.get_ticks_msec() - t0 < 40000:
+			await get_tree().process_frame
+		if S.custs.has(goer):
+			bad.append("the moviegoer didn't find their way back out (%s at %s)" % [goer.state, goer.c.position])
+	var noon_was := Clock.h
+	Clock.h = 12.0
+	Po.log_in()
+	Po.type("T")
+	Po.type("1")
+	Po.log_off()
+	if $Shift.show.title == "" or $Shift.show.day != Clock.day or $Shift.ticket_chance() <= 0.0:
+		bad.append("the terminal didn't set tonight's feature")
+	Clock.h = noon_was
+	$Shift.show.title = ""
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day
