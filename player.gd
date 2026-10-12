@@ -114,7 +114,7 @@ func _physics_process(dt: float) -> void:
 	if seat != null:
 		return
 	var dir := Vector3(_key(KEY_D) - _key(KEY_A), 0, _key(KEY_S) - _key(KEY_W)).normalized()
-	var speed := (RUN if Input.is_physical_key_pressed(KEY_SHIFT) else SPEED) * (0.55 if crouched else 1.0)
+	var speed := (RUN * (1.15 if preload("res://staff.gd").has("you", "con", 5) else 1.0) if Input.is_physical_key_pressed(KEY_SHIFT) else SPEED) * (0.55 if crouched else 1.0)  # (Second Wind)
 	if fly:
 		var up := _key(KEY_SPACE) - _key(KEY_CTRL)
 		global_position += (cam.global_basis * dir + Vector3.UP * up) * speed * 2.0 * dt

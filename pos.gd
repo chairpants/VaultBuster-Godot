@@ -418,8 +418,11 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 				"NO SUPPLIES ON FILE."))
 		"U":
 			_go(_list("UPGRADES - BUDGET $%.2f" % shift.budget, "      UPGRADE                                                         COST", shift.UPGRADES,
-				func(u: Array, n: int) -> String: return " %s  %s %s %s" % [R(n, 3), L(u[1] + (" *" if shift.owned(u[0]) else ""), 23), L("INSTALLED" if shift.owned(u[0]) else "RAN TODAY" if u[0] == "ad" and shift.upg.get("ad_day", 0) == Clock.day else u[3], 37), R("$%.2f" % u[2], 7)],
+				func(u: Array, n: int) -> String: return " %s  %s %s %s" % [R(n, 3), L(u[1] + (" *" if (shift.owned(u[0]) and u[0] != "hire") else ""), 23), L("INSTALLED" if (shift.owned(u[0]) and u[0] != "hire") else "RAN TODAY" if u[0] == "ad" and shift.upg.get("ad_day", 0) == Clock.day else u[3], 37), R("$%.2f" % u[2], 7)],
 				func(u: Array) -> void:
+					if u[0] == "hire":
+						_hire_screen()
+						return
 					_go({ "title": "PURCHASE UPGRADE", "prompt": "Y TO BUY, ESC TO CANCEL",
 						"lines": func() -> Array: return ["", " UPGRADE..: %s" % u[1], " WHAT.....: %s" % u[3], " COST.....: $%.2f" % u[2], " BUDGET...: $%.2f" % shift.budget],
 						"submit": func(v: String) -> void:
@@ -449,6 +452,66 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 					_back()
 					_msg = err if err != "" else "FEATURE SET: %s AT 8 PM. TICKETS $4.00 AT THE REGISTER." % t.to_upper(),
 				"THE THEATER ISN'T OPEN YET." if not shift.owned("theater") else "NO FILMS ON THE SHELF."))
+		"W":  # the staff's week: each one's hours by the day (part time: up to 25 a week)
+			var st: Node = main.get_node("Staff")
+			_go({ "title": "STAFF - WEEKLY SCHEDULE", "prompt": "# DAY FROM-TO (OR OFF)  EX: 1 FRI 17-22",
+				"lines": func() -> Array:
+					var out: Array = ["  #  NAME          " + "".join(Clock.WEEKDAYS.map(func(d: String) -> String: return L(d, 7))) + " HRS   RATE"]
+					for i in st.roster.size():
+						var w: Dictionary = st.roster[i]
+						var days := ""
+						for d in 7:
+							var bits: Array = range(15).filter(func(b: int) -> bool: return (int(w.sched[d]) >> b) & 1 == 1)
+							days += L("%d-%d" % [9 + bits[0], 10 + bits[-1]] if not bits.is_empty() else "--", 7)
+						out.append("  %d  %s%s %s  %s" % [i + 1, L(w.first + " " + w.last, 14), days, R(st.hours(w), 3), R("$%.2f" % st.rate(w), 6)])
+					if st.roster.is_empty():
+						out.append("  NOBODY ON STAFF YET: HIRE SOMEONE (U)")
+					return out,
+				"submit": func(v: String) -> void:
+					var a := v.split(" ", false)
+					var i := int(a[0]) - 1 if a.size() == 3 and a[0].is_valid_int() else -1
+					var d: int = Clock.WEEKDAYS.find(a[1]) if a.size() == 3 else -1
+					if i < 0 or i >= st.roster.size() or d < 0:
+						_msg = "EXAMPLE: 1 FRI 17-22   OR: 1 FRI OFF"
+						return
+					var mask := 0
+					if a[2] != "OFF":
+						var h := a[2].split("-")
+						if h.size() != 2 or not h[0].is_valid_int() or not h[1].is_valid_int() or int(h[0]) < 9 or int(h[1]) > 24 or int(h[1]) <= int(h[0]):
+							_msg = "HOURS 9 TO 24, FROM-TO."
+							return
+						for b in range(int(h[0]) - 9, int(h[1]) - 9):
+							mask |= 1 << b
+					var was: int = st.roster[i].sched[d]
+					st.roster[i].sched[d] = mask
+					if st.hours(st.roster[i]) > 25:
+						st.roster[i].sched[d] = was
+						_msg = "PART TIME: 25 HOURS A WEEK AT MOST."
+					else:
+						_msg = "SCHEDULE UPDATED." })
+		"J":  # the job board: what each of them gets to first when there's more than one thing to do
+			var st: Node = main.get_node("Staff")
+			_go({ "title": "STAFF JOBS - 1 FIRST, 4 LAST, 0 NEVER", "prompt": "# JOB PRIORITY  EX: 1 RETURNS 1",
+				"lines": func() -> Array:
+					var out: Array = ["  #  NAME          " + "".join(st.JOBS.keys().map(func(j: String) -> String: return L(st.JOBS[j][0], 10)))]
+					for i in st.roster.size():
+						var w: Dictionary = st.roster[i]
+						out.append("  %d  %s%s" % [i + 1, L(w.first + " " + w.last, 14), "".join(st.JOBS.keys().map(func(j: String) -> String: return L(str(w.jobs.get(j, 0)) if w.jobs.get(j, 0) > 0 else "X", 10)))])
+					if st.roster.is_empty():
+						out.append("  NOBODY ON STAFF YET: HIRE SOMEONE (U)")
+					return out,
+				"submit": func(v: String) -> void:
+					var a := v.split(" ", false)
+					var i := int(a[0]) - 1 if a.size() == 3 and a[0].is_valid_int() else -1
+					var job := ""
+					for j: String in st.JOBS:
+						if a.size() == 3 and st.JOBS[j][0].begins_with(a[1]):
+							job = j
+					if i < 0 or i >= st.roster.size() or job == "" or not a[2].is_valid_int() or int(a[2]) < 0 or int(a[2]) > 4:
+						_msg = "EXAMPLE: 1 RETURNS 1   (0 = NEVER)"
+					else:
+						st.roster[i].jobs[job] = int(a[2])
+						_msg = "JOB BOARD UPDATED." })
 		"0": log_off()
 		_: return false
 	return true
@@ -460,9 +523,9 @@ func _main_menu() -> Dictionary:
 			var unread := notes.filter(func(n: Dictionary) -> bool: return not n.read).size()
 			var left := [" INVENTORY", "  1  TITLE SEARCH", "  2  BROWSE BY SECTION", "  7  RETURNS BIN QUEUE", "  B  REPLACEMENT COPIES", " MEMBERS", "  3  MEMBER LOOKUP", "  4  ALL ACCOUNTS", "  5  OVERDUE / LATE FEES",
 				" REPORTS", "  6  RENTALS OUT", "  8  DAILY SUMMARY", "  M  MESSAGES%s" % (" (%d NEW)" % unread if unread > 0 else "")]
-			var right := [" STORE", "  O  ORDER SUPPLIES", "  U  STORE UPGRADES", "  T  TONIGHT'S FEATURE", "  9  PREVIEW STATION", " SECURITY", "  S  GATE SYSTEM", " SYSTEM", "  H  HELP / COMMANDS", "  0  LOG OFF"]
+			var right := [" STORE", "  O  ORDER SUPPLIES", "  U  STORE UPGRADES", "  T  TONIGHT'S FEATURE", "  W  STAFF SCHEDULE", "  J  STAFF JOBS", "  9  PREVIEW STATION", " SECURITY", "  S  GATE SYSTEM", " SYSTEM", "  H  HELP / COMMANDS", "  0  LOG OFF"]
 			if shoppers.alarm_on:
-				right.insert(6, "  A  *** SILENCE GATE ALARM ***")
+				right.append("  A  *** SILENCE GATE ALARM ***")
 			var out: Array = [""]
 			for i in left.size():
 				out.append(L(left[i], 40) + (right[i] if i < right.size() else ""))
@@ -481,7 +544,7 @@ func _main_menu() -> Dictionary:
 			elif cmd == "VER":
 				_msg = "POS/NET 2.3 (C) 1993 VIDEOTRAK SYSTEMS INC.  LICENSED TO VAULTBUSTER VIDEO #0417"
 			else:
-				var alias: String = { "OVERDUE": "5", "OUT": "6", "RETURNS": "7", "REPORT": "8", "HELP": "H", "?": "H", "LOGOFF": "0", "EXIT": "0", "LOGOUT": "0", "SUPPLIES": "O", "ORDER": "O", "MESSAGES": "M", "MSGS": "M", "GATES": "S", "REPLACE": "B", "UPGRADES": "U", "UPGRADE": "U", "THEATER": "T", "FEATURE": "T" }.get(cmd, "")
+				var alias: String = { "OVERDUE": "5", "OUT": "6", "RETURNS": "7", "REPORT": "8", "HELP": "H", "?": "H", "LOGOFF": "0", "EXIT": "0", "LOGOUT": "0", "SUPPLIES": "O", "ORDER": "O", "MESSAGES": "M", "MSGS": "M", "GATES": "S", "REPLACE": "B", "UPGRADES": "U", "UPGRADE": "U", "THEATER": "T", "FEATURE": "T", "SCHEDULE": "W", "STAFF": "W", "JOBS": "J" }.get(cmd, "")
 				if alias == "" or not _pick(alias):
 					_msg = "UNKNOWN COMMAND: %s.  TYPE H FOR HELP." % v }
 
@@ -578,3 +641,34 @@ func restore(d: Dictionary) -> void:
 		if d.get("replacements", []).has(t.k):
 			replacements.append(t)
 			t.lost = false
+
+
+func _hire_screen() -> void:  # three applicants to choose from; each hire costs more than the last (hireOpen, hirePick)
+	var st: Node = main.get_node("Staff")
+	var cost: float = st.hire_cost()
+	if st.roster.size() >= st.STAFF_MAX:
+		_msg = "THE STAFF ROOM'S FULL (%d)." % st.STAFF_MAX
+		return
+	if shift.budget < cost:
+		_msg = "INSUFFICIENT BUDGET: $%.2f TO HIRE." % cost
+		return
+	var apps: Array = [st.applicant(), st.applicant(), st.applicant()]
+	_go({ "title": "THREE APPLICANTS - $%.2f TO HIRE ONE" % cost, "prompt": "1-3 TO HIRE, ESC FOR NOT NOW",
+		"lines": func() -> Array:
+			var out: Array = ["", "  #  NAME                " + "".join(st.SKILLS.keys().map(func(k: String) -> String: return L(st.SKILLS[k][0], 5))) + "  AN HOUR"]
+			for i in 3:
+				out.append("  %d  %s%s  $%.2f" % [i + 1, L(apps[i].first + " " + apps[i].last, 20), "".join(st.SKILLS.keys().map(func(k: String) -> String: return L(apps[i].skills[k][0], 5))), st.rate(apps[i])])
+			out.append_array(["", "  UP TO 25 HOURS A WEEK. THEY START RIGHT NOW; SET THEIR WEEK UNDER W."])
+			return out,
+		"submit": func(v: String) -> void:
+			if not v in ["1", "2", "3"]:
+				_msg = "1, 2 OR 3."
+				return
+			var a: Dictionary = apps[int(v) - 1]
+			shift.budget -= cost
+			shift.upg.hire = true
+			st.hires += 1
+			st.hire(a)
+			_back()
+			_back()
+			_msg = "HIRED: %s %s. BUDGET NOW $%.2f." % [a.first.to_upper(), a.last.to_upper(), shift.budget] })

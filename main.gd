@@ -806,6 +806,20 @@ func _check() -> void:
 	$Things._block.get_child(0).disabled = not $Things.locked
 	Tp.return_bin.erase(loot)
 	Tp.set_on_shelf(loot, true)
+	# skills, and a second pair of hands: XP levels a stat; an applicant hired on the terminal is on the roster with a week of their own
+	St.xp("you", "dex", 200.0)
+	if St.lv("you", "dex") < 2 or not "DEX" in St._sheet_text():
+		bad.append("doing the work didn't level a skill")
+	Po.log_in()
+	budget0 = $Shift.budget
+	Po.type("upgrades")
+	Po.type(str($Shift.UPGRADES.map(func(u: Array) -> String: return u[0]).find("hire") + 1))
+	Po.type("2")
+	Po.type("W")
+	Po.type("2 MON 12-17")
+	Po.log_off()
+	if St.roster.size() != 2 or St.crew.size() != 2 or absf(budget0 - 250.0 - $Shift.budget) > 0.01 or St.hours(St.roster[1], 1) != 5 or St.crew[1].first != St.roster[1].first:
+		bad.append("hiring on the terminal didn't put somebody on the roster (%d on it, %d nodes, $%.2f spent)" % [St.roster.size(), St.crew.size(), budget0 - $Shift.budget])
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

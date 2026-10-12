@@ -20,6 +20,7 @@ extends Node
 ## - No cars (everyone walks up the sidewalk), nobody going to the theater, nobody signing up.
 
 const Nav := preload("res://nav.gd")
+const Staff := preload("res://staff.gd")
 const TASTES := [
 	["horror fan", ["Horror", "Horror & Anthology", "MonsterVision"]],
 	["parent", ["Family & Kids", "Kids & Educational", "Animation", "Holiday"]],
@@ -251,7 +252,6 @@ func _process(dt: float) -> void:
 	_you_z = you.z
 	if alarm_on:
 		alarm_t += dt
-	var dana: Node3D = $"../Staff".dana
 	var gr: Dictionary = $"../Shift".growth
 	if gr.prospects > 0 and not things.locked and open and custs.size() < cap + 1:  # somebody new, here to sign up
 		gr.t -= dt
@@ -273,8 +273,11 @@ func _process(dt: float) -> void:
 		_hear_alarm(k, dt)
 		if k.sneaking and not k.alarmed:
 			_watched(k, dt)
-			if k.sneaking and dana != null and dana.position.distance_to(k.c.position) < 3.5 and randf() < dt * 0.03 * 2.0:  # (her WIS of 2: a chance each second to stop them on the way past)
-				catch(k, "dana")
+			for e: Node in Staff.crew:  # staff: a chance each second, better with WIS, to stop them on the way past
+				if k.sneaking and e.dana != null and e.dana.position.distance_to(k.c.position) < 3.5 and randf() < dt * 0.03 * Staff.lv(e, "wis"):
+					Staff.speaker = e.first
+					catch(k, "dana")
+					$"../Staff".xp(e, "wis", 20.0)
 		_step(k, dt)
 
 
@@ -344,7 +347,8 @@ func _watched(cust: Dictionary, dt: float) -> void:  # sneaking out, they notice
 	if cust.watch_t < 0.8:
 		return
 	cust.fess = true
-	if randf() >= 0.5:
+	$"../Staff".xp("you", "wis", 4.0)
+	if randf() >= (0.85 if Staff.has("you", "wis", 10) else 0.5):  # (Stern Look: they mostly don't)
 		return  # ...or they keep going
 	cust.sneaking = false
 	cust.tagged = false
@@ -370,6 +374,8 @@ func catch(cust: Dictionary, by: String) -> void:  # stopped before they're out 
 	cust.c.set_mood("shock")
 	cust.hi = 1.5
 	checkout.score += 150
+	if by != "dana":
+		$"../Staff".xp("you", "wis", 20.0)
 	$"../Shift".stats.caught += 1
 	if by == "dana":  # a warning, and out
 		hud.toast("Dana caught %s sneaking out with %s (back in the returns bin, a warning) (+150)" % [cust.name, what])
@@ -889,7 +895,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				c.set_pose("wait")
 				c.set_mood("wait")
 				cust.state = "inLine"
-				cust.t = 45.0 * who.patience
+				cust.t = 45.0 * who.patience * (1.3 if Staff.has("you", "cha", 10) else 1.0)  # (Store Favorite)
 			"inLine":
 				if cust.t <= 0.0 and c.mood != "impatient":
 					c.set_mood("impatient")
@@ -898,12 +904,12 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				c.set_pose("wait")
 				c.set_mood("wait")
 				cust.state = "wait"
-				cust.t = 25.0 * who.patience
+				cust.t = 25.0 * who.patience * (1.3 if Staff.has("you", "cha", 10) else 1.0)
 			"wait":
 				if cust.t <= 0.0:
 					c.set_mood("impatient")
 					cust.state = "impatient"
-					cust.t = 15.0 * who.patience
+					cust.t = 15.0 * who.patience * (1.3 if Staff.has("you", "cha", 10) else 1.0)
 			"impatient":
 				if cust.t <= 0.0:
 					c.set_mood("angry")
@@ -1128,6 +1134,8 @@ func on_e() -> bool:
 		aim.c.set_mood("happy")
 		if not aim.greeted:
 			regular_says(aim, "hi")
+		if not aim.greeted:
+			$"../Staff".xp("you", "wis", 2.0)  # (sizing people up)
 		if aim.thief and not aim.greeted and randf() < 0.7:
 			aim.thief = false  # a friendly hello: suddenly they'd rather just rent it
 		aim.greeted = true
@@ -1255,6 +1263,7 @@ func hand_tape(cust: Dictionary, tape: Dictionary, by := "you") -> bool:  # -> t
 	var fast := maxi(0, roundi(60.0 - (Time.get_ticks_msec() / 1000.0 - cust.ask_at)))
 	var pts: int = 80 + fast if exact else 40 if w.kind == "title" else 80 + fast if likes else 30
 	checkout.score += pts
+	$"../Staff".xp("you", "int" if exact else "cha", 10.0 if exact or likes else 5.0)
 	members.loyal(cust.member, 10 if exact else 4 if w.kind == "title" else 8 if likes else 2)
 	hud.toast(("%s found %s %s" % [Who, cust.name, tape.t] if exact else "%s took %s instead of %s" % [cust.name, tape.t, w.title] if w.kind == "title" else "%s recommended %s to %s%s" % [Who, tape.t, cust.name, ": right up their alley" if likes else ""]) + " (+%d)" % pts)
 	ask_done(cust, "pay")

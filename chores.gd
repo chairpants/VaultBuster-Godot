@@ -157,6 +157,8 @@ func mess_add(kind: String, x: float, z: float, y := 0.0) -> void:  # messAdd
 
 
 func mess_clean(m: Dictionary, by := "you") -> void:  # messClean
+	if by == "you":
+		$"../Staff".xp("you", "con", 6.0)
 	m.node.queue_free()
 	messes.erase(m)
 	checkout.score += 15
@@ -165,6 +167,10 @@ func mess_clean(m: Dictionary, by := "you") -> void:  # messClean
 
 
 # ---- the trash
+
+func _bag_max() -> int:  # one in each hand (Strong Grip: a third hugged in front)
+	return 3 if preload("res://staff.gd").has("you", "str", 5) else 2
+
 
 func _bin(id: String) -> Dictionary:
 	for b: Dictionary in bins:
@@ -339,6 +345,9 @@ func on_e() -> bool:
 				_scrub = { "m": m, "t": 0.0, "dur": 2.4 if tool_held == "mop" else 2.1 }
 		else:
 			mess_clean(m)
+			if preload("res://staff.gd").has("you", "con", 10):  # Neat Freak: sweep up around it too
+				for o: Dictionary in messes.filter(func(o: Dictionary) -> bool: return MESS[o.kind][1] in ["", tool_held] and Vector2(o.x - m.x, o.z - m.z).length() < 3.0):
+					mess_clean(o)
 	elif aim.has("tool"):
 		if tool_held == aim.tool:
 			tool_return()
@@ -350,7 +359,7 @@ func on_e() -> bool:
 		var b: Dictionary = aim.bin
 		if b.n == 0:
 			hud.toast("The %s is empty" % b.name)
-		elif bag_carry.size() >= 2 or tool_held != "":
+		elif bag_carry.size() >= _bag_max() or tool_held != "":
 			hud.toast("Hands full: take these to the chute first" if tool_held == "" else "Put the %s back first" % tools[tool_held].label)
 		else:
 			bag_carry.append({ "bin": b.id, "n": b.n })  # the bag out, and a fresh liner in
@@ -358,9 +367,10 @@ func on_e() -> bool:
 			b.acc = 0.0
 			b.spilled = false
 			checkout.score += 5
+			$"../Staff".xp("you", "con", 3.0)
 			_show_hands()
 	elif aim.has("bag"):  # bagPickUp
-		if bag_carry.size() >= 2:
+		if bag_carry.size() >= _bag_max():
 			hud.toast("Hands full")
 		else:
 			aim.bag.node.queue_free()
@@ -372,6 +382,8 @@ func on_e() -> bool:
 		bag_carry.clear()
 		_show_hands()
 		checkout.score += 10 * n
+		$"../Staff".xp("you", "str", 3.0 * n)
+		$"../Staff".xp("you", "con", 2.0 * n)
 		hud.toast("Took %s of trash down the chute (+%d)" % ["a bag" if n == 1 else "%d bags" % n, 10 * n])
 	return true
 

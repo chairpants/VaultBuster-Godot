@@ -32,7 +32,7 @@ var upg := { "library": 0 }  # what the store's bought (the register's U): id ->
 const LIBRARY := [  # the library comes in tiers, each after the one before: the sections a new store doesn't carry yet
 	["Kids & Educational", "Holiday", "Reality TV", "Music", "Broadcast Blocks"], ["Classic Sitcoms", "Sketch Comedy & Late Night"], ["Anime", "Horror & Anthology", "MonsterVision"]]
 const UPGRADES := [  # [id, name, cost, what it is] (the ones that do something here yet)
-	["hire", "HIRE AN EMPLOYEE", 250.0, "DANA: WED-SUN, 5 TO 10 PM"], ["theater", "OPEN THE THEATER", 600.0, "UNLOCK THE LOBBY AND THE AUDITORIUM"],
+	["hire", "HIRE AN EMPLOYEE", 250.0, "3 APPLICANTS TO CHOOSE FROM"], ["theater", "OPEN THE THEATER", 600.0, "UNLOCK THE LOBBY AND THE AUDITORIUM"],
 	["lib1", "LIBRARY UPGRADE 1", 200.0, "KIDS, HOLIDAY, REALITY TV, MUSIC"], ["lib2", "LIBRARY UPGRADE 2", 350.0, "CLASSIC SITCOMS, SKETCH & LATE NIGHT"],
 	["lib3", "LIBRARY UPGRADE 3", 500.0, "ANIME, HORROR ANTHOLOGY, MONSTERVISION"], ["cameras", "SECURITY CAMERAS", 450.0, "EVERY SHOPLIFTER ON TAPE; FEWER TRY"],
 	["sign", "ANTI-THEFT SIGNAGE", 60.0, "\"SHOPLIFTERS WILL BE PROSECUTED\""], ["rewinders", "HIGH-SPEED REWINDERS", 300.0, "HALF THE TIME"], ["ad", "NEWSPAPER AD", 120.0, "+REPUTATION (ONE A DAY)"]]
@@ -326,8 +326,12 @@ func clock_out() -> void:  # clockOut: the shift slip (what came in, what walked
 	rep = clampf(rep + rep_d, 0.0, 100.0)
 	var sim_rows: Array = []
 	if sim():  # the staff's pay for the day (their scheduled hours, $7 each); the red; word of mouth
-		var hrs := 5 if owned("hire") and Clock.date().weekday in [3, 4, 5, 6, 0] else 0
-		var wages := hrs * 7.0
+		var hrs := 0
+		var wages := 0.0
+		var st: Node = main.get_node("Staff")
+		for w: Dictionary in st.roster:  # by the hour, each at their own rate
+			hrs += st.hours(w, Clock.date().weekday)
+			wages += st.hours(w, Clock.date().weekday) * st.rate(w)
 		budget -= wages
 		red_nights = red_nights + 1 if budget < 0.0 else 0
 		if red_nights > 0:
@@ -385,13 +389,8 @@ func begin_shift() -> void:  # first thing in the morning: 9:00, doors locked, y
 	checkout.take = 0.0
 	checkout.score = 0
 	var st: Node = main.get_node("Staff")  # (they went home overnight: in when their shifts start)
-	if st.dana != null:
-		tapes.return_bin.append_array(st.carry)
-		st.carry = []
-		st.dana.queue_free()
-		st.dana = null
-		st.state = "post"
-		st._path = []
+	for e: Node in st.crew:
+		e.send_home()
 	for k: Dictionary in shoppers.custs.duplicate():  # anyone still in at close went home too (unpaid tapes back on the shelf)
 		if not k.paid:
 			for t: Dictionary in k.tapes:

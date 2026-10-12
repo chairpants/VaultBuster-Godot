@@ -168,6 +168,8 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			k.member.active = true
 		"newcard":
 			var pts := 40 + maxi(0, roundi(40.0 - (_now - co.start)))
+			if co.by == "player":
+				$"../Staff".xp("you", "cha", 10.0)
 			score += pts
 			$"../Shift".stats.signups += 1
 			shoppers.members.loyal(k.member, 5)
@@ -214,6 +216,8 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			var secs: float = _now - co.start
 			var missed: int = k.tapes.filter(func(t: Dictionary) -> bool: return not t.get("desens", false)).size()
 			var got: int = 100 + maxi(0, roundi((90.0 - secs) * 2.0)) + co.pts - 75 * missed
+			if co.by == "player":
+				$"../Staff".xp("you", "dex", 10.0)
 			shoppers.members.loyal(k.member, 7 if secs < 40.0 else 4)
 			score += got
 			k.c.hold_tape(k.tapes.size())
@@ -250,7 +254,7 @@ func fees(charge: bool) -> void:  # late fees on their account: charge them (mon
 	var amt: float = m.owed
 	m.owed = 0.0
 	co.cust.hi = 1.6
-	shoppers.members.loyal(m, -3 if charge else 6)
+	shoppers.members.loyal(m, (-2 if co.by == "player" and preload("res://staff.gd").has("you", "cha", 5) else -3) if charge else 6)  # (Smooth Talker: half the sting)
 	if charge:
 		co.fees += amt
 		$"../Shift".stats.fees_collected += amt

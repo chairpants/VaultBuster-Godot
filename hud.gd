@@ -3,6 +3,7 @@ extends CanvasLayer
 ## open), a crosshair, the line for whatever you're aiming at, toasts, and the day's log bottom left (the web
 ## game's logAct: here every toast goes in it; J folds it away).
 
+const Staff := preload("res://staff.gd")
 var _clock := _label(26)
 var _status := _label(14, Color(1, 0.83, 0))
 var _cross := _label(18)
@@ -72,6 +73,8 @@ func now_playing(text: String) -> void:
 
 
 func toast(text: String) -> void:  # up top for a moment, and into the log
+	if text.begins_with("Dana") and Staff.speaker != "Dana":
+		text = Staff.speaker + text.substr(4)  # (whoever on staff it actually was)
 	_rows.append("%s  %s" % [Clock.fmt_clock(Clock.h), text.replace("\n", " ")])
 	if _rows.size() > 60:
 		_rows.pop_front()

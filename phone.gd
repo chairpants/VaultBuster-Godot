@@ -113,7 +113,10 @@ func _process(dt: float) -> void:  # phoneTick
 	if ring.t >= ring.rang:  # the US cadence: 2 s on, 4 s off
 		ring.rang += 6.0
 		$"../Ambience".ring(_at)
-	if ring.t > 6.0 and staff.dana != null and staff.state == "post" and staff._path.is_empty() and checkout.co == null and shoppers.waiting() == null:
+	var taker = staff.clerk()
+	if ring.t > 6.0 and taker != null and taker.who.jobs.get("phone", 0) > 0 and checkout.co == null and shoppers.waiting() == null:
+		preload("res://staff.gd").speaker = taker.first
+		staff.xp(taker, "cha", 4.0)
 		_dana_call()  # nobody in the store needs her: she gets it
 	elif ring.t > 20.0:  # rang out
 		var from := _who(ring)
@@ -130,6 +133,7 @@ func _process(dt: float) -> void:  # phoneTick
 
 
 func answer() -> void:  # E on the phone while it's ringing (phoneAnswer)
+	staff.xp("you", "cha", 4.0)
 	var waiting: Array = shoppers.asks.duplicate()
 	if shoppers.waiting() != null:
 		waiting.append(shoppers.waiting())
@@ -301,6 +305,7 @@ func on_e() -> bool:
 			mine[0].copy = t
 			_render()
 			checkout.score += 15
+			staff.xp("you", "int", 5.0)
 			hud.toast("Put %s on the holds shelf for %s (+15)" % [t.t, shoppers.members.name_of(mine[0].member)])
 	else:  # holdPull: take down the one someone's at the counter for
 		var ks: Array = shoppers.asks.filter(func(k: Dictionary) -> bool: return k.state == "asking" and k.want.kind == "hold" and k.want.hold.copy != null)

@@ -411,6 +411,11 @@ func rewinder_use() -> void:  # E on it: the tape in hand goes in; E again takes
 		rw.f0 = wind_frac(held)
 		rw.t = 0.0
 		rw.dur = maxf(1.0, rw.f0 * 10.0) * (0.5 if $"../Shift".owned("rewinders") else 1.0)  # up to ten seconds, by how far it's wound (half that, high-speed)
+		var S := preload("res://staff.gd")
+		if S.has("you", "dex", 5):
+			rw.dur *= 0.7  # Quick Thread
+		if S.has("you", "dex", 10) and randf() < 0.2:
+			rw.dur = 0.05  # Lucky Spool
 		rw.done = rw.f0 <= 0.0
 		release()
 	elif inv_make_room():

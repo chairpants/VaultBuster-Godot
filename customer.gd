@@ -14,7 +14,7 @@ extends Node
 ## Not over yet: the trail (keys, padlocks, notes, Ray's badge, money lying about, the bins worth a look), the crew
 ## as people (three of them, favors, gossip, their picks, getting hired), the day's list, run-ins with other
 ## customers, a ticket for the show, the night drop, a drink spilled on purpose, what you eat before you've paid,
-## the roof as somewhere to get to. The store's one clerk stands in for its crew.
+## the roof as somewhere to get to. The crew's three (staff.gd), without the rest of what makes them people.
 
 const ALLOWANCE := 15.0  # $ found in your jacket each morning (after the first)
 const FLOOR := Vector3(-4.2, 0.1, 6.6)  # where you're walked back to
@@ -57,6 +57,22 @@ func _ready() -> void:
 	day = _fresh()
 
 
+func _who() -> Node3D:  # whoever on staff's dealing with you: the one at the register, else anyone in
+	var e = staff.anyone()
+	if e == null:
+		return null
+	preload("res://staff.gd").speaker = e.first
+	return e.dana
+
+
+func seen() -> bool:  # by anyone on staff
+	for e: Node in staff.crew:
+		if sees(e.dana):
+			preload("res://staff.gd").speaker = e.first
+			return true
+	return false
+
+
 func on() -> bool:
 	return shift.mode == "customer"
 
@@ -78,6 +94,7 @@ func become(why := "") -> void:  # the store flips to this (a new customer-mode 
 	shift.upg.merge({ "library": shift.LIBRARY.size(), "lib1": true, "lib2": true, "lib3": true, "cameras": true, "sign": true, "rewinders": true, "hire": true, "theater": true }, true)  # a store that's been going a while
 	shift.stock_library()
 	shift.open_theater()
+	staff.customer_crew()
 	for t: Dictionary in tapes.inv.duplicate():  # (what was in your arms is the store's)
 		tapes.set_on_shelf(t, true)
 	tapes.inv.clear()
@@ -185,7 +202,7 @@ func pay() -> void:  # E on whoever's on the register, across the counter from t
 	day.fees += owed
 	owed = 0.0
 	trust = minf(100.0, trust + 4.0 + due.size())
-	staff.dana.set_mood("happy")
+	_who().set_mood("happy")
 	hud.toast("Dana rings you up: $%.2f%s. “Thanks! Be kind, rewind.”%s" % [sum, " (regular's discount)" if was else "", " %d tape%s, due back day %d" % [due.size(), "" if due.size() == 1 else "s", Clock.day + 3] if not due.is_empty() else ""])
 	if not was and regular():
 		hud.toast("Dana: “You're in here all the time! I'll knock ten percent off from now on.”")
@@ -204,8 +221,8 @@ func caught(why: String) -> void:  # why: "staff" (somewhere you shouldn't be) |
 	today += 1
 	day.caught += 1
 	trust = maxf(0.0, trust - (40.0 if why == "theft" else 15.0))
-	if staff.dana != null:
-		staff.dana.set_mood("angry")
+	if _who() != null:
+		_who().set_mood("angry")
 	shoppers.silence_alarm()
 	if why == "staff" and today == 1:
 		hud.toast("Dana: “Whoa, you can't be back here. Employees only.” They walk you back out to the floor")
@@ -235,16 +252,16 @@ func _process(dt: float) -> void:  # cmTick
 	if not on() or shift.report:
 		return
 	var p := player.global_position
-	var dana: Node3D = staff.dana
+	var dana: Node3D = _who()
 	if things.locked and Clock.h >= Clock.OPEN and Clock.h < Clock.CLOSE and _opened != Clock.day:  # whoever opened unlocks at ten (cmOpenUp)
 		_opened = Clock.day
 		things.aim = "lock"
 		things.on_e()
 		things.aim = ""
-		hud.toast("10:00 AM — Dana flips the sign: they're open")
+		hud.toast("10:00 AM — %s flips the sign: they're open" % (preload("res://staff.gd").speaker if _who() != null else "somebody"))
 	var inside := p.y > 3.3 or (p.z > 0.05 and p.z < 46.0 and absf(p.x) < 12.7)
 	if _inside and not inside and not _unpaid().is_empty():  # out through the doors with something you haven't paid for
-		if sees(dana):
+		if seen():
 			caught("theft")
 		else:  # nobody saw: it's yours now (cmGotAway)
 			for t: Dictionary in _unpaid():
@@ -264,17 +281,17 @@ func _process(dt: float) -> void:  # cmTick
 		caught("theft")
 	_alarm_was = alarm
 	var where := staff_only()  # staff only: seen back there, the meter fills (slower for someone they know); out of sight it drains. Full: caught
-	var seen := where != "" and sees(dana)
-	if seen:
+	var seen_now := where != "" and seen()
+	if seen_now:
 		if heat == 0.0:
-			dana.set_mood("shock")
+			_who().set_mood("shock")
 			hud.toast("Dana: “%sCan I help you?”" % ("Uh, hey... " if regular() else "Hey! "))
 		heat = minf(1.0, heat + dt / (1.1 * (1.0 + trust / 100.0)))
 		if heat >= 1.0:
 			caught("staff")
 	else:
 		heat = maxf(0.0, heat - dt * 0.35)
-	hud.call_box(("SEEN · DANA  %s" if seen else "STAFF ONLY · " + where.to_upper() + "  %s") % ("█".repeat(roundi(heat * 10.0)) + "░".repeat(10 - roundi(heat * 10.0))) if where != "" or heat > 0.0 else "")
+	hud.call_box(("SEEN · " + preload("res://staff.gd").speaker.to_upper() + "  %s" if seen_now else "STAFF ONLY · " + where.to_upper() + "  %s") % ("█".repeat(roundi(heat * 10.0)) + "░".repeat(10 - roundi(heat * 10.0))) if where != "" or heat > 0.0 else "")
 	var shut: bool = banned == Clock.day or things.locked  # locked out: the doors don't open for you, and say so
 	things._block.get_child(0).disabled = not (things.locked or (banned == Clock.day and not inside))
 	_door_hint -= dt
@@ -332,22 +349,25 @@ func slip() -> Array:  # the end of your day, on the same slip the staff get (cm
 
 func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 	aim = false
-	if not on() or staff.dana == null:
+	var body := _who() if on() else null
+	if body == null:
 		return ""
-	var to: Vector3 = staff.dana.position + Vector3(0, 1.1, 0) - from
+	var name: String = preload("res://staff.gd").speaker
+	var to: Vector3 = body.position + Vector3(0, 1.1, 0) - from
 	var t := to.dot(dir)
 	if t < 0.2 or t > 3.2 or t > hit_d + 0.6 or (to - dir * t).length() > 0.45:
 		return ""
 	aim = true
-	if staff.state != "post" or not staff._path.is_empty():
-		return "Dana"
-	return "Dana\nE — pay $%.2f%s" % [total(), " (%s late fees)" % ("$%.2f in" % owed) if owed > 0.0 else ""] if total() > 0.0 else "Dana\nE — say hi"
+	if staff.clerk() == null:
+		return name
+	return name + "\nE — pay $%.2f%s" % [total(), " (%s late fees)" % ("$%.2f in" % owed) if owed > 0.0 else ""] if total() > 0.0 else name + "\nE — say hi"
 
 
 func on_e() -> bool:
 	if not aim:
 		return false
-	if staff.state == "post":
+	if staff.clerk() != null:
+		_who()
 		pay()
 	return true
 
