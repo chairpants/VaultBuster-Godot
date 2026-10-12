@@ -215,7 +215,7 @@ func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a 
 	c.set_mood("on")
 	var cust := { "who": who, "member": member, "name": members.name_of(member) if kid_of == null else "%s's kid" % members.name_of(member), "kid": kid_of != null, "party": [], "tag_t": 0.0, "said": {}, "snacks": [], "snack_done": false, "snack_unit": null, "opened_cooler": false, "want": {}, "tries": 0, "acked": false, "ask_at": 0.0, "pickup": null, "returning": back, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
-		"thief": kid_of == null and randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
+		"thief": kid_of == null and randf() < 0.06 * (0.6 if $"../Shift".owned("cameras") else 1.0) * (0.7 if $"../Shift".owned("sign") else 1.0), "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
 		"squeeze": 0.0, "stuck": 0.0, "detour": false, "bump_t": 0.0, "bump_detour": false, "wait_for": null }
 	if not back.is_empty():
@@ -724,6 +724,8 @@ func _gone(cust: Dictionary) -> void:
 		hud.call_box("")
 	var stolen: bool = cust.tagged and not cust.paid and not cust.tapes.is_empty()  # walked out with them unpaid: gone for good. A paid one with a missed tag is still just a rental
 	if stolen:
+		if $"../Shift".owned("cameras"):
+			cust.known = true  # it's all on tape
 		$"../Shift".stats.stolen += cust.tapes.size()
 		checkout.score -= 75 * cust.tapes.size()
 		hud.toast("%s walked out with %s: stolen (%d)" % [cust.name if cust.known else "Someone", _what(cust), -75 * cust.tapes.size()])
@@ -1057,7 +1059,7 @@ func on_shelf_copy(title: String):  # a copy of it that's in (or null)
 
 func a_title(cats: Array, in_odds: float):  # a title somebody might have in mind: usually one that's in, now and then one that's all out. -> one of its copies (or null)
 	_copies("")
-	var pool: Array = _titles.keys().filter(func(k: String) -> bool: return cats.is_empty() or cats.has(_titles[k][0].c))
+	var pool: Array = _titles.keys().filter(func(k: String) -> bool: return not _titles[k][0].get("lib", false) and (cats.is_empty() or cats.has(_titles[k][0].c)))  # (what the store carries)
 	var in_now := pool.filter(func(k: String) -> bool: return on_shelf_copy(k) != null)
 	var out := pool.filter(func(k: String) -> bool: return on_shelf_copy(k) == null)
 	var from := in_now if randf() < in_odds or out.is_empty() else out

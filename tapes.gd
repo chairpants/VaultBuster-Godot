@@ -410,7 +410,7 @@ func rewinder_use() -> void:  # E on it: the tape in hand goes in; E again takes
 		rw.tape = held
 		rw.f0 = wind_frac(held)
 		rw.t = 0.0
-		rw.dur = maxf(1.0, rw.f0 * 10.0)  # up to ten seconds, by how far it's wound
+		rw.dur = maxf(1.0, rw.f0 * 10.0) * (0.5 if $"../Shift".owned("rewinders") else 1.0)  # up to ten seconds, by how far it's wound (half that, high-speed)
 		rw.done = rw.f0 <= 0.0
 		release()
 	elif inv_make_room():

@@ -678,6 +678,22 @@ func _check() -> void:
 	Tp.return_bin.erase(loot)
 	loot.lost = false
 	Tp.set_on_shelf(loot, true)
+	# an upgrade bought on the terminal; a section the store doesn't carry comes off the shelves, and back with its upgrade
+	Po.log_in()
+	budget0 = $Shift.budget
+	Po.type("upgrades")
+	Po.type("5")
+	Po.type("Y")
+	Po.log_off()
+	if not $Shift.owned("sign") or absf(budget0 - 60.0 - $Shift.budget) > 0.01:
+		bad.append("an upgrade didn't buy on the terminal ($%.2f spent)" % (budget0 - $Shift.budget))
+	var on0: int = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off).size()
+	$Shift.upg.library = 2
+	$Shift.stock_library()
+	var on1: int = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off).size()
+	var why: String = $Shift.buy("lib3")
+	if on1 >= on0 or why != "" or Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off).size() != on0:
+		bad.append("the library's last tier didn't come off the shelves and back (%d, %d, %s)" % [on0, on1, why])
 	# the end of the day: the slip, then the next morning with the doors locked
 	var Sh := $Shift
 	var was_day := Clock.day

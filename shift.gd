@@ -5,6 +5,8 @@ extends Node
 ## locked, you just inside them, an hour to get things ready.
 ## From the web game's store/shift.js (shiftStats, GOALS, dayGoals, goalState, repStars, repMult, repProgress) and
 ## store/title.js (clockOut, beginShift, nextShift). A better name brings more people in (shoppers.gd's rush).
+## And what the store's bought with its budget, on the register (UPGRADES, upgBuy, LIBRARY): a new store carries
+## only part of the library, and has no cameras, no signs, slow rewinders.
 ## Different here: sleeping it off on the cardboard after close ends the day the same way.
 ## Not over yet: what isn't here to count (snack upsells, show tickets, burnt-out lights, empty rack
 ## spots, wages), whose points were whose.
@@ -20,6 +22,15 @@ var goals: Array = []  # today's: [{ id, n }]
 var rep := 50.0  # the store's reputation, 0..100 (1-5 stars)
 var budget := 10000.0  # (a sandbox store's: a fat one)
 var report := false
+var upg := { "library": 0 }  # what the store's bought (the register's U): id -> true; library: how many tiers of it are in
+
+const LIBRARY := [  # the library comes in tiers, each after the one before: the sections a new store doesn't carry yet
+	["Kids & Educational", "Holiday", "Reality TV", "Music", "Broadcast Blocks"], ["Classic Sitcoms", "Sketch Comedy & Late Night"], ["Anime", "Horror & Anthology", "MonsterVision"]]
+const UPGRADES := [  # [id, name, cost, what it is] (the ones that do something here yet)
+	["lib1", "LIBRARY UPGRADE 1", 200.0, "KIDS, HOLIDAY, REALITY TV, MUSIC"], ["lib2", "LIBRARY UPGRADE 2", 350.0, "CLASSIC SITCOMS, SKETCH & LATE NIGHT"],
+	["lib3", "LIBRARY UPGRADE 3", 500.0, "ANIME, HORROR ANTHOLOGY, MONSTERVISION"], ["cameras", "SECURITY CAMERAS", 450.0, "EVERY SHOPLIFTER ON TAPE; FEWER TRY"],
+	["sign", "ANTI-THEFT SIGNAGE", 60.0, "\"SHOPLIFTERS WILL BE PROSECUTED\""], ["rewinders", "HIGH-SPEED REWINDERS", 300.0, "HALF THE TIME"], ["ad", "NEWSPAPER AD", 120.0, "+REPUTATION (ONE A DAY)"]]
+var _stocked := false
 var aim := false  # the crosshair's on the way home
 
 var _layer := CanvasLayer.new()
@@ -57,6 +68,55 @@ func _ready() -> void:
 
 func _fresh() -> Dictionary:
 	return { "visitors": 0, "returns": 0, "walkouts": 0, "stolen": 0, "caught": 0, "fees_collected": 0.0, "fees_waived": 0.0, "snack_take": 0.0 }
+
+
+func owned(id: String) -> bool:
+	return upg.get(id, false)
+
+
+func lib_locked(cat: String) -> bool:  # a section the store doesn't carry yet
+	for i in range(int(upg.library), LIBRARY.size()):
+		if LIBRARY[i].has(cat):
+			return true
+	return false
+
+
+func stock_library() -> void:  # what's carried on the shelves, what isn't in its slots (libUnlock, the other way too)
+	tapes.batch = true
+	for t: Dictionary in tapes.tapes:
+		var lock := lib_locked(t.c)
+		if lock and not t.get("lib", false) and not t.off:
+			tapes.set_on_shelf(t, false)
+			t.lib = true
+		elif not lock and t.get("lib", false):
+			t.lib = false
+			tapes.set_on_shelf(t, true)
+	tapes.batch = false
+	tapes.commit()
+
+
+func buy(id: String) -> String:  # upgBuy. -> "" if bought, else why not
+	if id.begins_with("lib"):  # (a sandbox: straight onto the shelves)
+		var n := int(id.right(1))
+		if int(upg.library) != n - 1:
+			return "ALREADY INSTALLED." if int(upg.library) >= n else "LIBRARY UPGRADE %d FIRST." % (n - 1)
+		upg.library = n
+		upg[id] = true
+		stock_library()
+		hud.toast("Library upgrade %d: more tapes on the shelves" % n)
+		return ""
+	if id == "ad":
+		if upg.get("ad_day", 0) == Clock.day:
+			return "AN AD ALREADY RAN TODAY."
+		upg.ad_day = Clock.day
+		rep = minf(100.0, rep + 8.0)
+		hud.toast("Ran an ad in the paper: the word's getting out")
+		return ""
+	if owned(id):
+		return "ALREADY INSTALLED."
+	upg[id] = true
+	hud.toast("Installed: %s" % id)
+	return ""
 
 
 func rep_stars() -> int:
@@ -196,6 +256,11 @@ func next_shift() -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if not _stocked and _t > 0.3:  # (once the save's been read, if there is one)
+		_stocked = true
+		if not OS.get_cmdline_user_args().is_empty():
+			upg.library = LIBRARY.size()  # (the tests: a full library)
+		stock_library()
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -231,13 +296,15 @@ func on_e() -> bool:
 # ---- for the save
 
 func snapshot() -> Dictionary:
-	return { "stats": stats, "goals": goals, "rep": rep, "budget": budget }
+	return { "stats": stats, "goals": goals, "rep": rep, "budget": budget, "upg": upg }
 
 
 func restore(d: Dictionary) -> void:
 	if d.is_empty():
+		upg = { "library": LIBRARY.size(), "lib1": true, "lib2": true, "lib3": true, "cameras": true, "sign": true, "rewinders": true }  # (a store from before any of this: it has everything)
 		return
 	stats.merge(d.stats, true)
 	goals = d.goals.filter(func(g: Dictionary) -> bool: return GOALS.has(g.id)).map(func(g: Dictionary) -> Dictionary: return { "id": g.id, "n": int(g.n) })
 	rep = d.rep
 	budget = d.budget
+	upg = d.get("upg", { "library": LIBRARY.size(), "lib1": true, "lib2": true, "lib3": true, "cameras": true, "sign": true, "rewinders": true })  # (a store saved back when a sandbox had everything: it keeps it)

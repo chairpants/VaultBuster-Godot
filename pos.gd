@@ -9,7 +9,7 @@ extends CanvasLayer
 ## From the web game's pos.js: the same screens (listScreen, prompt, titleDetail, custDetail, MENU, mainMenu's
 ## commands) over this store's tapes and members. It's all on a screen over the game here, in one colour.
 ## Not over yet: the picture on the register's own monitor, the login's badge-and-password show, the sale window,
-## the overdue calls and their post-its, the theater's feature, upgrades, the staff's schedule, SYSRESET (F9 does
+## the overdue calls and their post-its, the theater's feature, the upgrades that have nothing to switch on yet, the staff's schedule, SYSRESET (F9 does
 ## that), deliveries as boxes by the door (an order's just in the cupboards, a replacement tape in the returns bin).
 
 const COLS := 80
@@ -108,6 +108,8 @@ func _phone(m: Dictionary) -> String:
 
 func _status(c: Dictionary) -> String:
 	var r: Variant = _rental(c)
+	if c.get("lib", false):
+		return "NOT CARRIED (LIBRARY UPGRADE)"
 	if c.get("lost", false):
 		return "LOST - STOLEN"
 	if c == tapes.held:
@@ -414,6 +416,27 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 								_back()
 								_msg = "ORDERED %d CASE%s OF %s. BUDGET NOW $%.2f." % [n, "S" if n > 1 else "", x.name, shift.budget] }),
 				"NO SUPPLIES ON FILE."))
+		"U":
+			_go(_list("UPGRADES - BUDGET $%.2f" % shift.budget, "      UPGRADE                                                         COST", shift.UPGRADES,
+				func(u: Array, n: int) -> String: return " %s  %s %s %s" % [R(n, 3), L(u[1] + (" *" if shift.owned(u[0]) else ""), 23), L("INSTALLED" if shift.owned(u[0]) else "RAN TODAY" if u[0] == "ad" and shift.upg.get("ad_day", 0) == Clock.day else u[3], 37), R("$%.2f" % u[2], 7)],
+				func(u: Array) -> void:
+					_go({ "title": "PURCHASE UPGRADE", "prompt": "Y TO BUY, ESC TO CANCEL",
+						"lines": func() -> Array: return ["", " UPGRADE..: %s" % u[1], " WHAT.....: %s" % u[3], " COST.....: $%.2f" % u[2], " BUDGET...: $%.2f" % shift.budget],
+						"submit": func(v: String) -> void:
+							if v != "Y":
+								_msg = "TYPE Y TO BUY."
+							elif shift.budget < u[2]:
+								_msg = "INSUFFICIENT BUDGET."
+							else:
+								var err: String = shift.buy(u[0])
+								if err != "":
+									_msg = err
+								else:
+									shift.budget -= u[2]
+									_back()
+									_back()
+									_msg = "PURCHASED: %s. BUDGET NOW $%.2f." % [u[1], shift.budget] }),
+				"NO UPGRADES AVAILABLE."))
 		"0": log_off()
 		_: return false
 	return true
@@ -425,9 +448,9 @@ func _main_menu() -> Dictionary:
 			var unread := notes.filter(func(n: Dictionary) -> bool: return not n.read).size()
 			var left := [" INVENTORY", "  1  TITLE SEARCH", "  2  BROWSE BY SECTION", "  7  RETURNS BIN QUEUE", "  B  REPLACEMENT COPIES", " MEMBERS", "  3  MEMBER LOOKUP", "  4  ALL ACCOUNTS", "  5  OVERDUE / LATE FEES",
 				" REPORTS", "  6  RENTALS OUT", "  8  DAILY SUMMARY", "  M  MESSAGES%s" % (" (%d NEW)" % unread if unread > 0 else "")]
-			var right := [" STORE", "  O  ORDER SUPPLIES", "  9  PREVIEW STATION", " SECURITY", "  S  GATE SYSTEM", " SYSTEM", "  H  HELP / COMMANDS", "  0  LOG OFF"]
+			var right := [" STORE", "  O  ORDER SUPPLIES", "  U  STORE UPGRADES", "  9  PREVIEW STATION", " SECURITY", "  S  GATE SYSTEM", " SYSTEM", "  H  HELP / COMMANDS", "  0  LOG OFF"]
 			if shoppers.alarm_on:
-				right.insert(4, "  A  *** SILENCE GATE ALARM ***")
+				right.insert(5, "  A  *** SILENCE GATE ALARM ***")
 			var out: Array = [""]
 			for i in left.size():
 				out.append(L(left[i], 40) + (right[i] if i < right.size() else ""))
@@ -446,7 +469,7 @@ func _main_menu() -> Dictionary:
 			elif cmd == "VER":
 				_msg = "POS/NET 2.3 (C) 1993 VIDEOTRAK SYSTEMS INC.  LICENSED TO VAULTBUSTER VIDEO #0417"
 			else:
-				var alias: String = { "OVERDUE": "5", "OUT": "6", "RETURNS": "7", "REPORT": "8", "HELP": "H", "?": "H", "LOGOFF": "0", "EXIT": "0", "LOGOUT": "0", "SUPPLIES": "O", "ORDER": "O", "MESSAGES": "M", "MSGS": "M", "GATES": "S", "REPLACE": "B" }.get(cmd, "")
+				var alias: String = { "OVERDUE": "5", "OUT": "6", "RETURNS": "7", "REPORT": "8", "HELP": "H", "?": "H", "LOGOFF": "0", "EXIT": "0", "LOGOUT": "0", "SUPPLIES": "O", "ORDER": "O", "MESSAGES": "M", "MSGS": "M", "GATES": "S", "REPLACE": "B", "UPGRADES": "U", "UPGRADE": "U" }.get(cmd, "")
 				if alias == "" or not _pick(alias):
 					_msg = "UNKNOWN COMMAND: %s.  TYPE H FOR HELP." % v }
 
