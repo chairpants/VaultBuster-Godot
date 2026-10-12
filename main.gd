@@ -397,6 +397,35 @@ func _check() -> void:
 		await get_tree().process_frame
 	if wound.off or not St.carry.is_empty() or St.dana.position.distance_to(Vector3(St._post.x, 0, St._post.z)) > 0.3:
 		bad.append("Dana didn't put the return away and come home (she's %s, carrying %d, at %s)" % [St.state, St.carry.size(), St.dana.position])
+	# a shoplifter: under the jacket, out through the gates, gone with it; the register shuts the alarm off
+	var loot: Dictionary = Tp.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not Tp._corners(t).is_empty())[0]
+	for stopped: bool in [false, true]:
+		var th: Dictionary = S.spawn()
+		th.c.position = Vector3(0, 0, 6.0)
+		th.who.speed = 9.0
+		Tp.set_on_shelf(loot, false)
+		th.tapes = [loot]
+		th.holding = 1
+		S._sneak(th)
+		if stopped:  # ...and another, stopped at the door
+			S.aim = th
+			S.on_e()
+			if th.sneaking or not Tp.return_bin.has(loot) or th.state != "caught":
+				bad.append("E on a shoplifter didn't stop them (%s)" % th.state)
+			Tp.return_bin.erase(loot)
+		else:
+			t0 = Time.get_ticks_msec()
+			while S.custs.has(th) and Time.get_ticks_msec() - t0 < 20000:
+				await get_tree().process_frame
+			if not S.alarm_on or not loot.get("lost", false) or not loot.off:
+				bad.append("a shoplifter didn't set the gates off and get away with it (alarm %s, %s)" % [S.alarm_on, th.state])
+			$Checkout.aim = "register"
+			$Checkout.on_e()
+			if S.alarm_on:
+				bad.append("E on the register didn't shut the gate alarm off")
+			S.silence_alarm()
+			loot.lost = false
+		Tp.set_on_shelf(loot, true)
 	var Li := $Lights
 	Li.flip_switch("front")
 	if Li.zone_on.front or Li.zone_lvl.front > 0.0:

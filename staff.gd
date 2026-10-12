@@ -32,6 +32,7 @@ var _nav: RefCounted  # her own map: the pass-through's no wall to her
 var _bin_spot := Vector2.ZERO
 var _flap_mid := Vector2.ZERO
 var _by_flap := false
+var _alarm_t := 0.0
 var _target = null
 
 @onready var tapes: Node = $"../Tapes"
@@ -39,6 +40,7 @@ var _target = null
 @onready var shoppers: Node = $"../Shoppers"
 @onready var checkout: Node = $"../Checkout"
 @onready var fixtures: Node = $"../Fixtures"
+@onready var hud: CanvasLayer = $"../HUD"
 
 
 func _ready() -> void:
@@ -152,6 +154,10 @@ func _process(dt: float) -> void:
 
 
 func _at_post(dt: float, waiting) -> void:
+	_alarm_t = _alarm_t + dt if shoppers.alarm_on else 0.0  # the gates going off: a few seconds' grace (yours if you want it), then she shuts it off
+	if _alarm_t > 4.0:
+		shoppers.silence_alarm()
+		hud.toast("Dana shut off the gate alarm")
 	var co = checkout.co
 	if waiting != null and co == null:  # their turn: start ringing them up (yours, if you get to them first)
 		dana.set_mood("happy")
@@ -188,6 +194,10 @@ func _at_post(dt: float, waiting) -> void:
 	dana.talking = false
 	dana.look_at_yaw(null)
 	dana.reach_to(null)
+	for k: Dictionary in shoppers.custs:  # back with a tag that set the gates off (a few seconds: yours if you want it)
+		if k.state == "tagWait" and k.t < 30.0 * k.who.patience - 3.0:
+			shoppers.tag_fix(k, "dana")
+			break
 	if waiting != null:
 		return
 	dana.set_mood("neutral")

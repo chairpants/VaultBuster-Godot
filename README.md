@@ -23,6 +23,8 @@ Open `project.godot` in Godot 4.6 or later and press F5.
 | Hold E | On the stool or the standee: pick it up and carry it; E sets it down |
 | Click | A tape on the shelf: off it comes, held up to look at (what you were holding goes into the inventory: up to 9). Again: it's in your hand. On its empty slot: back it goes. With one in hand: hold it up |
 | 1-9, mouse wheel | Which of the tapes you're carrying is in your hand |
+| E on a customer | At the counter: ring them up. Sneaking out with a tape under the jacket: stops them (keep the crosshair on one a moment and they may think better of it). Back with a tape that set the gates off: desensitizes it. Otherwise: hello |
+| E at the register | Mid-sale: the step in hand. With the gates going off: shuts the alarm up |
 | E at the rewinder | With a tape in hand: in it goes, and winds back (up to ten seconds); E again takes it out. A tape shelved unrewound snaps back with a word about it |
 | Click / E at Returns | Click takes a returned tape out of the bin (then put it away in its slot); E drops the one in your hand in |
 | Right-click | While you're still looking at a tape you've just picked up: put it back |

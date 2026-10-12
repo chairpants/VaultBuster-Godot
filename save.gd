@@ -5,7 +5,7 @@ extends Node
 ## beforeunload); what's in it here is what's over here so far: the day and the hour, where you are, the lights, the
 ## doors and the pass-through, the back ladder, the cooler, the deadbolt, where the stool and the standee were put,
 ## and the tapes: what's out on rental and when it's due, what's in the Returns bin, what you're carrying, what's in
-## the VCR and how far each tape's wound; and the till. Whoever was in the store isn't: they've gone when you're back.
+## the VCR, how far each tape's wound and which were stolen; and the till. Whoever was in the store isn't: they've gone when you're back.
 ## Not when it's run with arguments (--check, --shot): those always start fresh, and leave the save alone.
 
 const PATH := "user://store.json"
@@ -76,6 +76,7 @@ func snapshot() -> Dictionary:
 			"inv": T.inv.map(func(t: Dictionary) -> String: return t.k), "sel": T.inv_sel,
 			"playing": [T.playing.tape.k, T.playing.idx] if T.playing != null else [],
 			"wound": wound,
+			"lost": T.tapes.filter(func(t: Dictionary) -> bool: return t.get("lost", false)).map(func(t: Dictionary) -> String: return t.k),
 			"rewinder": T.rewinder.tape.k if not T.rewinder.is_empty() and T.rewinder.tape != null else "",
 			"dana": main.get_node("Staff").carry.map(func(t: Dictionary) -> String: return t.k),
 		},
@@ -164,6 +165,10 @@ func apply(d: Dictionary) -> void:
 	var in_vcr = by_key.get(d.tapes.playing[0]) if d.tapes.playing.size() == 2 else null
 	if in_vcr != null:
 		T.set_on_shelf(in_vcr, false)
+	for k: String in d.tapes.get("lost", []):  # stolen: gone for good
+		if by_key.has(k):
+			T.set_on_shelf(by_key[k], false)
+			by_key[k].lost = true
 	var extra: Array = d.tapes.get("dana", []).duplicate()  # (what was in the rewinder or Dana's arms: into the bin)
 	if d.tapes.get("rewinder", "") != "":
 		extra.append(d.tapes.rewinder)

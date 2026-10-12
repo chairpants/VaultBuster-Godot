@@ -9,9 +9,12 @@ extends Node
 ## Not over yet, and so different here:
 ## - What they rent comes back when it's due (two nights a new release, five the rest): somebody walks in with it and
 ##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd). Nobody's late, so no fees.
-## - Left waiting too long at the counter they walk out, and their tapes go back on the shelf (the web game: gone).
+## - Shoplifters and the gates are the web game's (custSneak, custCatch, custWatched, wisTick, empCatch, tagFix,
+##   custHearAlarm, custGone's stolen tapes; title.js's startGateAlarm), but for what needs members: nobody's got a
+##   name or a record, so one you catch is let off with a warning (no 1-5 call), and a stolen tape's just gone (no
+##   ordering a replacement). The gates' lights don't flash; they're never switched off.
 ## - Nobody's a member: each is a new face (the web game's are its 150 members, the same person every visit).
-## - No snacks, no questions at the counter, no kids or company, no shoplifters, no cars, nobody going to the theater.
+## - No snacks, no questions at the counter, no kids or company, no cars, nobody going to the theater.
 
 const Nav := preload("res://nav.gd")
 const TASTES := [
@@ -30,6 +33,12 @@ var line: Array[Dictionary] = []  # the checkout line: line[0] is the one at the
 var aim = null  # the customer the crosshair's on
 var rented: Array = []  # what's out: [tape, the day it went out, the day it's due]
 var _slot := {}  # in the lane, facing the drop slot
+var alarm_on := false  # the gates going off
+var alarm_t := 0.0
+
+const GATE_Z := 4.0  # the security gates' line across the entry lane (|x| < 2)
+var _beeper := AudioStreamPlayer3D.new()
+var _you_z := 0.0
 
 var _nav: RefCounted
 var _spots: Array = []  # where they browse: { x, z, ry, n, cats, copies }
@@ -58,6 +67,20 @@ func _ready() -> void:
 	_counter = d.counter
 	var sl: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.returns.slot
 	_slot = { "x": sl[0] + 0.6, "z": sl[2], "ry": -PI / 2.0 }
+	var wav := AudioStreamWAV.new()  # the two-tone shop alarm: a square wave, 2600 then 2050 Hz, 0.2 s on in every 0.28
+	var data := PackedByteArray()
+	for f: float in [2600.0, 2050.0]:
+		for i in int(22050 * 0.28):
+			data.append((40 if fmod(i * f / 22050.0, 1.0) < 0.5 else 216) if i < 22050 * 0.2 else 0)
+	wav.data = data
+	wav.mix_rate = 22050
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_end = data.size()
+	_beeper.stream = wav
+	_beeper.volume_db = -16.0
+	_beeper.unit_size = 6.0
+	_beeper.position = Vector3(0.0, 1.5, GATE_Z)
+	add_child(_beeper)
 	call_deferred("_browse_spots")  # (once the tapes have found themselves)
 
 
@@ -159,6 +182,8 @@ func spawn() -> Dictionary:
 	c.set_mood("on")
 	var cust := { "who": who, "c": c, "ry": 0.0, "face": 0.0, "hi": 0.0, "holding": 0, "tapes": [], "seen": [], "stops_left": who.stops,
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
+		"thief": randf() < 0.06, "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
+		"heard": false, "look_t": 0.0, "fed_up": false,
 		"squeeze": 0.0, "stuck": 0.0, "detour": false, "bump_t": 0.0, "bump_detour": false, "wait_for": null }
 	# about half the time it's someone with tapes out, bringing them back: what's due (or late), and half the time what's due tomorrow
 	var due := rented.filter(func(r: Array) -> bool: return r[2] <= Clock.day or (r[2] == Clock.day + 1 and randf() < 0.5))
@@ -187,8 +212,132 @@ func _process(dt: float) -> void:
 			else:
 				spawn()
 				_arrive = (6.0 + randf() * 20.0) / rush_level()
+	var you: Vector3 = player.global_position
+	if you.y < 2.0 and absf(you.z - _you_z) < 1.0 and absf(you.x) < 2.0 and (_you_z - GATE_Z) * (you.z - GATE_Z) < 0.0 and tapes.inv.any(func(t: Dictionary) -> bool: return not t.get("desens", false)):
+		start_alarm()  # carried a tape through the gates
+	_you_z = you.z
+	if alarm_on:
+		alarm_t += dt
+	var dana: Node3D = $"../Staff".dana
 	for k: Dictionary in custs.duplicate():
+		_hear_alarm(k, dt)
+		if k.sneaking and not k.alarmed:
+			_watched(k, dt)
+			if k.sneaking and dana != null and dana.position.distance_to(k.c.position) < 3.5 and randf() < dt * 0.03 * 2.0:  # (her WIS of 2: a chance each second to stop them on the way past)
+				catch(k, "dana")
 		_step(k, dt)
+
+
+func start_alarm() -> void:
+	if alarm_on:
+		return
+	alarm_on = true
+	alarm_t = 0.0
+	_beeper.play()
+
+
+func silence_alarm() -> void:
+	alarm_on = false
+	_beeper.stop()
+
+
+func _hear_alarm(cust: Dictionary, dt: float) -> void:  # everyone's head snaps round to the gates for a moment; let it ring and they get fed up, and anyone waiting to pay loses patience faster
+	var c: Node3D = cust.c
+	if not alarm_on:
+		if cust.heard:
+			cust.heard = false
+			cust.fed_up = false
+			if cust.look_t > 0.0:
+				cust.look_t = 0.0
+				c.look_at_yaw(null)
+		return
+	if not cust.heard:
+		cust.heard = true
+		cust.look_t = 1.4 + randf() * 0.6
+		if not cust.alarmed:  # (whoever set it off has their own face on)
+			c.set_mood("shock")
+			cust.hi = 1.2
+	if cust.look_t > 0.0:
+		c.look_at_yaw(clampf(angle_difference(cust.face, atan2(-c.position.x, GATE_Z - c.position.z)), -1.3, 1.3))  # over the shoulder, as far as a neck goes
+		cust.look_t -= dt
+		if cust.look_t <= 0.0:
+			c.look_at_yaw(null)
+	if alarm_t > 4.0 and not cust.fed_up and not cust.alarmed:
+		cust.fed_up = true
+		c.set_mood("meh")
+		cust.hi = 2.5
+	if cust.state in ["wait", "impatient", "inLine"]:
+		cust.t -= dt * 0.5  # standing there listening to that
+
+
+func _what(cust: Dictionary) -> String:
+	return cust.tapes[0].t if cust.tapes.size() == 1 else "%d tapes" % cust.tapes.size()
+
+
+func _sneak(cust: Dictionary) -> void:  # a shoplifter: tapes under the jacket, eyes everywhere, straight for the door
+	cust.sneaking = true
+	cust.tagged = cust.tapes.any(func(t: Dictionary) -> bool: return not t.get("desens", false))
+	cust.alarmed = false
+	cust.c.hold_tape(0)
+	cust.c.set_pose("idle")
+	cust.c.set_mood("shifty")
+	go(cust, "leave", { "x": _door.x, "z": _door.y })
+
+
+func _watched(cust: Dictionary, dt: float) -> void:  # sneaking out, they notice you watching (the crosshair on them a moment): half the time they lose their nerve and bring it to the counter
+	if cust.fess:
+		return
+	if aim != cust:
+		cust.watch_t = 0.0
+		return
+	cust.watch_t += dt
+	if cust.watch_t < 0.8:
+		return
+	cust.fess = true
+	if randf() >= 0.5:
+		return  # ...or they keep going
+	cust.sneaking = false
+	cust.tagged = false
+	cust.thief = false
+	cust.c.hold_tape(cust.tapes.size())
+	cust.c.set_pose("hold")
+	cust.c.set_mood("meh")
+	cust.hi = 2.0
+	hud.toast("A customer saw you watching and brought %s to the counter" % (cust.tapes[0].t if cust.tapes.size() == 1 else "the tapes"))
+	line.append(cust)
+	to_line(cust)
+
+
+func catch(cust: Dictionary, by: String) -> void:  # stopped before they're out the door: the tapes come back (custCatch, empCatch)
+	var what := _what(cust)
+	tapes.return_bin.append_array(cust.tapes)
+	cust.tapes = []
+	cust.holding = 0
+	cust.tagged = false
+	cust.sneaking = false
+	cust.known = true
+	cust.c.hold_tape(0)
+	cust.c.set_mood("shock")
+	cust.hi = 1.5
+	checkout.score += 150
+	hud.toast("%s a customer sneaking out with %s (back in the returns bin, a warning) (+150)" % ["Dana caught" if by == "dana" else "Caught", what])
+	if by == "dana":
+		go(cust, "leave", { "x": _door.x, "z": _door.y })
+	else:  # a word with them, then out
+		cust.path = []
+		cust.state = "caught"
+		cust.t = 2.0
+
+
+func tag_fix(cust: Dictionary, by: String) -> void:  # their tapes over the desensitizer, and on their way
+	for t: Dictionary in cust.tapes:
+		t.desens = true
+	silence_alarm()
+	cust.tagged = false
+	cust.c.set_mood("meh")
+	cust.hi = 1.5
+	hud.toast("%s fixed a customer's tag: they're on their way" % ("Dana" if by == "dana" else "You"))
+	go(cust, "leave", { "x": _door.x, "z": _door.y })
 
 
 func at_the_door() -> bool:  # anyone right at the door: it swings open (interact.gd)
@@ -384,6 +533,9 @@ func _decide(cust: Dictionary) -> void:  # done browsing this shelf: take one, p
 
 
 func _done(cust: Dictionary) -> void:  # out of shelves to look at: to the register, or out
+	if cust.thief and cust.holding > 0 and not (cust.known and randf() < 0.35):  # (you've had an eye on them: maybe not today)
+		_sneak(cust)
+		return
 	if cust.holding > 0:
 		cust.c.set_mood("happy")
 		line.append(cust)
@@ -399,14 +551,18 @@ func waiting():  # whoever's at the counter, waiting to be rung up (or null)
 
 func _gone(cust: Dictionary) -> void:
 	leave_line(cust)
+	var stolen: bool = cust.tagged and not cust.paid and not cust.tapes.is_empty()  # walked out with them unpaid: gone for good. A paid one with a missed tag is still just a rental
+	if stolen:
+		checkout.score -= 75 * cust.tapes.size()
+		hud.toast("Someone walked out with %s: stolen (%d)" % [_what(cust), -75 * cust.tapes.size()])
 	for t: Dictionary in cust.tapes:
 		if cust.paid:
 			rented.append([t, Clock.day, Clock.day + (2 if t.n else 5)])  # a new release is out two nights, the rest five
-		else:  # (the web game: walked out with, gone for good, and the gates go off. Here, for now, back on the shelf)
+		elif stolen:
+			t.lost = true
+		else:
 			tapes.set_on_shelf(t, true)
 		t.desens = false  # (its tag's armed again when it's next on the shelf)
-	if cust.paid and cust.get("tagged", false):
-		hud.toast("The gates go off: a tag wasn't desensitized")
 	cust.c.queue_free()
 	custs.erase(cust)
 
@@ -432,6 +588,15 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					var mid := Vector2((door.shut.x0 + door.shut.x1) / 2.0, (door.shut.z0 + door.shut.z1) / 2.0)
 					if mid.distance_to(Vector2(c.position.x, c.position.z)) < 1.1:
 						interact.toggle_door(door)
+		if cust.tagged and not cust.alarmed and absf(c.position.x) < 2.0 and cust.last_z >= GATE_Z and c.position.z < GATE_Z:  # out through the gates with a tagged tape
+			cust.alarmed = true
+			start_alarm()
+			c.set_mood("alarm")
+			if cust.paid and not cust.sneaking:  # a paying customer: you missed a tag. Back to the counter, not happy about it
+				checkout.score -= 25
+				cust.hi = 2.5
+				hud.toast("A customer set off the gates: a tag wasn't desensitized. They're coming back to have it fixed (-25)")
+				go(cust, "tagBack", { "x": _counter.x + 0.9, "z": _counter.z, "ry": PI })  # beside the line
 		if cust.path.is_empty() and cust.spot != null and cust.spot.has("ry"):
 			cust.ry = cust.spot.ry
 	else:  # arrived: do this stop's thing
@@ -526,7 +691,10 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					cust.t = 6.0
 			"angry":
 				if cust.t <= 0.0:
-					hud.toast("A customer got tired of waiting and walked out")
+					hud.toast("A customer got tired of waiting and walked out (-100)")
+					checkout.score -= 100
+					cust.tagged = not cust.tapes.is_empty()
+					cust.alarmed = false
 					c.hold_prop(null)
 					c.set_pose("hold")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
@@ -536,6 +704,22 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				if cust.t <= 0.0:
 					c.set_mood("happy")
 					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"tagBack":  # at the end of the counter, tape held out
+				c.set_pose("hold")
+				c.set_mood("impatient")
+				cust.state = "tagWait"
+				cust.t = 30.0 * who.patience
+			"tagWait":
+				if cust.t <= 0.0:  # nobody fixed it: out they go anyway, alarm or no
+					checkout.score -= 50
+					c.set_mood("angry")
+					cust.tagged = false
+					hud.toast("A customer gave up waiting to have their tag fixed and left (-50)")
+					go(cust, "leave", { "x": _door.x, "z": _door.y })
+			"caught":
+				if cust.t <= 0.0:
+					c.set_mood("meh")
+					go(cust, "leave", { "x": _door.x, "z": _door.y })
 			"leave":  # out the door, back the way they came
 				cust.path = [_inside, _outside, cust.from]
 				cust.state = "outside"
@@ -543,6 +727,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 		cust.hi -= dt
 		if cust.hi <= 0.0:
 			c.set_mood({ "browse": "browse", "wait": "wait", "inLine": "wait", "impatient": "impatient", "angry": "angry" }.get(cust.state, "happy" if cust.holding > 0 else "neutral"))
+	cust.last_z = c.position.z
 	cust.face += angle_difference(cust.face, cust.ry) * minf(1.0, dt * 8.0)
 	c.rotation.y = cust.face
 	c.tick(dt, speed)
@@ -561,6 +746,9 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 			aim = k
 	if aim == null:
 		return ""
+	aim.known = true  # (walking ones too: a shoplifter doesn't stop. You've had a look at them)
+	if aim.state == "tagWait":
+		return "Their tape set off the gates\nE — desensitize it"
 	if aim.state in ["wait", "impatient", "angry"] and checkout.co == null:
 		return "E — ring them up"
 	if checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
@@ -571,9 +759,19 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 func on_e() -> bool:
 	if aim == null:
 		return false
-	if aim.state in ["wait", "impatient", "angry"] and checkout.co == null:  # start ringing them up
+	if aim.sneaking:
+		catch(aim, "you")
+	elif aim.state == "tagWait":
+		tag_fix(aim, "you")
+	elif aim.state in ["wait", "impatient", "angry"] and checkout.co == null:  # start ringing them up
 		checkout.start("player", aim)
 		checkout.act("customer")
 	elif checkout.co != null and checkout.co.cust == aim and checkout.co.by == "player":
 		checkout.act("customer")
+	elif aim.state != "caught":  # just saying hi
+		aim.hi = 1.4
+		aim.c.set_mood("happy")
+		if aim.thief and not aim.greeted and randf() < 0.7:
+			aim.thief = false  # a friendly hello: suddenly they'd rather just rent it
+		aim.greeted = true
 	return true
