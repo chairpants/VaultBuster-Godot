@@ -13,8 +13,14 @@ extends Node
 ## Past the web game, on purpose: its daylight is a fade toward the back with no shadows, so a dark store was still
 ## evenly grey. Here daylight comes in through the storefront as real light that things stand in the way of, and the
 ## screens light the room with what's on them (both in lights.gd).
-## Not over yet: light spilling through a doorway into a dark room; the ceiling panels themselves going dark with
-## their switch.
+## And further past it (also on purpose: the surfaces are flat colour, so the light has to do the work). The room's
+## light goes in as ambient light rather than as a glow of the surface's own, so the screen-space passes can work on
+## it: corners, the undersides of shelves and where things meet the floor darken (SSAO), colour bounces a little off
+## what's near (SSIL). The real lights (lamps, screens, daylight through the glass, light through a doorway) are
+## added by light() below. Outdoors the sun, or the moon, whichever's the stronger, is a real light with shadows
+## (main.tscn's Sun); the other stays a shadowless term here. Lit panels and signs bloom, and the air's faintly hazy
+## where a real light crosses it (shafts in from the storefront, the lot's lamps at night, the projector's beam).
+## fancy() turns the lot of it off and on (the menu's "Lighting effects").
 
 const SHADER := """
 shader_type spatial;
@@ -32,6 +38,7 @@ global uniform vec3 uInSky; global uniform vec3 uInGround; global uniform vec3 u
 global uniform vec3 uSunSky; global uniform vec3 uSunGround; global uniform vec3 uSunC; global uniform vec3 uSunDir;
 global uniform vec3 uMoonSky; global uniform vec3 uMoonGround; global uniform vec3 uMoonC; global uniform vec3 uMoonDir;
 global uniform vec3 uDayC; global uniform vec3 uNightC;
+global uniform float uSunReal;  // 1: the sun's the real light (the moon's a term here); 0: the other way about
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D tex : source_color, FILTER, repeat_enable;
 uniform bool use_tex = false;
@@ -44,6 +51,8 @@ uniform bool use_emission_tex = false;   // (a lit sign, a poster: its own pictu
 uniform float scissor = 0.5;
 varying vec3 P;
 varying vec3 wN;
+varying vec3 vAlb;   // the surface's own colour, for light()
+varying float vIn;   // 1 indoors: the sun's not let in (daylight comes through the glass as lights of its own)
 
 void vertex() {
 	P = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -60,6 +69,7 @@ void fragment() {
 	vec3 fl = mix(uInGround, uInSky, 0.5 * rN.y + 0.5) + uInAmb + uInDirC * max(dot(rN, uInDir), 0.0);   // one room's worth of fluorescents
 	float day = uZone.w;
 	vec3 rl;
+	vIn = 1.0;
 	if (P.x > uFloorBox.x && P.x < uFloorBox.y && P.z > -0.05 && P.z < uFloorBox.z && P.y < uFloorBox.w) {
 		// the sales floor: three switch zones along z, blended over ~2 m where they meet; daylight in through the glass
 		float w1 = 1.0 - smoothstep(9.0, 11.0, P.z), w3 = smoothstep(18.0, 20.0, P.z), w2 = max(0.0, 1.0 - w1 - w3);
@@ -77,22 +87,36 @@ void fragment() {
 	} else if (P.x > uThBox.x && P.x < uThBox.y && P.z >= uThBox.z && P.z < uThBox.w && P.y < uFloorBox.w + 0.1) {
 		rl = (0.025 + 0.30 * uThLight.y + 0.12 * uThSconce) * fl * vec3(1.15, 0.82, 0.55);   // house lights + a low warm sconce wash
 	} else {
-		vec3 sun = mix(uSunGround, uSunSky, 0.5 * rN.y + 0.5) + uSunC * max(dot(rN, uSunDir), 0.0);
-		vec3 moon = mix(uMoonGround, uMoonSky, 0.5 * rN.y + 0.5) + uMoonC * max(dot(rN, uMoonDir), 0.0);
+		vec3 sun = mix(uSunGround, uSunSky, 0.5 * rN.y + 0.5) + uSunC * max(dot(rN, uSunDir), 0.0) * (1.0 - uSunReal);
+		vec3 moon = mix(uMoonGround, uMoonSky, 0.5 * rN.y + 0.5) + uMoonC * max(dot(rN, uMoonDir), 0.0) * uSunReal;
 		rl = mix(moon, sun, day);
+		vIn = 0.0;
 	}
-	ALBEDO = a.rgb;   // (for the few real lights: the lamps)
+	vAlb = a.rgb;
+	ALBEDO = a.rgb * rl * 0.3183099;   // the room's light, as the web game's Lambert has it (over pi): what the white ambient light shows, less what SSAO takes
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
-	EMISSION = a.rgb * rl * 0.3183099 + emission * (use_emission_tex ? texture(emission_tex, UV).rgb : vec3(1.0));   // the room's light, as the web game's Lambert has it (over pi)
+	EMISSION = emission * (use_emission_tex ? texture(emission_tex, UV).rgb : vec3(1.0));
+}
+
+void light() {   // the real lights, on the surface's own colour (ALBEDO's already the room's light on it)
+	if (!(LIGHT_IS_DIRECTIONAL && vIn > 0.5)) {
+		SPECULAR_LIGHT += vAlb * LIGHT_COLOR * ATTENUATION * max(dot(NORMAL, LIGHT), 0.0) * 0.3183099;
+	}
 }
 """
 
 var _shaders := {}
 var _made := {}
 
+var _moon_dir := Vector3(-14, 26, -10).normalized()
+var _moon_c := Vector3.ZERO
+var _fancy := true
+
 @onready var sky: Node3D = $"../Sky"
 @onready var lights: Node = $"../Lights"
+@onready var sun: DirectionalLight3D = $"../Sun"
+@onready var env: Environment = $"../WorldEnvironment".environment
 
 
 func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of the materials it finds)
@@ -102,6 +126,7 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 	for n in ["uBohSplit", "uThLight"]:
 		_add(n, RS.GLOBAL_VAR_TYPE_VEC2, Vector2(1, 1))
 	_add("uThSconce", RS.GLOBAL_VAR_TYPE_FLOAT, 1.0)
+	_add("uSunReal", RS.GLOBAL_VAR_TYPE_FLOAT, 1.0)
 	var fixed := {  # lin(colour, k), as the web game sets them
 		"uInSky": _lin(0xdfe8ff, 1.15), "uInGround": _lin(0x223355, 1.15), "uInAmb": _lin(0xffffff, 0.32), "uInDirC": _lin(0xffffff, 0.55),
 		"uInDir": Vector3(3, 10, -6).normalized(),
@@ -117,8 +142,47 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 	RS.global_shader_parameter_set("uBohSplit", Vector2(b.bohSplit[0], b.bohSplit[1]))
 	var swapped := light($"../World")
 	print("room light: %d surfaces, %d materials, %d shaders" % [swapped, _made.size(), _shaders.size()])
-	# the light's all in the materials now: no sun lamp, no ambient (see sky.gd, which still turns the sky)
-	$"../Sun".visible = false
+	_moon_c = fixed.uMoonC
+
+
+func _ready() -> void:  # the sun (or the moon) as a real light, and what the picture's put through
+	sun.visible = true
+	sun.light_specular = 0.0
+	sun.light_volumetric_fog_energy = 0.0
+	sun.directional_shadow_max_distance = 90.0
+	sun.shadow_blur = 1.5
+	sun.shadow_bias = 0.06
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR  # (white, at 1: ALBEDO carries the room's light)
+	env.ambient_light_color = Color.WHITE
+	env.ambient_light_energy = 1.0
+	env.ssao_radius = 0.9
+	env.ssao_intensity = 2.2
+	env.ssao_power = 1.6
+	env.ssil_radius = 4.0
+	env.ssil_intensity = 1.0
+	env.glow_hdr_threshold = 1.0  # only what's brighter than white blooms: lit panels, the sun's disc
+	env.glow_intensity = 0.6
+	env.glow_bloom = 0.0
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	env.volumetric_fog_density = 0.01
+	env.volumetric_fog_anisotropy = 0.5
+	env.volumetric_fog_length = 48.0
+	env.volumetric_fog_ambient_inject = 0.0  # (only where a real light crosses the air)
+	env.volumetric_fog_gi_inject = 0.0
+	env.volumetric_fog_sky_affect = 0.0
+	fancy(_fancy)
+
+
+func fancy(on: bool) -> void:  # the costly part: contact shadows, bounce, bloom, haze, and the sun's shadows
+	_fancy = on
+	if not is_node_ready():
+		return
+	env.ssao_enabled = on
+	env.ssil_enabled = on
+	env.glow_enabled = on
+	env.volumetric_fog_enabled = on
+	sun.shadow_enabled = on
+	lights.fancy(on)
 
 
 static var _added := {}  # the globals made so far (kept here: asking the engine for its list is an editor-only call, and an error a time in the game)
@@ -200,3 +264,14 @@ func _process(_dt: float) -> void:  # applyLighting: the switches' levels and th
 	RS.global_shader_parameter_set("uSunDir", sky.sun_dir)
 	RS.global_shader_parameter_set("uSunC", Vector3(sky.sun_c.r, sky.sun_c.g, sky.sun_c.b))
 	RS.global_shader_parameter_set("uDayC", sky.day_c)
+	# the stronger of the sun and the moon is the real light; its shadows fade out and back in as they change places at dusk and dawn
+	var day: float = sky.level
+	var real := day >= 0.5
+	RS.global_shader_parameter_set("uSunReal", 1.0 if real else 0.0)
+	var c: Vector3 = Vector3(sky.sun_c.r, sky.sun_c.g, sky.sun_c.b) * day if real else _moon_c * (1.0 - day)
+	var top := maxf(maxf(c.x, c.y), maxf(c.z, 0.0001))
+	sun.light_color = Color(c.x / top, c.y / top, c.z / top).linear_to_srgb()
+	sun.light_energy = top / PI  # (the engine's lights are a factor of pi up on the web game's)
+	sun.shadow_opacity = clampf(absf(day - 0.5) * 6.0, 0.0, 1.0)
+	var dir: Vector3 = sky.sun_dir if real else _moon_dir
+	sun.basis = Basis.looking_at(-dir, Vector3.FORWARD)

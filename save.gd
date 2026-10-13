@@ -124,8 +124,9 @@ func apply(d: Dictionary) -> void:
 	Clock.h = d.clock.h
 	Clock.day = int(d.clock.day)
 	Clock.warp = 0.0
-	P.global_position = Vector3(d.player[0], d.player[1] + 0.05, d.player[2])
-	P.rotation.y = d.player[3]
+	if d.player[1] > -0.5:  # (saved under the floor, falling or with the level moved: left where the game starts you)
+		P.global_position = Vector3(d.player[0], d.player[1] + 0.05, d.player[2])
+		P.rotation.y = d.player[3]
 	for z: String in d.lights.zones:  # (straight to it: no warming up)
 		if L.zone_on.has(z):
 			L.zone_on[z] = d.lights.zones[z]

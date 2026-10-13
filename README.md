@@ -125,5 +125,7 @@ The lighting goes past the web game in two places, on purpose. Daylight comes in
 light with shadows (the web game fades it toward the back, evenly), so with the switches off the back of the store is
 dark, and darker where something's in the way of the windows. And every screen lights the room with the average
 colour of the frame on it: the TV and the theater's screen with shadows, the hung monitors with a small pool each.
-The knobs are at the top of `lights.gd` (`DAYLIGHT`, `SCREEN_GAIN`). Not over yet: light spilling through a doorway
-into a dark room, the lot's lamps at night, and the closet bulb's pull (so the closet stays dark).
+The knobs are at the top of `lights.gd` (`DAYLIGHT`, `SCREEN_GAIN`, `SPILL`). A lit room spills through a doorway into a
+dark one next to it. Outdoors the sun (the moon at night) throws shadows; corners and the undersides of things darken,
+lit panels bloom, and the air's faintly hazy where a light crosses it. "Lighting effects" in the settings turns the
+costly part of that off.

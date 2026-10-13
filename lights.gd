@@ -10,6 +10,9 @@ extends Node
 ## What a zone's level does to the room is room.gd's business. The real lights are here: the lamps, daylight coming
 ## in through the storefront (so the back of a dark store is dark, and darker where something's in the way), and the
 ## screens, which light the room with the colour of the frame on them (SpaceLife's wall TV did the same).
+## And light through a doorway (not the web game's, where a room's light stops dead at its walls): wherever two rooms
+## meet at a door, or at a gap in the sales floor's back wall, the brighter one spills into the darker, as far as the
+## door's open, with what's in the way throwing a shadow.
 
 var zone_on := {}  # zone -> bool
 var zone_lvl := {}  # zone -> 0..1, flickering while the tubes warm up (what the lights get)
@@ -29,6 +32,7 @@ var _bulb: StandardMaterial3D
 var _night: Array[Dictionary] = []  # the lot's lamps and the street's: { light, on, delay, sodium }
 var _night_t := -1.0  # seconds since dusk while the lot's lamps warm up (-1: it's day)
 var _zoned: Array[Dictionary] = []  # the few real lights that are on a switch
+var _portals: Array[Dictionary] = []  # doorways: { light, at, n, a, b (the zones either side), door (interact.gd's, or null: always open) }
 
 @onready var sky: Node3D = $"../Sky"
 @onready var video: Node = $"../Video"
@@ -39,7 +43,10 @@ const BULB_ON := Color(1.0, 0.949, 0.769)  # 0xfff2c4
 const BULB_OFF := Color(0.227, 0.22, 0.2)  # 0x3a3833
 const DAYLIGHT := 1.5  # how strong each is at noon
 const SCREEN_GAIN := 7.0  # the TV's light, for a full-white frame
-const PANEL_ON := Color(0.973, 0.984, 1.0)  # 0xf8fbff
+const PANEL_ON := Color(1.31, 1.33, 1.35)  # 0xf8fbff, and brighter than white: a lit panel blooms (room.gd)
+const SPILL := 0.55  # light through a doorway, for a fully lit room next to a dark one
+const ZONE_K := { "closet": 0.8, "theater": 0.3 }  # how bright a room is with its light on, next to the rest (room.gd's shader)
+const ZONE_TINT := { "closet": Color(1.0, 0.85, 0.66), "lobby": Color(1.0, 0.86, 0.74), "theater": Color(1.0, 0.71, 0.48) }
 const PANEL_COLD := Color(0.188, 0.204, 0.239)  # 0x30343d: between stutters
 const PANEL_OFF := Color(0.051, 0.063, 0.086)  # 0x0d1016
 
@@ -84,6 +91,7 @@ func _ready() -> void:
 		l.light_color = Color.hex((int(s.color) << 8) | 0xff)
 		l.light_specular = 0.0
 		l.light_energy = 0.0
+		l.light_volumetric_fog_energy = 1.0 if s.kind == "spot" and s.zone == null else 0.0  # (the lot's lamps: a cone in the night air)
 		add_child(l)
 		# three's candela to Godot's energy, matched a few metres out (three falls off by the square, Godot to its range)
 		var ref: float = minf(s.range / 3.0, 5.0)
@@ -122,6 +130,7 @@ func _ready() -> void:
 		w.spot_attenuation = 1.4  # (fading toward the back, as the web game's does)
 		w.light_specular = 0.0
 		w.shadow_enabled = true
+		w.light_volumetric_fog_energy = 0.5  # (shafts in from the storefront)
 		add_child(w)
 		_windows.append(w)
 	for sc: Dictionary in all.screens:  # the TV and the theater's screen: out into the room they face, with shadows
@@ -142,6 +151,7 @@ func _ready() -> void:
 		g.position = Vector3(m.p[0], m.p[1], m.p[2]) + Basis(Quaternion(m.q[0], m.q[1], m.q[2], m.q[3])).z * 0.25
 		g.omni_range = 4.5
 		g.light_specular = 0.0
+		g.light_volumetric_fog_energy = 0.0
 		g.set_meta("gain", SCREEN_GAIN * 0.12)
 		add_child(g)
 		_glows.append(g)
@@ -151,6 +161,7 @@ func _ready() -> void:
 		l.omni_range = lp.range
 		l.light_color = Color.hex((int(lp.color) << 8) | 0xff)
 		l.light_specular = 0.0
+		l.light_volumetric_fog_energy = 0.4
 		add_child(l)
 		var shades := []  # its shade and bulb: what glows on it, to go out with it
 		for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
@@ -162,6 +173,58 @@ func _ready() -> void:
 						shades.append([m, m.get_shader_parameter("emission")])
 		lamps.append({ "light": l, "on": lp.on, "at": l.position, "energy": lp.energy * 1.6, "shades": shades })
 		l.light_energy = lp.energy * 1.6 if lp.on else 0.0
+	_find_portals.call_deferred(all.doors)
+
+
+func _find_portals(door_list: Array) -> void:  # (after the level's been made solid: the gaps in the back wall are felt for)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var found: Array = []  # [center, normal, door or null]
+	var live: Array = $"../Interact".doors
+	for d: Dictionary in door_list:
+		var at := Vector3(d.c, 0, d.at) if d.alongX else Vector3(d.at, 0, d.c)
+		var mine: Array = live.filter(func(q: Dictionary) -> bool: return is_equal_approx(q.x, d.x) and is_equal_approx(q.z, d.z))
+		if mine.size():
+			found.append([at, Vector3(0, 0, 1) if d.alongX else Vector3(1, 0, 0), mine[0]])
+	var f: Array = _boxes.floor
+	var space := get_viewport().world_3d.direct_space_state
+	var run0 := NAN
+	var x: float = f[0] + 0.2
+	while x < f[1]:  # the sales floor's back wall, a step at a time: where nothing's in the way for a doorway's width, that's one
+		var open: bool = x < f[1] - 0.25 and space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(x, 1.0, f[2] - 0.5), Vector3(x, 1.0, f[2] + 0.5))).is_empty()
+		if open and is_nan(run0):
+			run0 = x
+		elif not open and not is_nan(run0):
+			if x - run0 >= 0.7:
+				found.append([Vector3((run0 + x - 0.1) / 2.0, 0, f[2]), Vector3(0, 0, 1), null])
+			run0 = NAN
+		x += 0.1
+	for p: Array in found:
+		var a := zone_at(p[0] - p[1] * 0.7)
+		var b := zone_at(p[0] + p[1] * 0.7)
+		if a == "" or b == "" or a == b:
+			continue
+		var l := SpotLight3D.new()
+		l.spot_range = 6.5
+		l.spot_angle = 75.0
+		l.spot_attenuation = 1.3
+		l.light_specular = 0.0
+		l.light_energy = 0.0
+		l.light_volumetric_fog_energy = 0.3
+		l.shadow_enabled = _fancy
+		l.visible = false
+		add_child(l)
+		_portals.append({ "light": l, "at": p[0], "n": p[1], "a": a, "b": b, "door": p[2] })
+	print("lights: %d doorways for light to come through" % _portals.size())
+
+
+var _fancy := true
+
+
+func fancy(on: bool) -> void:  # (room.gd's: the doorways' light stays, their shadows go)
+	_fancy = on
+	for p in _portals:
+		p.light.shadow_enabled = on
 
 
 func set_zone(zone: String, on: bool) -> void:
@@ -255,6 +318,18 @@ func _process(dt: float) -> void:  # fluorescents restriking, tube by tube (ligh
 		n.light.light_energy = n.on * k * k
 		if n.sodium:
 			n.light.light_color = Color(1.0, 0.302, 0.102).lerp(Color(1.0, 0.682, 0.29), k)  # 0xff4d1a to 0xffae4a
+	for p in _portals:  # through each doorway, from the brighter room into the darker, as far as the door's open
+		var la: float = zone_lvl[p.a] * ZONE_K.get(p.a, 1.0)
+		var lb: float = zone_lvl[p.b] * ZONE_K.get(p.b, 1.0)
+		var open: float = 1.0 if p.door == null else clampf(absf(p.door.a) / 1.0, 0.0, 1.0)
+		var l: SpotLight3D = p.light
+		l.light_energy = SPILL * absf(la - lb) * open
+		l.visible = l.light_energy > 0.004
+		if l.visible:
+			var into: Vector3 = p.n if la > lb else -p.n
+			l.position = p.at + Vector3(0, 2.0, 0) + into * 0.15
+			l.basis = Basis.looking_at((into * 0.8 + Vector3.DOWN * 0.6).normalized())
+			l.light_color = ZONE_TINT.get(p.a if la > lb else p.b, Color.WHITE)
 	_glow = _glow.lerp(video.tint, minf(1.0, dt * 6.0))  # the light chases the picture
 	for g in _glows:
 		g.light_color = _glow

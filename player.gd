@@ -176,6 +176,9 @@ func _physics_process(dt: float) -> void:
 		velocity.y -= 9.8 * dt
 	_step_up(dt)
 	move_and_slide()
+	if global_position.y < -10.0:  # fell out of the level (a floor moved or deleted): back where the game starts you
+		global_position = Vector3(0, 0.3, -6)
+		velocity = Vector3.ZERO
 	if is_on_floor():  # your own footsteps, quieter (you're wearing sneakers)
 		_step_d += Vector2(get_real_velocity().x, get_real_velocity().z).length() * dt
 		if _step_d > (0.95 if speed > 4.0 else 0.72):

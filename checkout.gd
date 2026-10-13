@@ -249,6 +249,8 @@ func _printer_build() -> void:
 		if not n is MeshInstance3D and not n is CollisionObject3D and n.get_child_count() > 1 and n.global_position.distance_to(Vector3(-5.45, 0.95, 3.64)) < 0.03:
 			_drawer = n
 			_drawer_z = n.global_position.z
+			for body in n.find_children("*", "CollisionObject3D", true, false):  # (not solid: it would shove you back as it slides out)
+				body.queue_free()
 	print("checkout: the till's drawer %s" % ("found (%d parts)" % _drawer.get_child_count() if _drawer != null else "not found"))
 	if _drawer == null:
 		push_warning("the register's drawer isn't where the web game has it: it won't slide out")

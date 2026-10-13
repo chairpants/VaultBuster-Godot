@@ -8,7 +8,12 @@ extends Node
 ## From the web game's ambience.js (every recipe here is one of its: the same filters, modes and timings) and where
 ## store/main.js, player.js and shoppers.js set it off. The web game makes each sound as it's needed; here they're
 ## all made once at the start, on another thread (a second or two: it's quiet till then), and played back.
-## Not over yet: people talking, the rooftop units, the air a swinging door pushes, the trash (bags, the chute).
+## People talking, with no words in it: each talker's a voice (a buzz at a speaking pitch through two wandering
+## formants, gated into syllables), heard from where they stand; the nearest six. The two rooftop AC units (a fan's rush
+## and the compressor's drone: loud out on the roof, a faint rumble through the ceiling), cycling through the warm
+## months. The air a swinging door's leaf pushes, rising with its speed. Here a voice is a few seconds of talk made
+## at the start and looped, and the door's air shifts in pitch rather than through a moving filter.
+## Not over yet: the trash (bags, the chute).
 
 const RATE := 22050
 const HEAD := 0.5  # what's baked is kept at half, for room: the player makes it up
@@ -28,6 +33,11 @@ var _car_t := 0.0
 var _next_car := 3.0
 var _pass := {}
 var _tap := false
+var _swings := {}  # a swinging door's leaf -> { p: its air, speed } (by the node: the door's own record changes as it swings, and can't be a key)
+
+const VOICES := 6
+const VOWELS := [[730.0, 1090.0], [530.0, 1840.0], [270.0, 2290.0], [570.0, 840.0], [300.0, 870.0], [660.0, 1720.0], [490.0, 1350.0]]
+const UNITS := [[-2.6, 9.5, 0.0], [4.6, 19.5, 120.0]]  # the rooftop units: x, z, where each is in its cycle (roof.js)
 
 
 func _init() -> void:  # two buses of its own: Store (so M can shut it all up), and Room into it (a little of the room on the chime, steps and doors)
@@ -72,6 +82,26 @@ func step(at: Vector3, weight := 1.0) -> void:  # heel strike + sole scuff: tile
 
 func door(kind: String, action: String, at: Vector3) -> void:  # kind: "wood" | "push" | "cooler"; action: "open" | "close" | "rattle" | "settle"
 	_shot("%s_%s" % [kind, action], at, { "wood": 0.8 if action == "open" else 0.6, "push": 0.5, "cooler": 0.2 }[kind])
+
+
+func swing(key: Node, at: Vector3, speed: float) -> void:  # the air a swinging leaf pushes: rises with its speed (rad/s). Called every frame it might be moving
+	if not _live:
+		return
+	if not _swings.has(key):
+		if speed < 0.05:
+			return
+		var p := AudioStreamPlayer3D.new()
+		p.stream = _baked.swing[0]
+		p.position = at
+		p.unit_size = 1.5
+		p.max_db = 0.0
+		p.bus = "Store"
+		p.volume_db = -80.0
+		p.set_meta("g", 0.0)
+		add_child(p)
+		p.play(randf() * p.stream.get_length())
+		_swings[key] = { "p": p, "speed": 0.0 }
+	_swings[key].speed = speed
 
 
 func chime(at: Vector3) -> void:  # ding... dong
@@ -143,6 +173,10 @@ func _process(dt: float) -> void:
 			_loop("car", Vector3(0, 0.6, -15.45), 5.0)
 			_loop("comp", Vector3.ZERO, 1.2)
 			_loop("tap", Vector3.ZERO, 1.2)
+			for i in VOICES:
+				_loop("voice%d" % i, Vector3(0, 1.55, 0), 1.6)
+			for i in UNITS.size():
+				_loop("unit%d" % i, Vector3(UNITS[i][0], main_roof_y() + 1.2, UNITS[i][1]), 2.5)
 			_live = true
 		return
 	_t += dt
@@ -166,6 +200,26 @@ func _process(dt: float) -> void:
 	_loops.comp.position = Vector3(cooler[0], 0.3, cooler[2])
 	_level(_loops.comp, 0.012 if fmod(_t, 150.0) < 45.0 else 0.0, dt, 2.0)  # the compressor's idle cycle
 	_level(_loops.tap, 0.14 if _tap else 0.0, dt, 15.0)
+	# who's talking right now (the nearest six), each where they stand
+	var talkers: Array = main.get_node("People").get_children().filter(func(c: Node) -> bool: return c is Node3D and c.get("talking") == true and c.visible)
+	talkers.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(you) < b.global_position.distance_squared_to(you))
+	for i in VOICES:
+		var v: AudioStreamPlayer3D = _loops["voice%d" % i]
+		if i < talkers.size():
+			v.position = talkers[i].global_position + Vector3(0, 1.55, 0)
+		_level(v, 0.012 * 3.0 if i < talkers.size() else 0.0, dt, 5.0)
+	# the rooftop units: cooling through the warm months (and the afternoons either side of them), 200 seconds in every 300
+	var mo: int = Clock.date().month
+	var h := fmod(Clock.h, 24.0)
+	var cooling: bool = (mo >= 5 and mo <= 9) or ((mo == 4 or mo == 10) and h > 12.0 and h < 18.0)
+	for i in UNITS.size():
+		var on: bool = cooling and fmod(_t + UNITS[i][2], 300.0) < 200.0
+		_level(_loops["unit%d" % i], (0.05 if outdoors else 0.004) if on else 0.0, dt, 1.7 if on else 0.8)
+	for key: Node in _swings:
+		var k: float = minf(1.0, _swings[key].speed / 3.0)
+		_level(_swings[key].p, 0.2 * k * k, dt, 20.0)
+		_swings[key].p.pitch_scale = (350.0 + 900.0 * k) / 700.0
+		_swings[key].speed = 0.0
 	# a car going by on the road out front, left to right or right to left; fewer at night
 	_car_t += dt
 	if _pass.is_empty() and _car_t >= _next_car:
@@ -258,6 +312,20 @@ func _bake() -> void:
 	for i in tap.size():
 		tap[i] += splash[i] * (0.35 + 0.15 * sin(TAU * 7.5 * i / RATE))
 	_baked.tap = [_wav(tap, true)]
+	_baked.swing = [_wav(_looped(_filter(_colour("pink", RATE * 2 + F), "bandpass", 700.0, 0.9), RATE * 2), true)]  # the air off a swinging leaf
+	for u in UNITS.size():  # a rooftop unit: the compressor's drone (a sawtooth near 59 Hz, the highs off it) under the fan's rush, beating with the blades
+		var u_saw := _zeros(n)
+		var u_f := float(roundi((58.8 + randf()) * 4.0)) / 4.0  # (a whole number of turns in the loop)
+		for i in n:
+			u_saw[i] = 2.0 * fposmod(u_f * i / RATE, 1.0) - 1.0
+		var u_mix := _filter(u_saw, "lowpass", 220.0, 1.0)
+		var u_fan := _looped(_filter(_colour("pink", n + F), "bandpass", 620.0, 0.5), n)
+		var u_beat := float(roundi((7.5 + randf()) * 4.0)) / 4.0
+		for i in n:
+			u_mix[i] = u_mix[i] * 0.35 + u_fan[i] * (0.7 + 0.12 * sin(TAU * u_beat * i / RATE))
+		_baked["unit%d" % u] = [_wav(u_mix, true)]
+	for v in VOICES:
+		_baked["voice%d" % v] = [_wav(_voice(), true)]
 	# the one-offs, a few of each
 	_baked.step_tile = range(4).map(func(_i: int) -> AudioStreamWAV: return _wav(_step(true)))
 	_baked.step_carpet = range(4).map(func(_i: int) -> AudioStreamWAV: return _wav(_step(false)))
@@ -301,6 +369,43 @@ func _bake() -> void:
 				g += (to - g) * (1.0 - exp(-1.0 / (tau * RATE)))
 				bell[i] += sin(TAU * gong[0] * part[0] * t) * g
 	_baked.ring = [_wav(_filter(bell, "lowpass", 3200.0, 1.0))]  # (a real bell, but across the room and not in your ear)
+
+
+func main_roof_y() -> float:
+	return get_parent().get_node("Fixtures").ladders.roofY
+
+
+func _voice() -> PackedFloat32Array:  # one talker: a few seconds of syllables and pauses (ambience.js: voice, talk), to go round
+	var f0 := 95.0 + randf() * 140.0
+	var up := 1.15 if f0 > 170.0 else 1.0  # (a higher voice: its formants a little higher too)
+	var vib := 4.0 + randf() * 2.0
+	var out := PackedFloat32Array()
+	var ph := 0.0
+	var pitch := f0
+	var t := 0.0
+	while out.size() < RATE * 6:
+		if randf() < 0.12:  # a breath between phrases
+			out.append_array(_zeros(int(RATE * (0.35 + randf() * 1.1))))
+			continue
+		var vowel: Array = VOWELS.pick_random()
+		var len := 0.09 + randf() * 0.17
+		var m := int(RATE * len)
+		var to := f0 * (0.88 + randf() * 0.3)  # the pitch rising and falling with the phrase
+		var saw := _zeros(m)
+		for i in m:
+			pitch += (to - pitch) * (1.0 - exp(-1.0 / (0.06 * RATE)))
+			t += 1.0 / RATE
+			ph = fposmod(ph + pitch * (1.0 + 0.02 * sin(TAU * vib * t)) / RATE, 1.0)
+			saw[i] = 2.0 * ph - 1.0
+		var a := _filter(saw.duplicate(), "bandpass", vowel[0] * up, 5.0)
+		var b := _filter(saw, "bandpass", vowel[1] * up, 7.0)
+		var peak := 0.7 + randf() * 0.3
+		for i in m:  # the syllable: up fast, then falling away from 70% of the way through
+			var k := float(i) / m
+			var e := peak * minf(1.0, k * len / 0.02) if k < 0.7 else lerpf(peak, 0.08, minf(1.0, (k - 0.7) * len / 0.06))
+			a[i] = (a[i] + b[i]) * e * minf(1.0, (1.0 - k) * len / 0.008)
+		out.append_array(a)
+	return _filter(out, "lowpass", 1700.0, 1.0)
 
 
 func _zeros(n: int) -> PackedFloat32Array:

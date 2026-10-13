@@ -123,7 +123,6 @@ func _tod() -> void:  # sample the sky for the clock's hour (todTick)
 	sun_dir = Vector3(-16.0 * cos(arc), 3.0 + 30.0 * up, -8.0).normalized()
 	sun_c = SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0)) * (1.0 - (0.45 if snowing else 0.7) * wx_k)  # warm and low at either end of the day; no sun through the clouds
 	day_c *= 1.0 - 0.4 * wx_k  # ...and a duller light through the glass
-	env.ambient_light_energy = 0.0  # (the light's in the materials: see room.gd)
 
 
 func _bump(h: float, a: float, b: float, c: float, d: float) -> float:  # 0 up to a, 1 from b to c, 0 again by d (wxBump)

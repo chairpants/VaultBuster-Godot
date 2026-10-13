@@ -2,7 +2,7 @@ extends CanvasLayer
 ## The main menu: three store files, like a cartridge's save files. Pick one and you can PLAY it (an empty one: a
 ## new store), COPY it to another file, or DELETE it. Escape in the store brings it back up as the pause screen
 ## (the store stops while it's up, and saves). And the settings: store sounds, TV volume, mouse sensitivity, look
-## inversion, smooth edges, how long a shift is.
+## inversion, smooth edges, lighting effects, how long a shift is.
 ## From the web game's store/title.js (slotInfo, titleMenu and its settings). The game holds one store at a time,
 ## so playing another file reloads into it.
 ## A new store's a sandbox or a simulation (shift.gd). Or you're a customer (customer.gd). Not up at all when the game's run
@@ -14,7 +14,7 @@ const SET_PATH := "user://settings.json"
 static var slot := 1  # the store file in play (kept across the reload into another)
 static var pending_mode := "sandbox"  # what kind of store a new one is (shift.gd picks it up)
 static var go := false  # (reloading into a file somebody pressed PLAY on: straight in)
-static var settings := { "sound": 100.0, "tv": 100.0, "sens": 100.0, "invert": false, "aa": true, "shift": 21.0 }
+static var settings := { "sound": 100.0, "tv": 100.0, "sens": 100.0, "invert": false, "aa": true, "fx": true, "shift": 21.0 }
 static var _read := false
 
 var up := false
@@ -75,6 +75,7 @@ func apply() -> void:  # the settings, as they are
 	p.sens_k = settings.sens / 100.0
 	p.invert_y = settings.invert
 	get_viewport().msaa_3d = Viewport.MSAA_4X if settings.aa else Viewport.MSAA_DISABLED
+	main.get_node("Room").fancy(settings.fx)
 	Clock.HOUR = settings.shift * 60.0 / 14.0
 
 
@@ -172,6 +173,7 @@ func _render() -> void:
 		_slider("Mouse sensitivity", "sens", 25, 300, 5, "%d%%")
 		_toggle("Invert look", "invert")
 		_toggle("Smooth edges", "aa")
+		_toggle("Lighting effects", "fx")
 		_slider("Shift length", "shift", 10, 60, 1, "%d min")
 		_box.add_child(_btn("BACK", func() -> void:
 			_page = "main"

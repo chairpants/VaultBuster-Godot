@@ -173,6 +173,7 @@ func _push_door(d: Dictionary, dt: float) -> void:  # whoever's in the doorway s
 			d.moving = false
 			$"../Ambience".door("push", "settle", _door_at(d))
 	d.pivot.rotation.y = d.base + d.a
+	$"../Ambience".swing(d.pivot, _door_at(d), absf(d.v))
 
 
 func _front_door(dt: float) -> void:  # anyone right at the door: it swings open; then the closer pulls it shut
