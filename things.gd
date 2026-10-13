@@ -8,7 +8,7 @@ extends Node
 ## store/checkout.js (how near, and the words of the tips). Where they are, and the stool's numbers: data/interact.json.
 ## Different here: anyone can sleep on the cardboard (the web game: customers only), and it's the clock that moves,
 ## nothing else happens while you're out; the deadbolt keeps the door shut but the signs in the glass don't turn; the
-## cooler has no thermometer; a thing set down goes where there's a clear line to it, not by
+## cooler's thermometer reads the case's air (snacks.gd), and it's in the door's tip too; a thing set down goes where there's a clear line to it, not by
 ## the web game's test of the floor.
 
 const HOLD := 0.45  # hold E this long to lift the stool or the standee
@@ -244,7 +244,7 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 			return "Lifting…" if lifting else "Hold E — pick up the standee"
 		if at.distance_to(_v(T.cooler.hit)) < 0.75 or (_cooler and cooler_open and at.distance_to(_cooler.global_position + Vector3(0, 1.0, 0)) < 0.9):
 			aim = "cooler"
-			return "E — %s the cooler" % ("close" if cooler_open else "open")
+			return "E — %s the cooler\n%d°F inside%s" % ["close" if cooler_open else "open", roundi($"../Snacks".air), " · some drinks still warm" if $"../Snacks".any_warm() else ""]
 		var b := _v(T.bed.at)
 		if absf(at.x - b.x) < 0.6 and absf(at.z - b.z) < 1.2 and at.y < 0.6:
 			aim = "bed"

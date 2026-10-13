@@ -13,8 +13,11 @@ extends Node
 ## danaStartJob's cleanup, JOBS and their priorities; SKILLS, MILESTONES, xpToNext, lv, has, gainXp, empWage;
 ## rollApplicant, DANA_APP, makeEmployee, hireCost, STAFF_MAX) and store/customer-mode.js (cmRoster).
 ## They restock the racks from the cupboards too (danaRestockStart ... stockPut).
-## Not over yet: floor help (fetching what's asked for at the counter), lunch, the stool, chatting,
-## an applicant's own look (a hire wears one of the cast's clothes), what the INT and WIS unlocks light up. They put
+## Floor help: whoever's been asking at the counter twenty seconds gets what they asked for fetched from the shelf
+## (or a pick from their kind of thing). Lunch: half an hour in the break room around midday, on a five-hour shift.
+## With nothing on they lean on the counter, look about, and two of them near each other get talking.
+## Not over yet: the stool, the sandwich,
+## what the INT and WIS unlocks light up. They put
 ## a tape away rewound without a trip to the rewinder, and carry a bag of trash without it showing.
 
 const Nav := preload("res://nav.gd")
@@ -34,7 +37,7 @@ const MILESTONES := {  # level -> [name, what it does, staff get it too]
 	"con": { 5: ["Second Wind", "sprint 15% faster", false], 10: ["Neat Freak", "cleaning a mess sweeps up others within 3m", false] },
 	"wis": { 5: ["Sixth Sense", "shoplifters glow red", false], 10: ["Stern Look", "a shoplifter you stare down gives up 85% of the time", false] },
 }
-const JOBS := { "register": ["REGISTER", 1], "phone": ["PHONES", 2], "returns": ["RETURNS", 3], "restock": ["RESTOCK", 3], "cleanup": ["CLEANUP", 4] }  # [name, default priority: 1 first, 0 never]
+const JOBS := { "register": ["REGISTER", 1], "phone": ["PHONES", 2], "floor": ["FLOOR HELP", 2], "returns": ["RETURNS", 3], "restock": ["RESTOCK", 3], "cleanup": ["CLEANUP", 4] }  # [name, default priority: 1 first, 0 never]
 const FIRST_F := ["Dana", "Tina", "Kim", "Stacy", "Jen", "Lisa", "Amy", "Becky", "Tanya", "Rhonda", "Gina", "Missy", "Carla", "Wendy", "Trish", "Nikki", "Shawna", "Heather"]
 const FIRST_M := ["Kevin", "Troy", "Duane", "Chad", "Marcus", "Todd", "Ray", "Eddie", "Jason", "Luis", "Derek", "Kyle", "Brian", "Andre", "Shane", "Gary", "Manny", "Rob"]
 const LASTS := ["Reyes", "Kowalski", "Nguyen", "Brennan", "Okafor", "Delgado", "Murphy", "Patel", "Hendricks", "Lund", "Castillo", "Baker", "Ortiz", "Sato", "Fitzgerald", "Novak", "Harlan", "Pruitt"]
@@ -73,6 +76,18 @@ var _stray = null
 var _trash = null  # the bin, or the bag on the floor, they're after
 var _bag = null  # the bag in their hands
 var _restock = null  # filling the racks: { kind, units, got, n }
+var _fetch = null  # off to a shelf for somebody: { cust | hold, copy, got }
+var _lunch_day := -1
+var _lunch_chair = null
+var _from := Vector2.ZERO
+var _bite_t := 0.0
+var _bin_t := 0.0  # ($Staff's) how long the returns bin's had something in it: they wait for an armful (three), or forty seconds, before a round
+var _fid_t := 0.0  # fidgeting at the counter: how much longer
+var _fid_next := 5.0
+var _chat_with = null  # the one they're talking to
+var _chat_left := 0.0
+var _chat_at := -999.0
+var _mood_t := 0.0
 var _opened_cooler := false
 var _on_always := not OS.get_cmdline_user_args().is_empty()  # (the tests: the first of them is always in)
 var _clock_t := 0.0
@@ -146,7 +161,7 @@ func xp(w, k: String, amt: float) -> void:  # doing a task earns XP in its stat 
 	var sk: Array = (you if mine else w.who.skills)[k]
 	if sk[0] >= SKILL_MAX or amt <= 0.0:
 		return
-	sk[1] += amt * SKILLS[k][3]
+	sk[1] += amt * SKILLS[k][3] * (1.5 if not mine and $"../Shift".owned("dana") else 1.0)  # (staff training)
 	while sk[0] < SKILL_MAX and sk[1] >= xp_to_next(sk[0]):
 		sk[1] -= xp_to_next(sk[0])
 		sk[0] += 1
@@ -288,6 +303,8 @@ func send_home() -> void:  # they went home overnight: in when their shifts star
 	_mess = null
 	_trash = null
 	_bag = null
+	_lunch_chair = null
+	_fetch_drop()
 	_restock_end(true)
 
 
@@ -309,8 +326,10 @@ func _pri(job: String) -> int:  # off counts as never
 
 func _hire(arrive: bool) -> void:  # already at their post if the store's just loaded; else in through the door
 	var looks: Array = range(people.cast.who.size()).filter(func(i: int) -> bool: return people.cast.who[i].get("staff", "") == "Dana") if first == "Dana" else []
-	if looks.is_empty():  # ponytail: a hire wears one of the cast's clothes; their own outfit wants adding to the people export
-		looks = range(people.cast.who.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == who.female and not people.cast.who[i].has("staff"))
+	if looks.is_empty():  # a hire: one of the crew's uniformed bodies (the people export's "Crew": his khakis and polo, or hers)
+		looks = range(people._templates.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == who.female and people.cast.who[i].get("staff", "") == "Crew")
+	if looks.is_empty():  # (a cast from before there were any: whatever customer's clothes fit)
+		looks = range(people._templates.size()).filter(func(i: int) -> bool: return people.cast.who[i].female == who.female and not people.cast.who[i].has("staff"))
 	if looks.is_empty():
 		return
 	dana = people.spawn(looks[(first + who.last).hash() % looks.size()])
@@ -356,6 +375,8 @@ func _process(dt: float) -> void:
 			_muster()
 		if _sheet_layer.visible:
 			_sheet.text = _sheet_text()
+		_bin_t = _bin_t + dt if not tapes.return_bin.is_empty() else 0.0
+		_chats(dt)
 	if dana == null:
 		if on_duty() and _clock_t > 0.5:  # off the clock: in when their shift starts
 			_hire(_clock_t > 3.0)
@@ -366,6 +387,8 @@ func _process(dt: float) -> void:
 		hud.toast("%s clocked out" % first)
 	var waiting = shoppers.waiting()
 	var speed := 0.0
+	if _fid_t > 0.0 and (state != "post" or waiting != null):
+		_fidget_stop()
 	# the pass-through: up as they come to it, down behind them
 	var by_flap := Vector2(dana.position.x, dana.position.z).distance_to(_flap_mid) < 1.3
 	if state != "post" and by_flap:
@@ -447,6 +470,8 @@ func _process(dt: float) -> void:
 					dana.reach_to(null)
 					if u.out:
 						$"../Snacks".set_out(u, false)
+						if u.k != "":
+							u.temp = $"../Snacks".ROOM_F
 						checkout.score += 3
 						_restock.n += 1
 						crew[0].xp(self, "str", 2.0)
@@ -520,6 +545,95 @@ func _process(dt: float) -> void:
 					hud.toast("%s took a bag of trash down the chute (+10)" % first)
 				if _t <= 0.0:
 					dana.reach_to(null)
+					_go(Vector2(_post.x, _post.z), "toPost")
+			"fetchGo":  # at the shelf: a hand to it
+				dana.reach_to(Vector3(_fetch.copy.p[0], _fetch.copy.p[1], _fetch.copy.p[2]))
+				state = "fetchTake"
+				_t = 0.8
+			"fetchTake":
+				if _t <= 0.0:
+					dana.reach_to(null)
+					if _fetch.copy.off or (_fetch.has("cust") and _fetch.cust.state != "asking"):  # somebody beat them to it / they've gone
+						_fetch_drop()
+						_go(Vector2(_post.x, _post.z), "toPost")
+					else:
+						tapes.set_on_shelf(_fetch.copy, false)
+						_fetch.got = true
+						dana.hold_tape(1)
+						dana.set_pose("hold")
+						var tray: Vector3 = $"../Phone"._tray
+						_go(Vector2(tray.x, tray.z + 0.6) if _fetch.has("hold") else Vector2(_fetch.cust.c.position.x, _post.z), "fetchBack")  # to the holds shelf; or back behind the counter, across from them
+						if state != "fetchBack":  # (no way there: it's on the tray all the same)
+							state = "fetchGive"
+							_path = []
+							_t = 0.0
+			"fetchBack":
+				if _fetch == null:
+					state = "post"
+				elif _fetch.has("hold"):
+					dana.reach_to($"../Phone"._tray + Vector3(0, 0.1, 0))
+					state = "fetchGive"
+					_t = 0.9
+				elif _fetch.cust.state != "asking" or not shoppers.custs.has(_fetch.cust):
+					_fetch_drop()
+					_go(Vector2(_post.x, _post.z), "toPost")
+				else:
+					dana.reach_to(_fetch.cust.c.position + Vector3(0, 1.2, 0))
+					state = "fetchGive"
+					_t = 0.9
+			"fetchGive":
+				if _t <= 0.0:
+					dana.reach_to(null)
+					dana.hold_tape(0)
+					dana.set_pose("idle")
+					speaker = first
+					if _fetch.has("hold"):
+						_fetch.hold.copy = _fetch.copy
+						_fetch.got = false
+						$"../Phone"._render()
+						checkout.score += 15
+						crew[0].xp(self, "int", 5.0)
+						crew[0].xp(self, "cha", 3.0)
+						hud.toast("%s put %s on the holds shelf for %s (+15)" % [first, _fetch.copy.t, shoppers.members.name_of(_fetch.hold.member)])
+					elif _fetch.cust.state == "asking" and shoppers.hand_tape(_fetch.cust, _fetch.copy, "dana"):
+						_fetch.got = false  # they took it
+						crew[0].xp(self, "cha", 5.0)
+					_fetch_drop()
+					_go(Vector2(_post.x, _post.z), "toPost")
+			"toLunch":
+				state = "lunchSit"
+				_t = 0.7
+				_from = Vector2(dana.position.x, dana.position.z)
+				dana.set_pose("sit", { "hipY": 0.47 })
+			"lunchSit":  # into the chair
+				var k := 1.0 - maxf(0.0, _t) / 0.7
+				dana.position.x = lerpf(_from.x, _lunch_chair[0], k)
+				dana.position.z = lerpf(_from.y, _lunch_chair[1], k)
+				_ry = _lunch_chair[2]
+				if _t <= 0.0:
+					state = "lunch"
+					_t = Clock.HOUR * 0.5
+					_bite_t = 0.0
+					dana.set_mood("happy")  # ponytail: no sandwich in hand; person.gd's props are the counter's (card, cash, receipt)
+			"lunch":  # eating, looking about, the odd glance at the clock
+				_bite_t -= dt
+				if _bite_t <= 0.0:
+					_bite_t = 3.0 + randf() * 5.0
+					var r := randf()
+					dana.set_mood("happy" if r < 0.4 else "neutral" if r < 0.7 else "love" if r < 0.85 else "sleep")
+					dana.look_at_yaw((randf() * 2.0 - 1.0) * 0.8 if r > 0.6 else null)
+				if _t <= 0.0 or not on_duty():
+					dana.set_pose("idle")
+					dana.look_at_yaw(null)
+					dana.set_mood("neutral")
+					state = "lunchUp"
+					_t = 0.5
+			"lunchUp":
+				if _t <= 0.0:
+					dana.position.x = _lunch_chair[0] - sin(_lunch_chair[2]) * 0.5
+					dana.position.z = _lunch_chair[1] - cos(_lunch_chair[2]) * 0.5
+					_lunch_chair = null
+					hud.toast("%s's back from lunch" % first)
 					_go(Vector2(_post.x, _post.z), "toPost")
 			"toBin":  # by the tote: a hand in
 				dana.reach_to(Vector3(_bin_spot.x + 0.55, 0.6, _bin_spot.y), 1, true)
@@ -597,8 +711,10 @@ func _at_post(dt: float, waiting) -> void:
 				dana.reach_to(Vector3(lerpf(dana.position.x, q.x, 0.55), 1.05, lerpf(dana.position.z, q.z, 0.55)) if s[1] == "customer" else checkout._at["pos" if s[1] == "register" else s[1]], 1, false)  # across the counter to them, or to the register, the pad, the printer
 				_co_t = (0.9 if s[1] == "customer" else 0.7) * maxf(0.45, 1.0 - 0.04 * (lv(self, "dex") - 1))  # (DEX: quick hands at the register)
 		return
-	dana.talking = false
-	dana.look_at_yaw(null)
+	var easy: bool = _fid_t > 0.0 or _chat_with != null  # (fidgeting or chatting: their head and face are their own)
+	if not easy:
+		dana.talking = false
+		dana.look_at_yaw(null)
 	dana.reach_to(null)
 	for k: Dictionary in shoppers.custs:  # back with a tag that set the gates off (a few seconds: yours if you want it)
 		if k.state == "tagWait" and k.t < 30.0 * k.who.patience - 3.0:
@@ -608,14 +724,22 @@ func _at_post(dt: float, waiting) -> void:
 			break
 	if waiting != null and _pri("register") < 9 and (crew[0].clerk() == self or checkout.co == null):
 		return
-	dana.set_mood("neutral")
+	if not easy:
+		dana.set_mood("neutral")
 	if not carry.is_empty():  # (called away mid-round: on with it)
 		_next()
 		return
-	var jobs: Array = ["returns", "restock", "cleanup"].filter(func(j: String) -> bool: return _pri(j) < 9)  # the job board's order
+	if _t <= 0.0 and _lunch_due() and _lunch_start():
+		return
+	var jobs: Array = ["floor", "returns", "restock", "cleanup"].filter(func(j: String) -> bool: return _pri(j) < 9)  # the job board's order
 	jobs.sort_custom(func(a: String, b: String) -> bool: return _pri(a) < _pri(b))
 	for job: String in jobs:
-		if job == "returns" and not tapes.return_bin.is_empty() and not crew.any(func(e: Node) -> bool: return e != self and e.state in ["toBin", "binTake"]):
+		if job == "floor" and _t <= 0.0:
+			var now := Time.get_ticks_msec() / 1000.0
+			var asking: Array = shoppers.asks.filter(func(k: Dictionary) -> bool: return k.state == "asking" and not k.get("dana_on", false) and now - k.ask_at > 20.0)
+			if not asking.is_empty() and _fetch_start(asking[0]):
+				return
+		if job == "returns" and (tapes.return_bin.size() >= 3 or crew[0]._bin_t > 40.0) and not crew.any(func(e: Node) -> bool: return e != self and e.state in ["toBin", "binTake"]):
 			_go(_bin_spot, "toBin")
 			return
 		if job == "returns" and not chores.strays.is_empty():  # the bin's done: straighten up what customers shoved in anywhere
@@ -628,6 +752,7 @@ func _at_post(dt: float, waiting) -> void:
 			return
 		if job == "cleanup" and _cleanup():
 			return
+	_idle_tick(dt)
 
 
 func _cupboard(kind: String) -> Vector3:  # one of that kind's cupboard doors
@@ -715,6 +840,178 @@ func _cleanup() -> bool:  # litter, spills, taking out the trash: a bag on the f
 	_go(Vector2(m.x + 0.45, m.z), "toMess")
 	if state == "toPost":
 		_mess = null
+	return true
+
+
+# ---- at their post with nothing to do: the small stuff; and two of them idle and near each other, a chat
+# (empIdleTick, empFidgetStop, staffChatTick, CHAT_TOPICS)
+
+const CHAT_TOPICS := ["last night's X-Files", "a guy who returned a tape full of sand", "the new Pearl Jam album", "weekend plans", "whether Titanic's ever coming out on tape",
+	"car trouble", "the Bulls game", "which of the regulars rewinds", "a weird dream", "the best pizza in town", "Friends", "the district manager's tie"]
+
+static var _chat_tick := 0.0
+static var _chat_said := -999.0
+
+
+func _idle_tick(dt: float) -> void:
+	if _fid_t > 0.0:
+		_fid_t -= dt
+		if _fid_t <= 0.0:
+			_fidget_stop()
+		return
+	if _chat_with != null:
+		return
+	_fid_next -= dt
+	if _fid_next > 0.0:
+		return
+	_fid_next = 4.0 + randf() * 7.0
+	var r := randf()
+	if r < 0.4:  # forearms on the counter
+		_fid_t = 4.0 + randf() * 6.0
+		dana.set_pose("lean")
+		dana.set_mood("neutral" if randf() < 0.5 else "meh")
+	elif r < 0.6:  # how long till...
+		_fid_t = 1.3
+		dana.set_pose("watch")
+	else:  # keeping an eye on the floor
+		_fid_t = 1.5 + randf() * 2.0
+		dana.look_at_yaw((randf() * 2.0 - 1.0) * 1.2)
+		dana.set_mood("browse")
+
+
+func _fidget_stop() -> void:
+	_fid_t = 0.0
+	if dana != null:
+		if dana.pose in ["lean", "watch"]:
+			dana.set_pose("idle")
+		dana.look_at_yaw(null)
+
+
+func _chat_busy() -> bool:
+	return dana == null or state != "post" or not _path.is_empty() or (checkout.co != null and checkout.co.get("emp") == self) or shoppers.waiting() != null
+
+
+func _chats(dt: float) -> void:  # ($Staff's: the whole crew's)
+	for e: Node in crew:
+		if e._chat_with == null:
+			continue
+		var o: Node = e._chat_with
+		e._chat_left -= dt
+		if e._chat_left <= 0.0 or e._chat_busy() or o._chat_busy():
+			e._chat_with = null
+			if e.dana != null:
+				e.dana.talking = false
+				e.dana.look_at_yaw(null)
+			continue
+		e.dana.look_at_yaw(clampf(angle_difference(e._face, atan2(o.dana.position.x - e.dana.position.x, o.dana.position.z - e.dana.position.z)), -1.3, 1.3))
+		e.dana.talking = true
+		e._mood_t -= dt
+		if e._mood_t <= 0.0:
+			e._mood_t = 1.5 + randf() * 2.5
+			e.dana.set_mood(["happy", "happy", "neutral", "love", "shock"].pick_random())
+	_chat_tick -= dt
+	if _chat_tick > 0.0:
+		return
+	_chat_tick = 3.0
+	var idle: Array = crew.filter(func(e: Node) -> bool: return e._chat_with == null and not e._chat_busy() and e.on_duty() and _clock_t - e._chat_at > 60.0)
+	if idle.size() < 2 or randf() < 0.5 or idle[0].dana.position.distance_to(idle[1].dana.position) > 4.0:
+		return
+	var t := 6.0 + randf() * 8.0
+	for pair: Array in [[idle[0], idle[1]], [idle[1], idle[0]]]:
+		pair[0]._chat_with = pair[1]
+		pair[0]._chat_left = t
+		pair[0]._chat_at = _clock_t
+		pair[0]._fidget_stop()
+	if _clock_t - _chat_said > 240.0:
+		_chat_said = _clock_t
+		hud.toast("%s and %s are chatting about %s" % [idle[0].first, idle[1].first, CHAT_TOPICS.pick_random()])
+
+
+# ---- floor help: off to the shelves for whoever's asking at the counter (empFetch, empFetchDrop)
+
+func _fetch_start(cust: Dictionary) -> bool:  # the title they asked for, or a pick from their kind of thing. -> dealt with, one way or another
+	var w: Dictionary = cust.want
+	speaker = first
+	if w.kind == "hold" and w.hold.copy != null:  # right behind them on the holds shelf
+		var t: Dictionary = w.hold.copy
+		w.hold.pulled = t
+		dana.reach_to($"../Phone"._tray + Vector3(0, 0.1, 0))
+		_t = 1.2
+		shoppers.hand_tape(cust, t, "dana")
+		return true
+	var copy = shoppers.on_shelf_copy(w.title) if w.kind != "rec" else null
+	if copy == null and w.kind == "hold":
+		shoppers.hold_out(cust)
+		return true
+	if copy == null and w.kind == "title":  # they check the screen: all out
+		shoppers.all_out(cust)
+		return true
+	if copy == null:
+		var knows := minf(0.95, 0.45 + 0.05 * lv(self, "int"))  # (INT: knows the stock)
+		var pool: Array = tapes.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not t.get("lost", false) and not t.get("lib", false) and (cust.who.cats.has(t.c) or randf() >= knows))
+		if pool.is_empty():
+			return false
+		copy = pool.pick_random()
+	_go(Vector2(copy.p[0] + cos(copy.ry) * 0.8, copy.p[2] - sin(copy.ry) * 0.8), "fetchGo")
+	if state != "fetchGo":
+		return false  # (no way to that shelf)
+	cust.dana_on = true
+	_fetch = { "cust": cust, "copy": copy, "got": false }
+	dana.set_mood("happy")
+	hud.toast("%s went to find %s for %s" % [first, w.title if w.kind == "title" else "something", cust.name])
+	return true
+
+
+func _fetch_drop() -> void:  # whatever they were fetching goes back where it came from
+	if _fetch == null:
+		return
+	if _fetch.got:
+		tapes.set_on_shelf(_fetch.copy, true)
+		if dana != null:
+			dana.hold_tape(0)
+	if _fetch.has("cust"):
+		_fetch.cust.dana_on = false
+	elif _fetch.hold.copy == null:
+		_fetch.hold.by = "you"  # (a hold they didn't get to is yours to do)
+	_fetch = null
+
+
+func fetch_hold(h: Dictionary, copy: Dictionary) -> bool:  # promised on the phone: off to the shelf for it, and onto the holds shelf. -> on their way
+	if dana == null or _fetch != null:
+		return false
+	_go(Vector2(copy.p[0] + cos(copy.ry) * 0.8, copy.p[2] - sin(copy.ry) * 0.8), "fetchGo")
+	if state != "fetchGo":
+		return false
+	_fetch = { "hold": h, "copy": copy, "got": false }
+	return true
+
+
+# ---- lunch in the break room: half an hour, sometime around midday, on a long enough shift (empLunchDue, empLunchStart)
+
+const LUNCH_CHAIRS := [[3.6, 31.05, 0.0], [4.2, 31.1, 0.15], [3.9, 32.45, PI], [4.82, 31.8, -PI / 2.0 + 0.2]]  # x, z, the way it faces
+
+
+func _lunch_due() -> bool:  # (only on a 5-hour shift, when it's not busy)
+	if _lunch_day == Clock.day or Clock.h < 11.5 or Clock.h > 14.5 or hours(who, Clock.date().weekday) < 5:
+		return false
+	if checkout.co != null or shoppers.waiting() != null or shoppers.custs.size() > 3:
+		return false
+	var covered: bool = crew.any(func(e: Node) -> bool: return e != self and e.dana != null and e.state == "post")  # someone else on the register, or it's quiet
+	return covered or shoppers.rush_level() < 0.9 or Clock.h > 14.0
+
+
+func _lunch_start() -> bool:
+	var free: Array = LUNCH_CHAIRS.filter(func(c: Array) -> bool: return not crew.any(func(e: Node) -> bool: return e._lunch_chair == c))
+	if free.is_empty():
+		return false
+	var ch: Array = free[0]
+	_go(Vector2(ch[0] - sin(ch[2]) * 0.5, ch[1] - cos(ch[2]) * 0.5), "toLunch")  # the way the chair faces (to the table): come at it from behind
+	if state != "toLunch":
+		return false
+	_lunch_day = Clock.day
+	_lunch_chair = ch
+	dana.talking = false
+	hud.toast("%s's on lunch" % first)
 	return true
 
 

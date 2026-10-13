@@ -11,9 +11,9 @@ extends Node
 ##   drops it in the Returns slot, and it's in the bin till it's put away (tapes.gd).
 ## - Shoplifters and the gates are the web game's (custSneak, custCatch, custWatched, wisTick, empCatch, tagFix,
 ##   custHearAlarm, custGone's stolen tapes; title.js's startGateAlarm), the 1-5 call on one you've caught among them;
-##   a stolen tape's just gone (no ordering a replacement). The gates' lights don't flash.
+##   a stolen tape's just gone (no ordering a replacement). The gates' lights flash red with it.
 ## - Everybody's a member (members.gd): the same person every visit, coming in on their own rhythm, what they rent
-##   on their account, three out at most, late fees when it's back late. Nobody signs up; nobody's phoned.
+##   on their account, three out at most, late fees when it's back late. Whoever's five days late wants a call (phone.gd).
 ## - They pick up snacks (snacks.gd), ask for help at the counter, come in for holds (phone.gd), bring a kid or a
 ##   friend along, and shove a tape back in the wrong place now and then (chores.gd), the web game's way; but
 ##   nobody stops to chat, and nobody's talked into a snack at the register.
@@ -45,6 +45,7 @@ var _slot := {}  # in the lane, facing the drop slot
 var alarm_on := false  # the gates going off
 var gates_armed := true  # (switched off at the register, tagged tapes walk through)
 var alarm_t := 0.0
+var _gate_leds: Array = []  # the gates' status lights (one material, or one a gate): green armed, dark off, flashing red when it trips
 
 const GATE_Z := 4.0  # the security gates' line across the entry lane (|x| < 2)
 var _beeper := AudioStreamPlayer3D.new()
@@ -93,6 +94,7 @@ func _ready() -> void:
 	_beeper.position = Vector3(0.0, 1.5, GATE_Z)
 	add_child(_beeper)
 	call_deferred("_browse_spots")  # (once the tapes have found themselves)
+	call_deferred("_find_gate_leds")
 
 
 func _browse_spots() -> void:  # every shelf face in the store, found from the tapes: ~1.5 m stretches, each a spot 0.8 m out in the aisle
@@ -253,6 +255,7 @@ func _process(dt: float) -> void:
 	_you_z = you.z
 	if alarm_on:
 		alarm_t += dt
+	_gate_led_tick()
 	var gr: Dictionary = $"../Shift".growth
 	if gr.prospects > 0 and not things.locked and open and custs.size() < cap + 1:  # somebody new, here to sign up
 		gr.t -= dt
@@ -280,6 +283,22 @@ func _process(dt: float) -> void:
 					catch(k, "dana")
 					$"../Staff".xp(e, "wis", 20.0)
 		_step(k, dt)
+
+
+func _find_gate_leds() -> void:  # the level's own: the unshaded green ones (lobby.js: gateLed)
+	var green := Color.hex(0x39ff7aff)
+	for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
+		for s in (mi.mesh.get_surface_count() if mi.mesh != null else 0):
+			var m := mi.mesh.surface_get_material(s)
+			if m is StandardMaterial3D and m.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and not _gate_leds.has(m) and absf(m.albedo_color.r - green.r) + absf(m.albedo_color.g - green.g) + absf(m.albedo_color.b - green.b) < 0.08:
+				_gate_leds.append(m)
+	print("shoppers: %d gate light material%s found" % [_gate_leds.size(), "" if _gate_leds.size() == 1 else "s"])
+
+
+func _gate_led_tick() -> void:
+	var c := (Color.hex(0x2a0000ff) if int(alarm_t * 5.0) % 2 == 1 else Color.hex(0xff1a1aff)) if alarm_on else Color.hex(0x39ff7aff) if gates_armed else Color.hex(0x151515ff)
+	for m: StandardMaterial3D in _gate_leds:
+		m.albedo_color = c
 
 
 func start_alarm() -> void:
@@ -466,6 +485,9 @@ func _pick_member(anyone := false):  # who comes in (custPickMember). About half
 	for r: Array in rented:
 		if r.size() > 3:
 			soon[r[3]] = mini(soon.get(r[3], 99), int(r[2]) - Clock.day)
+	var promised := ms.filter(func(m: Dictionary) -> bool: return m.promise > -9 and soon.get(m.num, 99) < 0 and now - m.last_visit > 0.25)  # called about an overdue tape: they said they'd bring it in
+	if not promised.is_empty() and randf() < 0.3:
+		return promised[0]
 	var due := ms.filter(func(m: Dictionary) -> bool: return soon.get(m.num, 99) <= 1 and now - m.last_visit > 0.25)  # bringing tapes back (just not twice in a few hours)
 	if not due.is_empty() and randf() < 0.5:
 		return _weighted(due, due.map(func(m: Dictionary) -> float: return 3.0 if soon[m.num] <= 0 else 1.0))
@@ -479,6 +501,8 @@ func _pick_member(anyone := false):  # who comes in (custPickMember). About half
 	return m if anyone or randf() < pow(minf(1.0, (now - m.last_visit) / cadence), 2.0) else null  # (seen yesterday: unlikely today)
 
 
+const SHEEPISH := ["I'm so sorry. It was under the couch the whole time.", "My brother-in-law had it. Don't ask.", "I swear I thought I returned this.",
+	"It got packed in a moving box.", "The dog... look, it still plays.", "Please don't make me look at the fee."]
 const REG_LINES := {
 	"hi": ["Hey! How's it going?", "Back again, I know.", "Look who's working today.", "Hey, you're here! Good.", "Busy one today?"],
 	"hiTaste": ["Get anything new in %s?", "What's good in %s lately?", "I'm out of %s I haven't seen. Help me out."],
@@ -870,6 +894,9 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 							tapes.set_wind_frac(t, 0.15 + randf() * 0.85)
 						check_in(t)
 						tapes.return_bin.append(t)
+					if cust.member.promise > -9:
+						cust.member.promise = -9
+						hud.toast("%s slinks in with the overdue tape%s: “%s”" % [cust.name, "" if n == 1 else "s", SHEEPISH.pick_random()])
 					hud.toast("%s returned %s" % [cust.name, cust.returning[0].t if n == 1 else "%d tapes" % n])
 					if tapes.return_bin.size() >= 15 and tapes.return_bin.size() - n < 15:
 						hud.toast("Returns are piling up: %d in the bin" % tapes.return_bin.size())
@@ -1032,6 +1059,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 						if not u.out:  # in hand, for real
 							$"../Snacks".set_out(u, true)
 							cust.snacks.append(u)
+							$"../Snacks".warm_check(cust, u)
 					c.reach_to(null)
 					if cust.opened_cooler:
 						things.cooler_open = false
@@ -1111,11 +1139,15 @@ func take_aim(from: Vector3, dir: Vector3, hit_d: float) -> String:
 	aim = null
 	var best := 3.0
 	for k: Dictionary in custs:
-		var to: Vector3 = k.c.position + Vector3(0, 1.1, 0) - from
-		var t := to.dot(dir)
-		if t > 0.2 and t < best and t < hit_d + 0.4 and (to - dir * t).length() < 0.45:
-			best = t
-			aim = k
+		# whoever's at the counter for you (the one being rung up, the next in line, somebody asking) is a bigger target, head to
+		# waist, and the counter between you doesn't count as in the way: you're often looking down at it
+		var yours: bool = (checkout.co != null and checkout.co.cust == k) or k.state in ["wait", "impatient", "angry", "asking", "tagWait"]
+		for y: float in ([0.8, 1.1, 1.4, 1.7] if yours else [1.1]):
+			var to: Vector3 = k.c.position + Vector3(0, y, 0) - from
+			var t := to.dot(dir)
+			if t > 0.2 and t < best and t < hit_d + (1.6 if yours else 0.4) and (to - dir * t).length() < (0.6 if yours else 0.45):
+				best = t
+				aim = k
 	if aim == null:
 		return ""
 	aim.known = true  # (walking ones too: a shoplifter doesn't stop. You've had a look at them)

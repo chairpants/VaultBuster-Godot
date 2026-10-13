@@ -3,7 +3,7 @@ extends RefCounted
 ## their member number is their seed, so the same member always looks and acts the same (shoppers.gd).
 ## From the web game's pos.js (the seeded customers: the same numbers and names as over there; owed, settle,
 ## setStatus, canVisit, loyal). In a sandbox everyone's a member from the start; a simulation starts with forty.
-## Not over yet: the terminal that shows any of this, addresses and notes, incidents on a record, sign-ups.
+## Not over yet: addresses and notes, incidents on a record.
 
 const FIRST := ["JOHN", "MARY", "DAVID", "LISA", "MIKE", "KAREN", "STEVE", "SUSAN", "CHRIS", "AMY", "BRIAN", "DONNA", "KEVIN", "TINA", "JASON",
 	"HEATHER", "SCOTT", "WENDY", "TODD", "DAWN", "GREG", "SHANNON", "RAY", "TRACY", "DOUG", "ANGELA", "PHIL", "KIM", "ERIC", "MELISSA", "RON", "JILL",
@@ -34,7 +34,8 @@ func _init() -> void:
 			num = 10001 + int(_rnd() * 38999)
 		var first: String = FIRST[int(_rnd() * FIRST.size())]
 		var m := { "num": num, "first": first, "female": FIRST.find(first) % 2 == 1, "last": LAST[int(_rnd() * LAST.size())],
-			"active": true, "owed": 0.0, "loyalty": 0.0, "last_visit": -9.0, "status": "", "until": 0 }
+			"active": true, "owed": 0.0, "loyalty": 0.0, "last_visit": -9.0, "status": "", "until": 0,
+			"calls": 0, "last_call": -1, "last_result": "", "promise": -9 }  # (the overdue calls: how many, the day of the last, what came of it, the day they said they'd bring it in)
 		for skip in 5:  # (their address, since when, lifetime rentals, the note on their account: the terminal's)
 			_rnd()
 		m.heavy = _rnd() < 0.2
@@ -66,8 +67,8 @@ func loyal(m: Dictionary, d: float) -> void:  # how they feel about the store: -
 func records() -> Dictionary:  # for the save: whoever's got anything on their account
 	var out := {}
 	for m: Dictionary in all:
-		if m.owed > 0.0 or m.loyalty != 0.0 or m.status != "" or m.last_visit > -9.0:
-			out[str(m.num)] = [m.owed, m.loyalty, m.last_visit, m.status, m.until]
+		if m.owed > 0.0 or m.loyalty != 0.0 or m.status != "" or m.last_visit > -9.0 or m.calls > 0:
+			out[str(m.num)] = [m.owed, m.loyalty, m.last_visit, m.status, m.until, m.calls, m.last_call, m.last_result, m.promise]
 	return out
 
 
@@ -80,3 +81,8 @@ func restore(d: Dictionary) -> void:
 			m.last_visit = d[k][2]
 			m.status = d[k][3]
 			m.until = int(d[k][4])
+			if d[k].size() > 8:
+				m.calls = int(d[k][5])
+				m.last_call = int(d[k][6])
+				m.last_result = d[k][7]
+				m.promise = int(d[k][8])

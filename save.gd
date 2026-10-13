@@ -81,7 +81,7 @@ func snapshot() -> Dictionary:
 			"wound": wound,
 			"lost": T.tapes.filter(func(t: Dictionary) -> bool: return t.get("lost", false)).map(func(t: Dictionary) -> String: return t.k),
 			"rewinder": T.rewinder.tape.k if not T.rewinder.is_empty() and T.rewinder.tape != null else "",
-			"dana": main.get_node("Staff").crew.reduce(func(a: Array, e: Node) -> Array: return a + e.carry.map(func(t: Dictionary) -> String: return t.k), []),
+			"dana": main.get_node("Staff").crew.reduce(func(a: Array, e: Node) -> Array: return a + e.carry.map(func(t: Dictionary) -> String: return t.k), T.rewinders.slice(1).filter(func(r: Dictionary) -> bool: return r.tape != null).map(func(r: Dictionary) -> String: return r.tape.k)),
 		},
 		"members": S.members.records(),
 		"chores": main.get_node("Chores").snapshot(),
@@ -92,6 +92,7 @@ func snapshot() -> Dictionary:
 		"customer": main.get_node("Customer").snapshot(),
 		"staff": main.get_node("Staff").snapshot(),
 		"trail": main.get_node("Trail").snapshot(),
+		"counter": main.get_node("Counter").snapshot(),
 		"till": { "served": C.served, "rentals": C.rentals, "take": C.take, "score": C.score },
 	}
 
@@ -209,6 +210,7 @@ func apply(d: Dictionary) -> void:
 	main.get_node("Customer").restore(d.get("customer", {}))
 	main.get_node("Staff").restore(d.get("staff", {}))
 	main.get_node("Trail").restore(d.get("trail", {}))
+	main.get_node("Counter").restore(d.get("counter", {}))
 	C.served = int(d.till.served)
 	C.rentals = int(d.till.rentals)
 	C.take = d.till.take

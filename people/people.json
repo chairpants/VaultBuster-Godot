@@ -168,6 +168,76 @@
    "female": true,
    "gait": "plain",
    "staff": "Dana"
+  },
+  {
+   "height": 1,
+   "build": 1,
+   "female": false,
+   "gait": "plain",
+   "staff": "You"
+  },
+  {
+   "height": 1,
+   "build": 1,
+   "female": false,
+   "gait": "plain",
+   "staff": "You (own clothes)"
+  },
+  {
+   "height": 0.9733066086703912,
+   "build": 0.9570641084341333,
+   "female": true,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 0.946072532213293,
+   "build": 1.0827111176098696,
+   "female": false,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 1.018441048245877,
+   "build": 0.9843692746711895,
+   "female": true,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 0.965467645674944,
+   "build": 1.066438785905484,
+   "female": false,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 1.0266775094391778,
+   "build": 0.9837720824056305,
+   "female": true,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 1.0150038734683768,
+   "build": 0.9173652128432878,
+   "female": false,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 1.0120086098229513,
+   "build": 1.0650489395251497,
+   "female": true,
+   "gait": "plain",
+   "staff": "Crew"
+  },
+  {
+   "height": 0.9503071332443506,
+   "build": 0.9371796649997123,
+   "female": false,
+   "gait": "plain",
+   "staff": "Crew"
   }
  ]
 }

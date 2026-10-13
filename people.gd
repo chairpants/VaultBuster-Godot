@@ -30,6 +30,8 @@ func _ready() -> void:
 	_holder = scene.instantiate()
 	$"../Room".light(_holder)  # lit as everything else is: by where they're standing
 	for i in cast.who.size():
+		if not _holder.has_node("p%d" % i):
+			break  # (people.json's ahead of the imported people.glb: open the project in the editor once)
 		_templates.append(_holder.get_node("p%d" % i))
 		_faces.append(load("res://people/face_%d.png" % i))
 
@@ -42,8 +44,8 @@ func _exit_tree() -> void:
 func spawn(i := -1) -> Node3D:  # one of the cast (a random one), standing at the origin
 	if _templates.is_empty():
 		return null
-	if i < 0:
-		i = randi() % _templates.size()
+	if i < 0:  # (anybody: not the staff, and not you)
+		i = range(_templates.size()).filter(func(k: int) -> bool: return not cast.who[k].has("staff")).pick_random()
 	var c: Node3D = _templates[i].duplicate()
 	c.set_script(Person)
 	add_child(c)

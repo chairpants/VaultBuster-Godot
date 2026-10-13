@@ -3,7 +3,7 @@ extends CharacterBody3D
 ## and slower). Sat down, the mouse wheel zooms in and out; getting up puts the view back.
 ## E: whatever the crosshair's on (see interact.gd). Click: tapes (see tapes.gd). L: skip an hour (see clock.gd).
 ## F: fly (through walls too; Space up, Ctrl down).
-## Esc frees the mouse; click to take it back.
+## Esc frees the mouse; click to take it back. Look down and you're there: in the uniform, or (a customer) your own clothes.
 
 const SPEED := 3.2
 const RUN := 6.5
@@ -95,7 +95,54 @@ func _climb(dt: float) -> void:  # walk the step to the foot, then up and out (o
 		global_position = Vector3(end.x, (c.roof_y if c.dir > 0 else 0.0) + 0.05, end.z)
 
 
+# ---- your own body: there when you look down (chest, belly, feet, an arm's swing), with no head to get in the eye's
+# way. In the store's uniform when you work there; your own clothes as a customer. Standing it's 21 cm behind the eye,
+# so the chest only creeps in near the bottom of the view; sat, it takes the seat (player.js: me, meTick)
+
+var body: Node3D
+var _body_look := ""
+var _body_was := Vector3.ZERO
+
+
+func _body_tick(dt: float) -> void:
+	var people: Node = $"../People"
+	var look: String = "You (own clothes)" if $"../Shift".mode == "customer" else "You"
+	if look != _body_look:  # a new store, or fired into being a customer: a change of clothes
+		var which: Array = range(people._templates.size()).filter(func(i: int) -> bool: return people.cast.who[i].get("staff", "") == look)
+		if which.is_empty():
+			return  # (a cast exported before you were in it)
+		if body != null:
+			body.queue_free()
+		_body_look = look
+		body = people.spawn(which[0])
+		body.walk_lean = false  # the eye doesn't tip forward, so neither does the chest: the feet stay in view
+		body._head.visible = false
+		var neck := body.find_child("p%d_neck" % which[0], true, false)
+		if neck != null:
+			neck.visible = false
+	if body == null:
+		return
+	body.visible = not fly and climb == null
+	var speed := 0.0
+	if seat != null:
+		body.position = Vector3(seat.x, seat.y, seat.z)
+		body.rotation.y = seat.ry
+		body.set_pose("sit", { "hipY": seat.hipY })
+	elif $"../Things".on_stool:
+		body.position = Vector3(global_position.x, 0.0, global_position.z)
+		body.rotation.y = rotation.y + PI
+		body.set_pose("sit", { "hipY": 0.74 })
+	else:
+		speed = Vector2(global_position.x - _body_was.x, global_position.z - _body_was.z).length() / maxf(dt, 0.0001)
+		body.position = global_position + global_basis.z * 0.21
+		body.rotation.y = rotation.y + PI  # (the rig faces +z; you look down -z)
+		body.set_pose("crouch" if crouched else "idle")
+	_body_was = global_position
+	body.tick(dt, speed)
+
+
 func _process(dt: float) -> void:
+	_body_tick(dt)
 	if seat == null:
 		seat_fov = FOV  # walking resets the seat's zoom
 	cam.fov += (seat_fov - cam.fov) * minf(1.0, dt * 8.0)

@@ -425,6 +425,10 @@ func on_e() -> bool:
 			sn.held = null
 			trash_add(b)
 			return true
+		if sn.popcorn != null and sn.held == null:  # the popcorn box, whatever's left in it
+			sn.popcorn = null
+			trash_add(b)
+			return true
 		if $"../Shift".mode == "customer":  # (a customer digs through it)
 			$"../Trail".search_bin(b)
 			return true

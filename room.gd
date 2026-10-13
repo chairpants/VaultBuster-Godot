@@ -121,8 +121,12 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 	$"../Sun".visible = false
 
 
+static var _added := {}  # the globals made so far (kept here: asking the engine for its list is an editor-only call, and an error a time in the game)
+
+
 func _add(n: String, type: int, value: Variant) -> void:  # (once: a fresh store, F9, comes through here again)
-	if not n in RenderingServer.global_shader_parameter_get_list():
+	if not _added.has(n):
+		_added[n] = true
 		RenderingServer.global_shader_parameter_add(n, type, value)
 
 

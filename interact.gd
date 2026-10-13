@@ -30,9 +30,70 @@ var _hold := -1.0  # how long E's been held on something that lifts (-1: it isn'
 @onready var checkout: Node = $"../Checkout"
 
 
+# ---- the theater's folding seats: the cushion and the pan under it, hinged at the back. Sprung: pushed down while
+# someone's on it, snapping back up (with a little bounce off the back) the moment they stand (theater.js: the hinges;
+# core.js: thSeatPose, thSeatTick). The level hasn't got them: the web game draws them all as one instanced mesh
+
+var _folds: Array = []  # { seat, node, a (0 down .. 1 folded up), v }
+
+
+func _build_folds() -> void:
+	var holder := Node3D.new()
+	add_child(holder)
+	var plush := StandardMaterial3D.new()
+	plush.albedo_color = Color.hex(0x9e1b24ff)
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color.hex(0x1c1a1eff)
+	var cushion := BoxMesh.new()  # top at y 0, running 0.44 forward of the hinge
+	cushion.size = Vector3(0.48, 0.11, 0.44)
+	cushion.material = plush
+	var pan := BoxMesh.new()
+	pan.size = Vector3(0.44, 0.025, 0.38)
+	pan.material = dark
+	for s: Dictionary in seats:
+		if s.kind != "theater":
+			continue
+		var hinge := Node3D.new()
+		hinge.position = Vector3(s.x, s.y + 0.45, s.z - 0.23)
+		hinge.rotation_order = EULER_ORDER_XYZ
+		for part: Array in [[cushion, Vector3(0, -0.055, 0.22)], [pan, Vector3(0, -0.125, 0.22)]]:
+			var mi := MeshInstance3D.new()
+			mi.mesh = part[0]
+			mi.position = part[1]
+			hinge.add_child(mi)
+		holder.add_child(hinge)
+		hinge.rotation.x = -1.45
+		_folds.append({ "seat": s, "node": hinge, "a": 1.0, "v": 0.0 })
+	var room := get_node_or_null("../Room")
+	if room != null:
+		room.light(holder)  # lit as the rest of the house is
+
+
+func _folds_tick(dt: float) -> void:
+	dt = minf(dt, 0.05)  # a stalled frame mustn't fling the springs
+	for h: Dictionary in _folds:
+		var sat: bool = player.seat == h.seat or shoppers.custs.any(func(k: Dictionary) -> bool: return k.get("th_seat") == h.seat and k.state in ["thSitDown", "thWatch"])
+		var want := 0.0 if sat else 1.0
+		if h.a == want and h.v == 0.0:
+			continue
+		h.v += (140.0 * (want - h.a) - 9.0 * h.v) * dt
+		h.a += h.v * dt
+		if h.a > 1.0:  # clack against the back
+			h.a = 1.0
+			h.v *= -0.35
+		if h.a < 0.0:  # bottoms out on its stop
+			h.a = 0.0
+			h.v *= -0.2
+		if absf(want - h.a) < 0.002 and absf(h.v) < 0.05:
+			h.a = want
+			h.v = 0.0
+		h.node.rotation.x = -h.a * 1.45
+
+
 func _ready() -> void:
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json"))
 	seats = data.seats
+	_build_folds()
 	var pivots := {}  # every group in the level, by where it stands: a door's pivot is the one at its hinge
 	for n: Node3D in $"../World".find_children("*", "Node3D", true, false):
 		if n.get_child_count() and not n is MeshInstance3D:
@@ -58,6 +119,7 @@ func _key(x: float, z: float) -> String:
 
 
 func _process(dt: float) -> void:
+	_folds_tick(dt)
 	for d in doors:
 		if d.push:
 			_push_door(d, dt)
@@ -73,7 +135,9 @@ func _process(dt: float) -> void:
 		_hold += dt
 		if _hold >= things.HOLD:
 			_hold = -1.0
-			if fixtures.holdable():
+			if $"../Counter".holdable():  # one of the counter's things: up it comes, to be set down somewhere else (counter.gd)
+				$"../Counter".start()
+			elif fixtures.holdable():
 				fixtures.hold_done()
 			else:
 				things.pick_up()
@@ -145,6 +209,10 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip("")
 		return
+	if $"../Counter".moving():  # carrying one of the counter's things: nothing else till it's down
+		tapes.clear_aim()
+		hud.tip($"../Counter".tip())
+		return
 	things.lifting = _hold >= 0.0
 	if things.on_stool:
 		tapes.clear_aim()
@@ -190,17 +258,18 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip(clerk_tip)
 		return
+	var till_tip: String = checkout.take_aim(hit, hit_d)  # the register, the pad, the printer (see checkout.gd)
+	if till_tip != "" and not things.carrying:
+		tapes.clear_aim()
+		hud.tip(till_tip)
+		shoppers.aim = null
+		return
 	var cust_tip: String = shoppers.take_aim(from, dir, hit_d)  # a customer (see shoppers.gd)
 	if cust_tip != "" and not things.carrying:
 		tapes.clear_aim()
 		hud.tip(cust_tip)
 		return
 	shoppers.aim = null
-	var till_tip: String = checkout.take_aim(hit, hit_d)  # the register, the pad, the printer (see checkout.gd)
-	if till_tip != "" and not things.carrying:
-		tapes.clear_aim()
-		hud.tip(till_tip)
-		return
 	checkout.aim = ""
 	var thing_tip: String = things.take_aim(from, dir, hit, hit_d)  # the stool, the standee, the cooler, the deadbolt... (see things.gd)
 	if thing_tip != "":
@@ -256,7 +325,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	if not e is InputEventKey or e.echo or e.physical_keycode != KEY_E:
 		return
 	if e.pressed:
-		if things.holdable() or fixtures.holdable():
+		if things.holdable() or fixtures.holdable() or $"../Counter".holdable():
 			_hold = 0.0  # a tap does one thing, a hold lifts it: wait and see which
 		else:
 			on_e()

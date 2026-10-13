@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://0i7t6k5emob5"
-path="res://.godot/imported/people_51.png-b6c2ff2f943a01866750905c975a7382.ctex"
+path.s3tc="res://.godot/imported/people_51.png-b6c2ff2f943a01866750905c975a7382.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "7a6958ceebc9d546f1aaa1c922587a31"
+"md5": "64caf6ea33bdf17bfd76de5221e56ab1"
 }
 
 [deps]
 
 source_file="res://people/people_51.png"
-dest_files=["res://.godot/imported/people_51.png-b6c2ff2f943a01866750905c975a7382.ctex"]
+dest_files=["res://.godot/imported/people_51.png-b6c2ff2f943a01866750905c975a7382.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

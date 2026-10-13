@@ -42,6 +42,8 @@ var inv: Array = []  # the tapes you're carrying, the one in hand among them
 var return_bin: Array = []  # tapes customers have dropped back, waiting to be put away
 var aim_returns := false
 var rewinder := {}  # the counter's rewinder: { at, tape, f0, t, dur, done }
+var rewinders: Array = []  # ...and the second one beside it, which takes a tape once it's bought (the "rewinder2" upgrade)
+var _rw_aim := {}  # the one the crosshair's on
 var aim_rewinder := false
 var _returns_at := Vector3.ZERO
 var _peek_bin := false  # the tape you're looking at came out of the bin: right-click puts it back there
@@ -74,7 +76,9 @@ func _ready() -> void:
 	_returns_at = Vector3(rb[0], rb[1], rb[2])
 	var rw: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.rewinders
 	if not rw.is_empty():
-		rewinder = { "at": Vector3(rw[0][0], rw[0][1], rw[0][2]), "tape": null, "f0": 0.0, "t": 0.0, "dur": 1.0, "done": false }
+		for at: Array in rw:
+			rewinders.append({ "at": Vector3(at[0], at[1], at[2]), "tape": null, "f0": 0.0, "t": 0.0, "dur": 1.0, "done": false })
+		rewinder = rewinders[0]
 	var near := {}  # every cell a slot reaches into
 	var region := AABB(_pos(tapes[0]), Vector3.ZERO)
 	for i in tapes.size():
@@ -138,9 +142,86 @@ func _ready() -> void:
 		q.visible = false
 		add_child(q)
 		_quads.append(q)
+	_saver_build()
 	video.started.connect(_on_started)
 	video.ended.connect(func() -> void: step_episode(1))
 	video.failed.connect(func(why: String) -> void: hud.toast("⚠ " + why))
+
+
+# ---- nothing playing: the bouncing logo, on every screen (lounge.js: dvdLogoTex, DVD_TINTS, updateScreensaver).
+# One little picture, drawn once a frame, shared by them all
+
+const DVD_TINTS := ["#ffd400", "#4dd0e1", "#ff6b6b", "#8affc1", "#c792ea", "#ffab40", "#ffffff"]
+
+var _saver := SubViewport.new()
+var _logo := Panel.new()
+var _dvd := { "v": Vector2(78, 61), "tint": 0 }
+
+
+func _saver_build() -> void:
+	_saver.size = Vector2i(320, 240)
+	_saver.disable_3d = true
+	_saver.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_saver)
+	var black := ColorRect.new()
+	black.color = Color.BLACK
+	black.size = Vector2(320, 240)
+	_saver.add_child(black)
+	var box := StyleBoxFlat.new()  # the square brand mark
+	box.bg_color = Color("#00349c")
+	box.border_color = Color("#ffd400")
+	box.set_border_width_all(3)
+	box.set_corner_radius_all(8)
+	_logo.add_theme_stylebox_override("panel", box)
+	_logo.size = Vector2(90, 90)
+	_logo.position = Vector2(40, 30)
+	var words := Label.new()
+	words.text = "VAULT\nBUSTER"
+	var font := SystemFont.new()
+	font.font_names = PackedStringArray(["Arial Black", "Arial", "sans-serif"])
+	font.font_italic = true
+	font.font_weight = 900
+	words.add_theme_font_override("font", font)
+	words.add_theme_font_size_override("font_size", 15)
+	words.add_theme_constant_override("line_spacing", -4)
+	words.add_theme_color_override("font_color", Color("#ffd400"))
+	words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	words.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_logo.add_child(words)
+	_saver.add_child(_logo)
+	_logo.modulate = Color.WHITE.lerp(Color(DVD_TINTS[0]), 0.33)
+	_screens_show(false)
+
+
+func _saver_tick(dt: float) -> void:
+	_saver.render_target_update_mode = SubViewport.UPDATE_DISABLED if _on_screens else SubViewport.UPDATE_ALWAYS
+	if _on_screens:
+		return
+	var at: Vector2 = _logo.position + _dvd.v * dt
+	var room := Vector2(_saver.size) - _logo.size
+	var bounced := false
+	for axis in 2:
+		if at[axis] <= 0.0 or at[axis] >= room[axis]:
+			at[axis] = clampf(at[axis], 0.0, room[axis])
+			_dvd.v[axis] = absf(_dvd.v[axis]) * (1.0 if at[axis] <= 0.0 else -1.0)
+			bounced = true
+	_logo.position = at
+	if bounced:  # recolours on each bounce, classic-screensaver style
+		_dvd.tint = (_dvd.tint + 1) % DVD_TINTS.size()
+		_logo.modulate = Color.WHITE.lerp(Color(DVD_TINTS[_dvd.tint]), 0.33)
+
+
+var _on_screens := false  # a tape's picture is up (else: the screensaver)
+
+
+func _screens_show(tape: bool) -> void:  # every screen: the tape's picture, or back to the bouncing logo
+	_on_screens = tape
+	for q in _quads:
+		q.visible = true
+		var m: StandardMaterial3D = q.mesh.material
+		m.albedo_texture = video.texture if tape else _saver.get_texture()
+		m.albedo_color = Color(0.85, 0.85, 0.85) if tape else Color.WHITE
 
 
 func _pos(t: Dictionary) -> Vector3:
@@ -402,8 +483,37 @@ func set_wind_frac(t: Dictionary, f: float) -> void:  # the inverse
 	t.at = (x - t.ep) * d if f > 0.0 else 0.0
 
 
+var _rw_looks := {}  # the rewinders' models: box1 (the level's own), box2, car1, car2 (world/extras.glb)
+var _rw_state := ""
+
+
+func _rewinder_looks() -> void:  # the second one's there once it's bought; high-speed, they're both little sports cars (lobby.js: rewinderOn, rewinderKit.model)
+	var shift: Node = $"../Shift"
+	var state := "%s%s" % [shift.owned("rewinder2"), shift.owned("rewinders")]
+	if state == _rw_state or rewinders.is_empty():
+		return
+	_rw_state = state
+	var world: Node = $"../World"
+	if _rw_looks.is_empty():
+		var extras: Node = world.get_node_or_null("Extras")
+		for n: Node3D in world.find_children("*", "Node3D", true, false):  # the level's own: the group that stands where the first one does
+			if not n is MeshInstance3D and not n is CollisionObject3D and n.get_child_count() > 3 and (extras == null or not extras.is_ancestor_of(n)) and absf(n.global_position.y - rewinders[0].at.y) < 0.15 and Vector2(n.global_position.x - rewinders[0].at.x, n.global_position.z - rewinders[0].at.z).length() < 0.08:
+				_rw_looks.box1 = n
+		for k: String in ["rewinder2_box", "rewinder1_car", "rewinder2_car"]:
+			var n: Node = world.find_child(k, true, false)
+			if n != null:
+				_rw_looks[k.replace("rewinder2_box", "box2").replace("rewinder1_car", "car1").replace("rewinder2_car", "car2")] = n
+		print("tapes: the rewinders' models found: %s" % ", ".join(_rw_looks.keys()))
+	var car: bool = shift.owned("rewinders") and _rw_looks.has("car1")
+	var two: bool = shift.owned("rewinder2")
+	for k: String in _rw_looks:
+		_rw_looks[k].visible = (k.begins_with("car") == car) and (two or k.ends_with("1"))
+		for body: CollisionObject3D in _rw_looks[k].find_children("*", "CollisionObject3D", true, false):  # (what isn't there isn't in the way)
+			body.process_mode = Node.PROCESS_MODE_INHERIT if _rw_looks[k].visible else Node.PROCESS_MODE_DISABLED
+
+
 func rewinder_use() -> void:  # E on it: the tape in hand goes in; E again takes it out (early: only partly rewound)
-	var rw := rewinder
+	var rw := rewinder if _rw_aim.is_empty() else _rw_aim
 	if rw.tape == null:
 		if held == null:
 			return
@@ -439,14 +549,17 @@ func put_back() -> void:  # back into its own shelf slot
 
 
 func _process(dt: float) -> void:
+	_saver_tick(dt)
 	if held != null:
 		_hand.transform = _hand.transform.interpolate_with(LOOK if inspecting else HAND, minf(1.0, dt * 14.0))
 	hud.inventory(inv.map(func(t: Dictionary) -> String: return t.t + ("" if is_rewound(t) else " ◂%d%%" % roundi(100.0 * wind_frac(t)))), inv_sel)
-	if not rewinder.is_empty() and rewinder.tape != null and not rewinder.done:  # winding back
-		rewinder.t += dt
-		var p: float = minf(1.0, rewinder.t / rewinder.dur)
-		set_wind_frac(rewinder.tape, rewinder.f0 * (1.0 - p))
-		rewinder.done = p >= 1.0
+	_rewinder_looks()
+	for rw: Dictionary in rewinders:
+		if rw.tape != null and not rw.done:  # winding back
+			rw.t += dt
+			var p: float = minf(1.0, rw.t / rw.dur)
+			set_wind_frac(rw.tape, rw.f0 * (1.0 - p))
+			rw.done = p >= 1.0
 	hud.now_playing("%s%s\n%s%s%s   [ ] wind · , . episode" % ["❚❚ " if video.paused else "▶ ", playing.tape.t, "%d of %d · " % [playing.idx + 1, playing.tape.e.size()] if playing.tape.e.size() > 1 else "", _clock(video.position), " / " + _clock(video.duration) if video.duration > 0.0 else ""] if playing != null and not video.url.is_empty() else "")
 	if playing != null and not video.url.is_empty():  # the tape winds forward as it plays
 		playing.tape.ep = playing.idx
@@ -532,6 +645,7 @@ func drop_in_returns() -> void:  # E at Returns with a tape in hand
 func clear_aim() -> void:
 	aim_returns = false
 	aim_rewinder = false
+	_rw_aim = {}
 	hovered = null
 	aim_slot = false
 	aim_tv = null
@@ -549,11 +663,16 @@ func aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> String:
 		if aim_slot:
 			_show_box(held)
 			return "Click — put %s back" % held.t
-	if hit and hit_d < 2.4 and not rewinder.is_empty() and hit.position.distance_to(rewinder.at) < 0.3 and (held != null or rewinder.tape != null):  # the rewinder
+	for rw: Dictionary in rewinders:  # a rewinder (the second: once it's bought)
+		if not (hit and hit_d < 2.4 and hit.position.distance_to(rw.at) < 0.3 and (held != null or rw.tape != null)):
+			continue
+		if not is_same(rw, rewinder) and not $"../Shift".owned("rewinder2"):
+			return "The second rewinder\nnot hooked up: an upgrade on the register"
+		_rw_aim = rw
 		aim_rewinder = true
-		if rewinder.tape == null:
+		if rw.tape == null:
 			return "E — rewind %s%s" % [held.t, " (already rewound)" if is_rewound(held) else ""]
-		return "E — take out %s · rewound" % rewinder.tape.t if rewinder.done else "Rewinding… %d%% · E — take it out early" % roundi(100.0 * rewinder.t / rewinder.dur)
+		return "E — take out %s · rewound" % rw.tape.t if rw.done else "Rewinding… %d%% · E — take it out early" % roundi(100.0 * rw.t / rw.dur)
 	if hit and hit_d < 2.4 and hit.position.distance_to(_returns_at) < 0.55 and (held != null or not return_bin.is_empty()):  # Returns: the bin behind the slot
 		aim_returns = true
 		var lines := PackedStringArray()
@@ -628,8 +747,7 @@ func play_episode(idx: int, tape: Dictionary = playing.tape if playing != null e
 	tape.ep = idx
 	hud.toast("Loading: %s…" % tape.t)
 	video.play_episode(tape.e[idx], at)
-	for q in _quads:
-		q.visible = true
+	_screens_show(true)
 
 
 func _on_started() -> void:
@@ -651,8 +769,7 @@ func step_episode(d: int) -> void:  # the next one on the tape, when one runs ou
 		return
 	if playing.idx + d >= playing.tape.e.size():
 		playing.tape.at = 0.0  # run out: it sits in the machine, wound to the end
-		for q in _quads:
-			q.visible = false
+		_screens_show(false)
 		return
 	playing.tape.at = 0.0
 	play_episode(playing.idx + d)
@@ -662,8 +779,7 @@ func eject() -> void:
 	var tape: Dictionary = playing.tape
 	video.stop()
 	playing = null
-	for q in _quads:
-		q.visible = false
+	_screens_show(false)
 	if inv_make_room():
 		_take(tape)  # the tape comes back out into your hand, not the shelf (whatever you were holding slides into the inventory)
 	else:

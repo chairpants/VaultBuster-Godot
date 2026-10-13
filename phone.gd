@@ -8,7 +8,11 @@ extends Node3D
 ## From the web game's store/phone.js (CALLS, phoneCaller, phoneTick, phoneAnswer, callAnswer, callHud, holdPull,
 ## holdPlace, holdsRender, holdsTick, danaCall, ringBurst via ambience.gd). Whoever comes in for a hold asks for it
 ## at the counter (shoppers.gd). Where the phone and the holds tray are: data/interact.json.
-## Not over yet: the overdue calls you make (the register's message center, post-its), the call list. Dana doesn't walk to the shelf for a hold she's promised: the copy's just on the tray.
+## The overdue calls go the other way: look somebody up in the register's message center and they're on a post-it by
+## the phone. E on it rings them. Who picks up depends on when: working people aren't home on a weekday afternoon (the
+## machine gets it), weekend mornings people sleep in, and past their bedtime you'll wake them. What came of it is
+## written on the note and on their record; Q on a note throws it out (postits, postitAdd, postitCall, phoneOutTick,
+## memberHabits, callOutcome, CALL_SAY).
 
 const NOT_YET := [["Twister", "1996-05-10", "1996-10-01"], ["Mission: Impossible", "1996-05-22", "1996-11-12"], ["Independence Day", "1996-07-02", "1996-11-22"],
 	["Jerry Maguire", "1996-12-13", "1997-08-26"], ["Men in Black", "1997-07-02", "1997-11-25"], ["Titanic", "1997-12-19", "1998-09-01"]]  # in theaters, out on tape
@@ -19,7 +23,10 @@ var next := -1.0  # the hour of the next call
 var ring = null  # ringing: { member, title, cat | kind, ..., t, rang }
 var on_line = null  # on the line: the same, t counting down
 var holds: Array = []  # promised: { member, title, at (the hour they come in), day, copy | null, by, coming, pulled }
-var aim := ""  # "phone" | "holds" | ""
+var aim := ""  # "phone" | "holds" | "postit" | ""
+var postits: Array = []  # { m, result ("" till they've been rung), at (the hour it was written), rz, node }
+var out = null  # ringing out: { n, m, o, t, rings, said }
+var aim_note = null
 
 var _at := Vector3.ZERO
 var _tray := Vector3.ZERO
@@ -88,6 +95,7 @@ func _says(c: Dictionary) -> Array:  # [who's calling, what they say, answer 1, 
 
 
 func _process(dt: float) -> void:  # phoneTick
+	_out_tick(dt)
 	var open := Clock.h >= Clock.OPEN and Clock.h < Clock.LAST_IN
 	if next < 0.0:
 		next = maxf(Clock.h, Clock.OPEN) + 1.0 + randf() * 1.5
@@ -117,7 +125,7 @@ func _process(dt: float) -> void:  # phoneTick
 	if ring.t > 6.0 and taker != null and taker.who.jobs.get("phone", 0) > 0 and checkout.co == null and shoppers.waiting() == null:
 		preload("res://staff.gd").speaker = taker.first
 		staff.xp(taker, "cha", 4.0)
-		_dana_call()  # nobody in the store needs her: she gets it
+		_dana_call(taker)  # nobody in the store needs them: they get it
 	elif ring.t > 20.0:  # rang out
 		var from := _who(ring)
 		$"../POS".message("%s MISSED CALL - %s%s" % [Clock.fmt_clock(Clock.h), "%s #%d" % [from, ring.member.num] if ring.member != null else "DENNIS AT DISTRICT", " RE: LATE FEE" if ring.get("kind", "") == "fee" else " RE: %s" % ring.title if ring.has("title") else ""])
@@ -191,7 +199,7 @@ func call_answer(key: int, by := "you"):  # 1 or 2 (callAnswer). -> the hold, if
 	return null
 
 
-func _dana_call() -> void:  # Dana picks up: she knows the answers (and hangs up on pranks; the fee stands: not hers to waive), and tells the truth about what's in
+func _dana_call(taker: Node = null) -> void:  # Dana picks up: she knows the answers (and hangs up on pranks; the fee stands: not hers to waive), and tells the truth about what's in
 	on_line = ring
 	ring = null
 	if on_line.has("kind"):
@@ -203,15 +211,201 @@ func _dana_call() -> void:  # Dana picks up: she knows the answers (and hangs up
 		call_answer(2, "dana")
 		return
 	var h = call_answer(1, "dana")
-	tapes.set_on_shelf(copy, false)  # (the web game: she walks to the shelf for it. Here it's just on the tray)
+	if taker != null and taker.fetch_hold(h, copy):  # off to the shelf for it
+		return
+	tapes.set_on_shelf(copy, false)  # (no way to that shelf: it's just on the tray)
 	h.copy = copy
 	_render()
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if aim == "postit" and aim_note != null and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_Q:
+		postit_toss(aim_note)
+		get_viewport().set_input_as_handled()
 	if on_line != null and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode in [KEY_1, KEY_2]:
 		call_answer(1 if e.physical_keycode == KEY_1 else 2)
 		get_viewport().set_input_as_handled()  # (not the tape in slot 1 or 2 as well)
+
+
+# ---- post-its by the phone: the overdue calls
+
+const CALL_SAY := {
+	"ok": ["It's in the car: I'll drop it off.", "Oh no, I thought I'd returned that! I'll look for it.", "Sorry! I'll bring it in.", "The kid hid it in the toy box. I'll bring it by."],
+	"okNo": ["Yeah, yeah. I'll get to it.", "Huh. I'll have to look for it.", "Is that still out? Weird."],
+	"late": ["It's kind of late to be calling... fine, I'll bring it in.", "We were just going to bed. Yes, I'll return it."],
+	"dinner": ["We're eating dinner. I'll bring it in, okay?", "Can this wait? We're in the middle of dinner."],
+	"morning": ["Mmf... it's Saturday morning... yeah, okay. Later.", "You woke me up. I'll bring it in. Bye."],
+	"night": ["Do you know what time it is?! *click*", "It's the middle of the night! Don't call here this late! *click*"],
+}
+
+
+func postit_add(m: Dictionary, quiet := false):  # the register: an overdue call looked up -> a note by the phone (one per member)
+	if postits.any(func(n: Dictionary) -> bool: return n.m == m):
+		return null
+	var n := { "m": m, "result": "", "at": Clock.h, "rz": (randf() - 0.5) * 0.25, "node": null }
+	postits.append(n)
+	_postits_render()
+	if not quiet:
+		hud.toast("Jotted down a post-it to call %s (555-%04d): it's by the phone" % [shoppers.members.name_of(m), m.num * 7919 % 10000])
+	return n
+
+
+func _postit_at(i: int) -> Vector3:  # two rows of four by the phone, then on top
+	return Vector3(-6.22 + (i % 8 % 4) * 0.09, _at.y - 0.0785 + (i / 8) * 0.0015, _at.z - 0.075 + (i % 8 / 4) * 0.15)
+
+
+func _postits_render() -> void:  # stuck down flat on the cabinet top, handwritten (postitDraw, postitsLayout)
+	for i in postits.size():
+		var n: Dictionary = postits[i]
+		if n.node == null:
+			var mi := MeshInstance3D.new()
+			var q := QuadMesh.new()
+			q.size = Vector2(0.076, 0.076)
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = Color.hex(0xffea6eff)
+			q.material = mat
+			mi.mesh = q
+			var l := Label3D.new()
+			l.pixel_size = 0.00028
+			l.font_size = 26
+			l.outline_size = 0
+			l.width = 250.0
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.position.z = 0.0005
+			l.name = "Text"
+			mi.add_child(l)
+			add_child(mi)
+			n.node = mi
+		n.node.position = _postit_at(i)
+		n.node.rotation = Vector3(-PI / 2.0, 0.0, n.rz)
+		var text: Label3D = n.node.get_node("Text")
+		var late: String = $"../POS".late_summary(n.m).to_lower()
+		text.modulate = Color.hex(0xb3261eff) if n.result != "" else Color.hex(0x1b2f8cff)  # (rung: in red)
+		text.text = "CALL: %s\n555-%04d\n%s%s" % [shoppers.members.name_of(n.m), n.m.num * 7919 % 10000, late if late != "" else "tape's back!", "\n" + n.result if n.result != "" else ""]
+
+
+func habits(m: Dictionary) -> Dictionary:  # how a member's day goes (from their member #, so the same person keeps the same habits)
+	var r := func(k: int) -> float: return float(shoppers._imul(m.num + k * 7919, 2654435761) & 0xffffffff) / 4294967296.0
+	return { "works": r.call(1) < 0.68, "night_owl": r.call(2) < 0.15, "sleeps_in": r.call(3) < 0.55 }
+
+
+func call_outcome(m: Dictionary, h: float, day: int) -> Dictionary:  # -> { pick: "machine" | "noanswer" | "answer", mood: "ok" | "annoyed" | "angry", woke, why } for a call at this hour, this weekday (0: Sunday)
+	var hab := habits(m)
+	var weekend := day == 0 or day == 6
+	var bed := 25.0 if hab.night_owl else 23.5 if day == 5 or day == 6 else 22.5  # lights out (Friday and Saturday nights, a bit later)
+	var home := 0.85
+	if not weekend and hab.works and h >= 8.5 and h < 17.5:
+		home = 0.1  # at work
+	elif not weekend and h >= 17.5 and h < 18.5:
+		home = 0.55  # on the way home
+	elif weekend and h >= 11.5 and h < 18.0:
+		home = 0.45  # out doing weekend things
+	if randf() > home:
+		return { "pick": "machine" if randf() < 0.85 else "noanswer", "why": "work" if not weekend and hab.works and h < 17.5 else "out" }
+	var asleep := 0.85 if h >= bed else 0.3 if h >= bed - 0.75 else 0.7 if weekend and hab.sleeps_in and h < 10.5 else 0.3 if weekend and hab.sleeps_in and h < 11.5 else 0.0
+	if randf() < asleep:  # you woke them up
+		if randf() < 0.4:
+			return { "pick": "machine" if randf() < 0.7 else "noanswer", "why": "asleep" }  # (slept through it)
+		var late := h >= bed - 0.75
+		return { "pick": "answer", "woke": true, "mood": ("angry" if h >= bed + 0.5 or randf() < 0.6 else "annoyed") if late else "annoyed" if randf() < 0.75 else "ok", "why": "night" if late else "morning" }
+	var evening := h >= bed - 1.5
+	var dinner := h >= 17.75 and h < 19.0
+	return { "pick": "answer", "mood": ("annoyed" if randf() < 0.55 else "ok") if evening else "annoyed" if dinner and randf() < 0.25 else "ok", "why": "late" if evening else "dinner" if dinner else "" }
+
+
+func postit_call(n: Dictionary) -> void:  # E on a post-it: dial
+	var m: Dictionary = n.m
+	var who: String = shoppers.members.name_of(m)
+	if ring != null:
+		hud.toast("The phone's ringing: answer it first")
+	elif on_line != null or out != null:
+		hud.toast("You're already on the phone")
+	elif not $"../POS".needs_call(m):
+		if n.result == "":
+			n.result = "TAPE CAME BACK. NO NEED TO CALL"
+			_postits_render()
+		hud.toast("%s's not overdue anymore: Q on the post-it tosses it" % who)
+	elif m.last_call == Clock.day:
+		hud.toast("You've already called %s today: try again tomorrow" % who)
+	else:
+		var o := call_outcome(m, Clock.h, Clock.date().weekday)
+		out = { "n": n, "m": m, "o": o, "t": 0.0, "rings": 1 + randi() % 3 if o.pick == "answer" else 3 if o.pick == "machine" else 5, "said": "" }
+		_out_hud()
+
+
+func _out_hud() -> void:
+	if out == null:
+		if on_line == null:
+			hud.call_box("")
+		return
+	hud.call_box("CALLING · %s #%d · 555-%04d\n%s" % [shoppers.members.name_of(out.m), out.m.num, out.m.num * 7919 % 10000, out.said if out.said != "" else "Ringing… (%s)" % $"../POS".late_summary(out.m).to_lower()])
+
+
+func _out_tick(dt: float) -> void:  # ringing out, then whoever (or whatever) picks up (phoneOutTick)
+	if out == null:
+		return
+	if out.said != "":  # what they said stays up a moment
+		out.t -= dt
+		if out.t <= 0.0:
+			out = null
+			_out_hud()
+		return
+	out.t += dt
+	if out.t < out.rings * 3.0:
+		return
+	var m: Dictionary = out.m
+	var o: Dictionary = out.o
+	var loy: float = m.loyalty / 250.0
+	var promise := false
+	var say := ""
+	var note := ""
+	if o.pick == "noanswer":
+		say = "It rings and rings. Nobody's home, and no machine."
+		note = "NO ANSWER"
+	elif o.pick == "machine":
+		promise = randf() < 0.25
+		say = "“Hi, you've reached the %ss. Leave a message at the beep.” You leave one." % m.last.capitalize()
+		note = "MACHINE. LEFT A MESSAGE"
+	elif o.mood == "angry":
+		promise = randf() < 0.1
+		say = "“%s”" % CALL_SAY.night.pick_random()
+		note = "WOKE THEM UP. HUNG UP ON ME" if o.get("woke", false) else "HUNG UP ON ME"
+		shoppers.members.loyal(m, -15)
+		checkout.score -= 15
+	elif o.mood == "annoyed":
+		promise = randf() < 0.45 + loy
+		shoppers.members.loyal(m, -6)
+		say = "“%s”" % CALL_SAY.get(o.why, CALL_SAY.late).pick_random()
+		note = "%sANNOYED. %s" % ["WOKE THEM. " if o.get("woke", false) else "", "SAYS THEY'LL BRING IT" if promise else "NO PROMISES"]
+	else:
+		promise = randf() < 0.8 + loy
+		shoppers.members.loyal(m, 1)
+		say = "“%s”" % (CALL_SAY.ok if promise else CALL_SAY.okNo).pick_random()
+		note = "SPOKE TO THEM. BRINGING IT IN" if promise else "SPOKE TO THEM. NO PROMISES"
+	var at := Clock.fmt_clock(Clock.h)
+	out.n.result = "%s - %s" % [at, note]
+	_postits_render()
+	$"../POS".record_call(m, promise, "%s %s" % [at, note])
+	staff.xp("you", "cha", 6.0)
+	if not promise:
+		hud.toast("Called %s about their overdue tape: %s" % [shoppers.members.name_of(m), note.to_lower()])
+	out.said = say
+	out.t = 4.5
+	_out_hud()
+
+
+func postit_toss(n: Dictionary) -> void:  # crumpled, into the nearest wastebasket
+	# ponytail: Q throws it straight out; the web game peels it off (hold E) and carries it to a bin
+	if out != null and out.n == n:
+		return
+	postits.erase(n)
+	n.node.queue_free()
+	_postits_render()
+	var bins: Array = $"../Chores".bins.duplicate()
+	bins.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return Vector2(a.x - _at.x, a.z - _at.z).length() < Vector2(b.x - _at.x, b.z - _at.z).length())
+	if not bins.is_empty():
+		$"../Chores".trash_add(bins[0], 1)
+	hud.toast("Tossed the post-it for %s" % shoppers.members.name_of(n.m))
 
 
 # ---- holds
@@ -275,9 +469,14 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 		return ""  # (not yours to answer)
 	if not hit or hit_d > 2.4:
 		return ""
+	for n: Dictionary in postits:
+		if hit.position.distance_to(n.node.position) < 0.045:
+			aim = "postit"
+			aim_note = n
+			return "E — call %s (555-%04d)\n%s · Q tosses it" % [shoppers.members.name_of(n.m), n.m.num * 7919 % 10000, n.result if n.result != "" else $"../POS".late_summary(n.m).to_lower()]
 	if hit.position.distance_to(_at) < 0.28:
 		aim = "phone"
-		return "E — answer the phone" if ring != null else "On the phone: 1 or 2 to answer them" if on_line != null else "The store phone"
+		return "E — answer the phone" if ring != null else "On the phone: 1 or 2 to answer them" if on_line != null else "On the phone" if out != null else "The store phone%s" % ("\n%d post-it%s beside it" % [postits.size(), "" if postits.size() == 1 else "s"] if not postits.is_empty() else "")
 	if hit.position.distance_to(_tray + Vector3(0, 0.08, 0)) < 0.3:
 		aim = "holds"
 		var open := holds.filter(func(h: Dictionary) -> bool: return h.copy == null)
@@ -289,6 +488,9 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 
 
 func on_e() -> bool:
+	if aim == "postit":
+		postit_call(aim_note)
+		return true
 	if aim == "phone":
 		if ring != null:
 			answer()
@@ -325,11 +527,16 @@ func on_e() -> bool:
 # ---- for the save
 
 func snapshot() -> Dictionary:
-	return { "next": next, "holds": holds.map(func(h: Dictionary) -> Array: return [h.member.num, h.title, h.at, h.day, h.copy.k if h.copy != null else "", h.by]) }
+	return { "next": next, "postits": postits.map(func(n: Dictionary) -> Array: return [n.m.num, n.result, n.at, n.rz]), "holds": holds.map(func(h: Dictionary) -> Array: return [h.member.num, h.title, h.at, h.day, h.copy.k if h.copy != null else "", h.by]) }
 
 
 func restore(d: Dictionary) -> void:
 	next = d.get("next", -1.0)
+	for a: Array in d.get("postits", []):
+		var pm = shoppers.members.by_num.get(int(a[0]))
+		if pm != null:
+			postits.append({ "m": pm, "result": a[1], "at": a[2], "rz": a[3], "node": null })
+	_postits_render()
 	for a: Array in d.get("holds", []):
 		var m = shoppers.members.by_num.get(int(a[0]))
 		if m == null:

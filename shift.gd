@@ -31,11 +31,12 @@ var upg := { "library": 0 }  # what the store's bought (the register's U): id ->
 
 const LIBRARY := [  # the library comes in tiers, each after the one before: the sections a new store doesn't carry yet
 	["Kids & Educational", "Holiday", "Reality TV", "Music", "Broadcast Blocks"], ["Classic Sitcoms", "Sketch Comedy & Late Night"], ["Anime", "Horror & Anthology", "MonsterVision"]]
-const UPGRADES := [  # [id, name, cost, what it is] (the ones that do something here yet)
-	["hire", "HIRE AN EMPLOYEE", 250.0, "3 APPLICANTS TO CHOOSE FROM"], ["theater", "OPEN THE THEATER", 600.0, "UNLOCK THE LOBBY AND THE AUDITORIUM"],
+const UPGRADES := [  # [id, name, cost, what it is] (the web game's, all of them)
+	["hire", "HIRE AN EMPLOYEE", 250.0, "3 APPLICANTS TO CHOOSE FROM"], ["popcorn", "POPCORN MACHINE", 150.0, "FRESH POPCORN, RIGHT IN THE STORE"], ["theater", "OPEN THE THEATER", 600.0, "UNLOCK THE LOBBY AND THE AUDITORIUM"],
 	["lib1", "LIBRARY UPGRADE 1", 200.0, "KIDS, HOLIDAY, REALITY TV, MUSIC"], ["lib2", "LIBRARY UPGRADE 2", 350.0, "CLASSIC SITCOMS, SKETCH & LATE NIGHT"],
 	["lib3", "LIBRARY UPGRADE 3", 500.0, "ANIME, HORROR ANTHOLOGY, MONSTERVISION"], ["cameras", "SECURITY CAMERAS", 450.0, "EVERY SHOPLIFTER ON TAPE; FEWER TRY"],
-	["sign", "ANTI-THEFT SIGNAGE", 60.0, "\"SHOPLIFTERS WILL BE PROSECUTED\""], ["rewinders", "HIGH-SPEED REWINDERS", 300.0, "HALF THE TIME"], ["ad", "NEWSPAPER AD", 120.0, "+REPUTATION (ONE A DAY)"]]
+	["sign", "ANTI-THEFT SIGNAGE", 60.0, "\"SHOPLIFTERS WILL BE PROSECUTED\""], ["rewinder2", "SECOND REWINDER", 90.0, "TWO TAPES REWINDING AT ONCE"], ["rewinders", "HIGH-SPEED REWINDERS", 300.0, "HALF THE TIME"],
+	["compressor", "COOLER COMPRESSOR", 220.0, "COOLER STAYS COLD, RECOVERS FASTER"], ["dana", "STAFF TRAINING", 250.0, "THE STAFF LEARN 50% FASTER"], ["ad", "NEWSPAPER AD", 120.0, "+REPUTATION (ONE A DAY)"]]
 var _stocked := false
 var mode := "sandbox"  # "sandbox": Dana on staff, $10,000, everyone a member. "simulation": a bare-bones store, $300, no staff, forty members: build it up with what it earns
 var growth := { "pending": 0, "prospects": 0, "t": 30.0 }  # simulation: new members who'll come in to sign up (pending: tomorrow's)
@@ -144,6 +145,33 @@ func stock_library() -> void:  # what's carried on the shelves, what isn't in it
 			tapes.set_on_shelf(t, true)
 	tapes.batch = false
 	tapes.commit()
+	_signs()
+
+
+var _sign_pairs: Array = []  # [the sign as it reads once its section's in (world/extras.glb), the level's COMING SOON one in the same place (or null), the tier that takes]
+
+
+func _signs() -> void:  # a section's header strip, the endcaps' genre lists, the MONSTERVISION topper: COMING SOON till the library has it (signsRefresh)
+	var extras: Node = main.get_node_or_null("World/Extras")
+	if extras == null:
+		return
+	if _sign_pairs.is_empty():
+		var mid := func(m: MeshInstance3D) -> Vector3: return m.global_transform * m.get_aabb().get_center()
+		var level: Array = main.get_node("World").find_children("*", "MeshInstance3D", true, false).filter(func(m: MeshInstance3D) -> bool: return not extras.is_ancestor_of(m))
+		for n: Node3D in extras.find_children("*_tier*", "Node3D", true, false):
+			if n is CollisionObject3D:
+				continue
+			var was = null
+			if n is MeshInstance3D:
+				for m: MeshInstance3D in level:
+					if mid.call(m).distance_to(mid.call(n)) < 0.02 and (m.get_aabb().size - n.get_aabb().size).length() < 0.02:
+						was = m
+			_sign_pairs.append([n, was, String(n.name).get_slice("_tier", 1).to_int()])
+		print("shift: %d section signs to turn over, %d with a COMING SOON one in the level" % [_sign_pairs.size(), _sign_pairs.filter(func(p: Array) -> bool: return p[1] != null).size()])
+	for p: Array in _sign_pairs:
+		p[0].visible = int(upg.library) >= p[2]
+		if p[1] != null:
+			p[1].visible = not p[0].visible
 
 
 func buy(id: String) -> String:  # upgBuy. -> "" if bought, else why not
@@ -185,6 +213,12 @@ func open_theater() -> void:  # bought: the lobby's door comes unchained, and pe
 	if not owned("theater"):
 		return
 	for d: Dictionary in main.get_node("Interact").doors:
+		if d.push and not d.alongX:  # the hall's door to the lobby: the THEATER · COMING SOON sign on each face of it comes down
+			for n: MeshInstance3D in main.get_node("World").find_children("*", "MeshInstance3D", true, false):
+				if n.visible and absf(n.global_position.y - 1.5) < 0.05 and Vector2(n.global_position.x - d.at, n.global_position.z - d.c).length() < 0.12:
+					n.visible = false
+					for body in n.find_children("*", "CollisionObject3D", true, false):
+						body.queue_free()
 		if d.push and d.locked:
 			d.locked = false
 			for body in d.pivot.find_children("*", "CollisionObject3D", true, false):
