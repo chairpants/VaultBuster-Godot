@@ -38,7 +38,7 @@ var peek = null  # the tape you've only just picked up to look at: right-click s
 var aim_slot := false
 var aim_tv = null  # the screen the crosshair's on
 var playing = null  # { tape, idx }
-var inv: Array = []  # the tapes you're carrying, the one in hand among them
+var inv: Array = []  # what you're carrying, the one in hand among them: tapes, and { kind: "snack", s } / { kind: "popcorn", p } (snacks.gd's held / popcorn while they're stashed)
 var return_bin: Array = []  # tapes customers have dropped back, waiting to be put away
 var aim_returns := false
 var rewinder := {}  # the counter's rewinder: { at, tape, f0, t, dur, done }
@@ -407,13 +407,31 @@ func pickup(t: Dictionary) -> void:  # off the shelf, held up to look at (whatev
 
 
 func inv_make_room() -> bool:  # before picking something new up: stash what's in hand, or refuse at 9
+	_inv_sync()  # (whatever was picked up since the last frame, first)
 	if inv.size() >= INV_MAX:
 		return false
 	inv_stash()
 	return true
 
 
+func is_tape(e: Dictionary) -> bool:
+	return not e.has("kind")
+
+
+func carried_tapes() -> Array:  # the tapes among what you're carrying
+	return inv.filter(is_tape)
+
+
 func inv_stash() -> void:  # what's in hand, out of it (still carried)
+	var sn: Node = $"../Snacks"
+	if inv_sel >= 0 and inv_sel < inv.size() and not is_tape(inv[inv_sel]):  # a snack or the popcorn: into its slot, with its bites left
+		var e: Dictionary = inv[inv_sel]
+		if e.kind == "snack" and sn.held != null:
+			e.s = sn.held
+			sn.held = null
+		elif e.kind == "popcorn" and sn.popcorn != null:
+			e.p = sn.popcorn
+			sn.popcorn = null
 	held = null
 	inspecting = false
 	peek = null  # swapping away from a tape counts as taking it
@@ -427,7 +445,43 @@ func inv_select(i: int) -> void:  # 1-9, or the wheel: that one into your hand (
 	inv_stash()
 	if i < inv.size():
 		inv_sel = i
-		show_tape(inv[i])
+		var e: Dictionary = inv[i]
+		if is_tape(e):
+			show_tape(e)
+		elif e.kind == "snack":
+			$"../Snacks".held = e.s
+		else:
+			$"../Snacks".popcorn = e.p
+
+
+func _slot(e: Dictionary) -> Dictionary:  # how a slot shows on the bar: { name, kind, used (0..1 gone: wound on, eaten, or -1) }
+	if is_tape(e):
+		return { "name": e.t, "kind": "tape", "used": wind_frac(e) }
+	var sn: Node = $"../Snacks"
+	if e.kind == "snack":
+		var s: Dictionary = sn.held if is_same(e, inv[inv_sel] if inv_sel >= 0 else null) and sn.held != null else e.s
+		return { "name": s.u.n.capitalize(), "kind": "drink" if s.u.k != "" else "snack", "used": 1.0 - float(s.left) / s.total }
+	var p: Dictionary = sn.popcorn if is_same(e, inv[inv_sel] if inv_sel >= 0 else null) and sn.popcorn != null else e.p
+	return { "name": "Popcorn" if p.kind == "box" else "A piece of popcorn", "kind": "popcorn", "used": 1.0 - p.fill / 8.0 if p.kind == "box" else -1.0 }
+
+
+func _inv_sync() -> void:  # once a frame (invSync): a snack or the popcorn picked up comes into the bar; one that's left your hand (eaten up, put back, tossed) leaves it, and the next comes out
+	var sn: Node = $"../Snacks"
+	if inv_sel >= 0 and inv_sel < inv.size() and not is_tape(inv[inv_sel]):
+		var e: Dictionary = inv[inv_sel]
+		var now = sn.held if e.kind == "snack" else sn.popcorn
+		if now == null:
+			_gone()
+		elif e.kind == "snack":
+			e.s = now
+		else:
+			e.p = now
+	for k: Array in [["snack", sn.held], ["popcorn", sn.popcorn]]:
+		if k[1] != null and not inv.any(func(e: Dictionary) -> bool: return not is_tape(e) and e.kind == k[0] and is_same(e.get("s" if k[0] == "snack" else "p"), k[1])):
+			if inv_sel >= 0 and inv_sel < inv.size() and is_tape(inv[inv_sel]):
+				inv_stash()  # (taken with a tape in hand: the tape goes in its slot)
+			inv.append({ "kind": k[0], "s" if k[0] == "snack" else "p": k[1] })
+			inv_sel = inv.size() - 1
 
 
 func _take(t: Dictionary) -> void:  # into your hand, and so into the inventory
@@ -552,7 +606,8 @@ func _process(dt: float) -> void:
 	_saver_tick(dt)
 	if held != null:
 		_hand.transform = _hand.transform.interpolate_with(LOOK if inspecting else HAND, minf(1.0, dt * 14.0))
-	hud.inventory(inv.map(func(t: Dictionary) -> String: return t.t + ("" if is_rewound(t) else " ◂%d%%" % roundi(100.0 * wind_frac(t)))), inv_sel)
+	_inv_sync()
+	hud.inventory(inv.map(func(e: Dictionary) -> Dictionary: return _slot(e)), inv_sel)
 	_rewinder_looks()
 	for rw: Dictionary in rewinders:
 		if rw.tape != null and not rw.done:  # winding back
@@ -601,7 +656,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		return
 	if not e is InputEventMouseButton or not e.pressed or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or player.fly:
 		return
-	if (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN) and player.seat == null and inv.size() > 1:
+	if (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN) and player.seat == null and inv.size() > 1 and not $"../Counter".moving():
 		inv_select(posmod((inv_sel if inv_sel >= 0 else 0) + (1 if e.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1), inv.size()))  # (sat down, the wheel's the zoom)
 		return
 	if e.button_index == MOUSE_BUTTON_RIGHT:  # right click puts down what's in hand, if it's only being looked at
@@ -725,6 +780,9 @@ func vcr_use() -> void:  # E on the TV or the theater's screen: one tape, every 
 	if held != null:
 		var tape: Dictionary = held
 		var old = playing.tape if playing != null else null
+		if aim_tv != null:  # the sound comes from the screen it went into: the lounge TV's set, or the theater's speakers (louder, further)
+			video.audio.position = Vector3(aim_tv.x, aim_tv.y, aim_tv.z)
+			video.audio.unit_size = 8.0 if aim_tv.kind == "theater" else 3.0
 		play_episode(tape.ep, tape)  # it plays from wherever it's wound to
 		release()  # the tape leaves your hand...
 		if old != null:  # ...and the one that was in there comes out into your inventory

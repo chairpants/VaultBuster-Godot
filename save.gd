@@ -38,6 +38,11 @@ func _notification(what: int) -> void:
 
 func _unhandled_input(e: InputEvent) -> void:
 	if _live and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_F9:  # a fresh store
+		fresh_store()
+
+
+func fresh_store() -> void:  # the saved store wiped, and in again (F9; the register's SYSRESET)
+	if _live:
 		_live = false
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(Menu.path(Menu.slot)))
 		Menu.go = true  # (straight back in)
@@ -76,7 +81,7 @@ func snapshot() -> Dictionary:
 		"tapes": {
 			"rented": S.rented.map(func(r: Array) -> Array: return [r[0].k, r[1], r[2], r[3] if r.size() > 3 else 0]),
 			"bin": T.return_bin.map(func(t: Dictionary) -> String: return t.k),
-			"inv": T.inv.map(func(t: Dictionary) -> String: return t.k), "sel": T.inv_sel,
+			"inv": T.carried_tapes().map(func(t: Dictionary) -> String: return t.k), "sel": T.carried_tapes().find(T.held) if T.held != null else -1,  # (the tapes: a snack in your pocket isn't kept)
 			"playing": [T.playing.tape.k, T.playing.idx] if T.playing != null else [],
 			"wound": wound,
 			"lost": T.tapes.filter(func(t: Dictionary) -> bool: return t.get("lost", false)).map(func(t: Dictionary) -> String: return t.k),
@@ -87,6 +92,7 @@ func snapshot() -> Dictionary:
 		"chores": main.get_node("Chores").snapshot(),
 		"shift": main.get_node("Shift").snapshot(),
 		"phone": main.get_node("Phone").snapshot(),
+		"arcade": main.get_node("Arcade").snapshot(),
 		"snacks": main.get_node("Snacks").snapshot(),
 		"pos": main.get_node("POS").snapshot(),
 		"customer": main.get_node("Customer").snapshot(),
@@ -206,6 +212,7 @@ func apply(d: Dictionary) -> void:
 	main.get_node("Chores").restore(d.get("chores", {}))
 	main.get_node("Shift").restore(d.get("shift", {}))
 	main.get_node("Phone").restore(d.get("phone", {}))
+	main.get_node("Arcade").restore(d.get("arcade", {}))
 	main.get_node("Snacks").restore(d.get("snacks", {}))
 	main.get_node("POS").restore(d.get("pos", {}))
 	main.get_node("Customer").restore(d.get("customer", {}))

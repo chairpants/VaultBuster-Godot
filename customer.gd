@@ -112,7 +112,7 @@ func become(why := "") -> void:  # the store flips to this (a new customer-mode 
 	shift.stock_library()
 	shift.open_theater()
 	staff.customer_crew()
-	for t: Dictionary in tapes.inv.duplicate():  # (what was in your arms is the store's)
+	for t: Dictionary in tapes.carried_tapes():  # (what was in your arms is the store's)
 		tapes.set_on_shelf(t, true)
 	tapes.inv.clear()
 	tapes.inv_stash()
@@ -127,7 +127,7 @@ func morning() -> void:  # in off the lot just before ten (cmMorning)
 		wallet += ALLOWANCE
 		hud.toast("Found $%.2f in your jacket" % ALLOWANCE)
 	var watched := PackedStringArray()  # what you took home got watched: two a night, each wound on to its end
-	for t: Dictionary in tapes.inv:
+	for t: Dictionary in tapes.carried_tapes():
 		if rented.has(t.k) and watched.size() < 2 and tapes.is_rewound(t):
 			tapes.set_wind_frac(t, 0.99)
 			watched.append(t.t)
@@ -136,6 +136,11 @@ func morning() -> void:  # in off the lot just before ten (cmMorning)
 	today = 0
 	heat = 0.0
 	wary.clear()
+	if $"../Trail"._took_cash == Clock.day - 1 and Clock.day > 1:  # the drawer came up twenty short last night: everybody's watching the counter today
+		alert_day = Clock.day
+		hud.toast("Overheard: the drawer came up twenty short last night. Everybody's watching the counter today")
+	for e: Node in preload("res://staff.gd").crew:
+		e.set_meta("gossip", null)
 	if not fav.is_empty() and not fav.done:
 		fav = {}  # yesterday's favor's gone stale
 	if not app.is_empty() and app.ans == "" and Clock.day > app.day:  # an application's been read
@@ -157,7 +162,7 @@ func morning() -> void:  # in off the lot just before ten (cmMorning)
 
 
 func _unpaid() -> Array:
-	return tapes.inv.filter(func(t: Dictionary) -> bool: return not rented.has(t.k))
+	return tapes.carried_tapes().filter(func(t: Dictionary) -> bool: return not rented.has(t.k))
 
 
 func _price(t: Dictionary) -> float:
@@ -294,6 +299,8 @@ func _rent_return(t: Dictionary) -> void:  # a rental back (the returns slot, it
 
 
 func _process(dt: float) -> void:  # cmTick
+	if shift.mode == "customer":
+		_gossip_tick()
 	if not on() or shift.report:
 		return
 	var p := player.global_position
@@ -366,7 +373,7 @@ func _process(dt: float) -> void:  # cmTick
 	_hi_t -= dt
 	if _hi_t > 0.0 and _hi_day != Clock.day and not Clock.after_close():
 		for e: Node in staff.crew:
-			if e.dana != null and _knows(e).k >= 2 and not wary.has(e.first) and e.dana.position.distance_to(p) < 7.0 and sees(e.dana):
+			if e.dana != null and _knows(e).k >= 2 and not _wary(e) and e.dana.position.distance_to(p) < 7.0 and sees(e.dana):
 				_hi_day = Clock.day
 				e.dana.set_mood("happy")
 				hud.toast("%s: “Hey, %s!”" % [e.first, you()])
@@ -405,7 +412,7 @@ func slip() -> Array:  # the end of your day, on the same slip the staff get (cm
 	rows.append_array([row.call("WALKED OUT WITH", "%d THING%s" % [day.stolen, "" if day.stolen == 1 else "S"] if day.stolen > 0 else "NOTHING"),
 		row.call("CAUGHT", "%d TIME%s" % [day.caught, "" if day.caught == 1 else "S"] if day.caught > 0 else "NEVER"),
 		row.call("THE STAFF THINK YOU'RE", "A REGULAR" if regular() else "FRIENDLY" if trust >= 25.0 else "A NEW FACE"), line])
-	var home: Array = tapes.inv.filter(func(t: Dictionary) -> bool: return rented.has(t.k))
+	var home: Array = tapes.carried_tapes().filter(func(t: Dictionary) -> bool: return rented.has(t.k))
 	if not home.is_empty():
 		rows.append("TAKING HOME TONIGHT")
 		for t: Dictionary in home:
@@ -771,7 +778,7 @@ func drop_e() -> bool:
 # ---- for the save
 
 func snapshot() -> Dictionary:
-	return { "wallet": wallet, "owed": owed, "tab": tab, "trust": trust, "strikes": strikes, "today": today, "banned": banned, "card": card, "rented": rented, "day": day, "opened": _opened, "rec": rec, "record": record, "crew": crew, "fav": fav, "app": app, "fav_day": _fav_day }
+	return { "teed": teed, "alert": alert_day, "ticket": ticket_day, "wallet": wallet, "owed": owed, "tab": tab, "trust": trust, "strikes": strikes, "today": today, "banned": banned, "card": card, "rented": rented, "day": day, "opened": _opened, "rec": rec, "record": record, "crew": crew, "fav": fav, "app": app, "fav_day": _fav_day }
 
 
 func restore(d: Dictionary) -> void:
@@ -779,6 +786,9 @@ func restore(d: Dictionary) -> void:
 		return
 	wallet = d.wallet
 	owed = d.owed
+	alert_day = int(d.get("alert", -1))
+	teed = d.get("teed", false)
+	ticket_day = int(d.get("ticket", -1))
 	tab = d.get("tab", 0.0)
 	trust = d.trust
 	strikes = int(d.strikes)
@@ -801,12 +811,99 @@ func restore(d: Dictionary) -> void:
 		rented[k] = int(d.rented[k])
 
 
+# ---- among themselves: a chat between two of them at the counter is, now and then, about you, overheard if you're
+# close (who caught you passes it on; a good word makes the other one warmer). The drawer twenty short the night
+# after you helped yourself to it: everybody's watching the counter that day. And a favor, done, can be a ticket for
+# tonight's show, on them (customer-mode.js: cmStaffGossip, cmStaffTick, cmWary, cm.alert, cmStaffThanks's comp)
+
+const GOSSIP_R := 4.5  # close enough to hear them
+
+var alert_day := -1  # the drawer came up short: everyone's wary of you all day
+var teed := false  # you've hit a ball off the roof (cmTeeOff)
+
+
+func tee_off() -> void:  # the end of the trail
+	if teed:
+		return
+	teed = true
+	get_tree().create_timer(2.5).timeout.connect(func() -> void: hud.toast("Teed off from the roof. That's the whole trail: %d day%s, caught %d time%s. (More to find, one day)" % [Clock.day, "" if Clock.day == 1 else "s", strikes, "" if strikes == 1 else "s"]))
+var ticket_day := -1  # you've a ticket for tonight's show (on the house)
+
+
+func _wary(e: Node) -> bool:
+	return wary.has(e.first) or alert_day == Clock.day
+
+
+func _gossip(a: Node, b: Node):  # a talking to b about you -> { line, kind, then } or null
+	var me: String = you() if int(_knows(a).k) >= 2 else "that customer"
+	var warmer := func() -> void:
+		var s := _knows(b)
+		if s.get("word", -1) != Clock.day:
+			s.word = Clock.day
+			s.k = int(s.k) + 1
+	if wary.has(a.first) and not wary.has(b.first) and today > 0:
+		return { "line": "...so I caught %s today. Keep an eye out, okay?" % me, "kind": "bad", "then": func() -> void: wary[b.first] = true }
+	if alert_day == Clock.day:
+		return { "line": "...Ray swears his badge was in his locker. Who even does that?", "kind": "bad" }
+	if fav.get("by", "") == a.first and fav.get("done", false) and fav.get("day", -1) == Clock.day:
+		return { "line": "...and %s %s. Didn't even have to ask twice" % [me, "passed on a message for me" if fav.kind == "msg" else "put a tape back for me"], "kind": "good", "then": warmer }
+	if rec.get("done", false) and rec.get("by", "") == a.first and rec.get("day", -1) == Clock.day:
+		return { "line": "...%s actually rented my pick. Somebody listens to me" % me, "kind": "good", "then": warmer }
+	if not app.is_empty() and app.get("ans", "") == "":
+		return { "line": "...did you hear? %s put in an application" % ("One of the regulars" if me == "that customer" else me), "kind": "" }
+	if ticket_day == Clock.day:
+		return { "line": "...%s's got a ticket for tonight. Save them a good seat" % me, "kind": "" }
+	if regular():
+		return { "line": "...that's the regular I was telling you about. %s every day" % ("In here" if me == "that customer" else "%s's in here" % me), "kind": "good", "then": warmer }
+	if strikes >= 2:
+		return { "line": "...isn't that the one who got thrown out?", "kind": "bad", "then": func() -> void: b.dana.set_mood("meh") }
+	return null
+
+
+func _gossip_tick() -> void:
+	for name: String in wary:  # whoever's wary of you thinks a bit less of you (once a day)
+		var s: Dictionary = crew.get(name, {})
+		if not s.is_empty() and s.get("cold", -1) != Clock.day:
+			s.cold = Clock.day
+			s.k = maxi(0, int(s.k) - 1)
+	var p: Vector3 = player.global_position
+	for a: Node in preload("res://staff.gd").crew:
+		var b = a._chat_with
+		if b == null or a.dana == null or b.dana == null:
+			continue
+		if a.get_meta("gossip_at", -1.0) != a._chat_at and b.get_meta("gossip_at", -1.0) != b._chat_at:  # a chat just started: is it about you? (once a chat, the first of them to speak)
+			a.set_meta("gossip_at", a._chat_at)
+			b.set_meta("gossip_at", b._chat_at)
+			var g = _gossip(a, b)
+			a.set_meta("gossip", g)
+			b.set_meta("gossip", null)
+			if g != null and g.has("then"):
+				g.then.call()
+		var said = a.get_meta("gossip", null)
+		if said == null or said.get("heard", false) or not _inside:
+			continue
+		if minf(Vector2(a.dana.position.x - p.x, a.dana.position.z - p.z).length(), Vector2(b.dana.position.x - p.x, b.dana.position.z - p.z).length()) > GOSSIP_R:
+			continue
+		said.heard = true
+		hud.toast("Overheard, %s to %s: “%s”" % [a.first, b.first, said.line])
+
+
+func _comp() -> bool:  # a ticket for tonight's show, on them (if there's a show, and seats left) -> one was given
+	var show: Dictionary = shift.show
+	if ticket_day == Clock.day or show.title == "" or show.day != Clock.day or Clock.h >= shift.SHOW.at or show.sold >= 10:
+		return false
+	ticket_day = Clock.day
+	show.sold += 1
+	shift.stats.tickets += 1
+	return true
+
+
 # ---- the staff, as people. Each of them gets to know you on their own (a day at a time: talk to them, or have them
 # ring you up), apart from what the store thinks of you. Known a couple of days, they've got your name and a word
 # about their day; a bit better, a small favor, and something for it (a tip about the trail). And a regular they
 # know well can ask for an application: an answer a morning later, and a yes puts you on staff
 # (cmStaffMet, cmStaffFavorAsk, cmStaffHint, cmStaffThanks, cmStaffLine, cmStaffTalk, cmStaffTip, cmStaffJoin).
-# Not over yet: them talking about you among themselves (they don't chat yet), a ticket on the house.
+# Two of them chatting may be talking about you (below); a favor can come back as a free ticket for the show.
 
 const NAMES := ["Sam", "Alex", "Chris", "Pat", "Jamie", "Casey", "Robin", "Terry", "Jordan", "Lee", "Corey", "Jesse"]
 const MSGS := [["your mom called. Call her back", "Ugh. Thanks"], ["the manager wants you to call him", "Oh no. What did I do"], ["your ride's running late tonight", "Great. Thanks for telling me"],
@@ -825,7 +922,7 @@ func _knows(e: Node) -> Dictionary:
 
 func _met(e: Node) -> void:  # talked to, or rung up by: once a day, they know you a little better
 	var s := _knows(e)
-	if int(s.day) == Clock.day or wary.has(e.first):
+	if int(s.day) == Clock.day or _wary(e):
 		return
 	s.day = Clock.day
 	s.k = int(s.k) + 1
@@ -843,7 +940,7 @@ func staff_tip(e: Node) -> String:  # the hover tip's second line, on one of the
 		return "E — pass on %s's message" % fav.by
 	if fav.get("by", "") == e.first and fav.done and not fav.get("paid", false):
 		return "E — tell them it's done"
-	return "keeping an eye on you" if wary.has(e.first) else "knows your name" if int(s.k) >= 2 else "knows your face" if int(s.k) > 0 else "knows you by now" if regular() else "on staff"
+	return "keeping an eye on you" if _wary(e) else "knows your name" if int(s.k) >= 2 else "knows your face" if int(s.k) > 0 else "knows you by now" if regular() else "on staff"
 
 
 func _hint() -> String:  # what they know about the trail: the next thing you haven't found
@@ -859,6 +956,8 @@ func _hint() -> String:  # what they know about the trail: the next thing you ha
 		return "You know where the janitor's key lives? In the register drawer, under the tray. Don't ask me why"
 	if not tr.hatch:
 		return "The manager left a message about the roof on the register. Nobody's supposed to go up there"
+	if not teed:
+		return "There's a golf mat up on the roof. Ray hits balls off it on his break. Into the trees, mostly"
 	return ""
 
 
@@ -902,9 +1001,10 @@ func talk(e: Node) -> void:  # E on one of them, away from a sale: whatever's be
 		trust = minf(100.0, trust + 5.0)
 		e.dana.set_mood("love")
 		var hint := _hint()
-		hud.toast("%s: “Thanks, %s. I owe you one. %s”" % [e.first, me, "Here's something: %s." % hint if hint != "" else "Seriously."])
+		var comp := hint == "" and _comp()
+		hud.toast("%s: “Thanks, %s. I owe you one. %s”" % [e.first, me, "Here's something: %s." % hint if hint != "" else "Here, on me: %s, eight o'clock." % shift.show.title if comp else "Seriously."])
 		return
-	if wary.has(e.first):
+	if _wary(e):
 		e.dana.set_mood("angry")
 		hud.toast("%s: “Mm-hm. I've got my eye on you.”" % e.first)
 		return
@@ -961,7 +1061,7 @@ func talk(e: Node) -> void:  # E on one of them, away from a sale: whatever's be
 
 
 func join() -> void:  # hired: the vest, the name tag, the other side of the counter. What you had on you goes back (rentals returned)
-	for t: Dictionary in tapes.inv.duplicate():
+	for t: Dictionary in tapes.carried_tapes():
 		tapes.return_bin.append(t)
 	if tapes.held != null:
 		tapes.release()

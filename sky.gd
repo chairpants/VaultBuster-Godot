@@ -24,6 +24,7 @@ const SUN_LOW := Color(0.95, 0.475, 0.209)  # sun on the horizon
 const CITY := Color(0.035, 0.024, 0.012)  # the town's glow on the low sky at night
 const CLOUD_LOW := Color(0.5, 0.52, 0.56)
 const GLOWS := [0xff6f9a, 0xff8a3c, 0xff7466]
+const INDOORS := [[-7.84, 11.1, -0.1, 33.1, 4.05], [11.1, 12.7, 27.9, 29.9, 4.05], [-7.07, 1.33, 33.1, 46.6, 4.05], [13.0, 21.0, 0.0, 14.0, 4.39]]  # under a roof: the store, its closet, the theater, next door (x0, x1, z0, z1, the ceiling)
 const N := 56  # clouds; they wrap round inside this box
 const X0 := -110.0
 const X1 := 120.0
@@ -40,6 +41,7 @@ var clouds := 0.0  # WX.clouds: these five are the weather's, set by weather.gd
 var wind := 0.0  # WX.wind
 var wx_k := 0.0  # WX.k: how hard it's raining or snowing
 var fog := 0.0  # WX.fog
+var _inside := 0.0  # 1: you're indoors
 var snowing := false
 
 var _mat := ShaderMaterial.new()
@@ -155,9 +157,16 @@ func _sky(dt: float) -> void:  # wxSky.tick
 	_mat.set_shader_parameter("uFogC", _v(fog_c))
 	_mat.set_shader_parameter("uFog", minf(1.0, fog + wx_k * 0.3))
 	var density := pow(fog, 1.3) * 0.11 + wx_k * (0.025 if snowing else 0.01)  # the air itself: the weather's fog, and a little with whatever's falling
-	env.fog_enabled = density > 0.0005
+	# no fog indoors (ours, or next door): from inside, the engine's is off (it's by distance alone, and would fill the
+	# room), and what's out past the glass is fogged by the room's own shader instead (room.gd: uFog)
+	var cam := get_viewport().get_camera_3d()
+	var at := cam.global_position if cam != null else Vector3.ZERO
+	var inside := INDOORS.any(func(b: Array) -> bool: return at.x > b[0] and at.x < b[1] and at.z > b[2] and at.z < b[3] and at.y < b[4])
+	_inside += ((1.0 if inside else 0.0) - _inside) * minf(1.0, dt * 4.0)  # (eased through the doorway)
+	RenderingServer.global_shader_parameter_set("uFog", Vector4(fog_c.r, fog_c.g, fog_c.b, density * _inside))
+	env.fog_enabled = density * (1.0 - _inside) > 0.0005
 	env.fog_light_color = fog_c.linear_to_srgb()
-	env.fog_density = density
+	env.fog_density = density * (1.0 - _inside)
 	env.fog_sky_affect = 0.0  # (the sky does its own)
 	_mat.set_shader_parameter("uSunC", _v(SUN_C.lerp(SUN_LOW, pow(1.0 - up, 3.0))))
 	_mat.set_shader_parameter("uHor", _v(hor))

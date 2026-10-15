@@ -3,3 +3,5 @@ shot.png
 shot.png.import
 video.png
 video.png.import
+build/
+__pycache__/

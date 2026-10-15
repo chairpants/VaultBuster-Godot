@@ -11,7 +11,7 @@ extends Node
 ## E on one takes it for yourself: click to eat or drink, and the empty goes in a bin.
 ## More's ordered on the register and is by the front doors next morning, in boxes: carry them to a cupboard and unpack.
 ## And popcorn, once the machine's bought: a box, a scoop, butter, salt or sugar if you like, and a handful a click.
-## Not over yet: what a customer's carrying showing in their hand; the box in yours (it's on the HUD).
+## What's taken shows in the hand that took it: a customer's, the staff's, yours (up to your mouth for a bite).
 
 const CASE_QTY := 12
 const CARRY_MAX := 9
@@ -47,6 +47,8 @@ func _ready() -> void:
 	for lane: Array in _lanes.values():
 		lane.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.lz > b.lz if a.lz != b.lz else a.ly > b.ly)  # (fixtures face their local +z)
 	call_deferred("_find")
+	_hand.rotation_order = EULER_ORDER_XYZ
+	$"../Player/Camera".add_child.call_deferred(_hand)
 	_thermo_build.call_deferred()
 
 
@@ -130,12 +132,110 @@ func holding() -> String:  # what's in your hand, for the HUD
 	return "%s · %d %s%s left · click to %s" % [held.u.n.capitalize(), held.left, "sip" if drink else "bite", "" if held.left == 1 else "s", "drink" if drink else "eat"] if held.left > 0 else "Empty %s %s · take it to the trash" % [held.u.n.capitalize(), "can" if drink else "wrapper"]
 
 
+# ---- in a hand: the very unit off the rack (its look, part for part), in a customer's or the staff's (person.gd's
+# hold_item), or in yours: the same slot a tape sits in, up to the mouth and back for a bite or a sip (checkout.js:
+# snackProxy, showSnack; main.js: the bite). And the popcorn box
+
+const HAND_AT := Vector3(0.3, -0.28, -0.55)
+const HAND_ROT := Vector3(0.05, -0.4, 0.06)
+
+var _hand := Node3D.new()
+var _hand_for = null  # what's showing in it: the unit, or "box" / "kernel"
+var _bite := 0.0
+var _bite_drink := false
+
+
+func proxy(u: Dictionary) -> Node3D:  # a copy of one off the rack, at the size it is in the world, its middle at the origin
+	if u.node == null:
+		return null
+	var p: Node3D = u.node.duplicate()
+	p.visible = true
+	p.transform = Transform3D(Basis.from_scale(u.node.global_basis.get_scale()))
+	for body in p.find_children("*", "CollisionObject3D", true, false):
+		body.free()
+	return p
+
+
+func _box_of(n: Node3D, xf: Transform3D, box: Array) -> void:  # the room its meshes take up, in its own frame
+	if n is MeshInstance3D and n.mesh != null:
+		var b: AABB = xf * n.get_aabb()
+		box[0] = b if box[0].size == Vector3.ZERO else box[0].merge(b)
+	for c in n.get_children():
+		if c is Node3D:
+			_box_of(c, xf * c.transform, box)
+
+
+func _popcorn_box(fill: int) -> Node3D:  # the striped carton, and the popcorn heaped in it as full as it is (chores.js: popcornGroup)
+	var g := Node3D.new()
+	var part := func(size: Vector3, at: Vector3, color: String, round := false) -> void:
+		var mi := MeshInstance3D.new()
+		if round:
+			mi.mesh = SphereMesh.new()
+			mi.mesh.radius = size.x
+			mi.mesh.height = size.y
+		else:
+			mi.mesh = BoxMesh.new()
+			mi.mesh.size = size
+		mi.mesh.material = StandardMaterial3D.new()
+		mi.mesh.material.albedo_color = Color(color)
+		mi.position = at
+		g.add_child(mi)
+	part.call(Vector3(0.09, 0.13, 0.06), Vector3.ZERO, "#f4efe6")
+	for x: float in [-0.03, 0.0, 0.03]:  # red stripes, front and back
+		part.call(Vector3(0.012, 0.13, 0.062), Vector3(x, 0, 0), "#c8312a")
+	part.call(Vector3(0.092, 0.13, 0.012), Vector3.ZERO, "#c8312a")  # ...and down each side
+	if fill > 0:  # the popcorn, heaped up past the rim when it's full
+		part.call(Vector3(0.042, 0.05, 0), Vector3(0, 0.07 - (1.0 - fill / 8.0) * 0.11, 0), "#f3e2a0", true)
+	return g
+
+
+func _kernel() -> Node3D:  # a single piece
+	var mi := MeshInstance3D.new()
+	mi.mesh = SphereMesh.new()
+	mi.mesh.radius = 0.012
+	mi.mesh.height = 0.02
+	mi.mesh.material = StandardMaterial3D.new()
+	mi.mesh.material.albedo_color = Color("#f3e2a0")
+	return mi
+
+
+func _hand_tick(dt: float) -> void:
+	var want = held.u if held != null else ("box%d" % popcorn.fill if popcorn.kind == "box" else "kernel") if popcorn != null else null  # (the box's look changes as it's eaten)
+	if not is_same(want, _hand_for):
+		_hand_for = want
+		for c in _hand.get_children():
+			c.queue_free()
+		var n: Node3D = null
+		if want is Dictionary:
+			n = proxy(want)
+			if n != null:  # (held by its middle, whatever shape it is)
+				var box := [AABB()]
+				_box_of(n, Transform3D(), box)
+				n.position = -(n.transform.basis * box[0].get_center())
+		elif want is String and want.begins_with("box"):
+			n = _popcorn_box(popcorn.fill)
+		elif want == "kernel":
+			n = _kernel()
+		if n != null:
+			_hand.add_child(n)
+			$"../Room".light(_hand)
+	_hand.visible = _hand_for != null and $"../Tapes".held == null and not $"../Checkout"._hand.visible
+	_bite = maxf(0.0, _bite - dt)
+	var k := sin((1.0 - _bite / 0.4) * PI) if _bite > 0.0 else 0.0  # bite / sip: up to the mouth and back
+	_hand.position = HAND_AT + Vector3(-0.22, 0.2, 0.12) * k
+	_hand.rotation = HAND_ROT + Vector3((1.0 if _bite_drink else 0.35) * k, 0, 0)
+
+
 func _unhandled_input(e: InputEvent) -> void:  # a click: a bite, a sip (consumeSnack); a handful (eatPopcorn)
+	if _bite > 0.0:
+		return
 	if popcorn != null and held == null and $"../Tapes".held == null and e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		if popcorn.kind == "kernel":
 			popcorn = null
 		elif popcorn.fill > 0:
 			popcorn.fill -= 1
+			_bite = 0.4
+			_bite_drink = false
 			if popcorn.fill == 0:
 				popcorn.toppings = []  # last handful: an empty box, ready for a refill
 		get_viewport().set_input_as_handled()
@@ -148,6 +248,8 @@ func _unhandled_input(e: InputEvent) -> void:  # a click: a bite, a sip (consume
 	if held.left == held.total and held.u.k != "" and held.u.get("temp", 36.0) > DRINK_WARM:
 		hud.toast("Ugh. It's warm (%d°F)" % roundi(held.u.temp))
 	held.left -= 1
+	_bite = 0.4
+	_bite_drink = held.u.k != ""
 	get_viewport().set_input_as_handled()
 
 
@@ -157,7 +259,23 @@ func empty_spots() -> Array:  # rack spots with nothing on them, that nobody's h
 
 # ---- the crosshair on a cupboard or an empty spot (called from interact.gd)
 
-func take_aim(hit: Dictionary, hit_d: float) -> String:
+func unit_on_ray(from: Vector3, dir: Vector3, hit_d: float):  # the one on the shelf the crosshair's on (or null): by the line of sight, not where it lands (cans and bottles are too small to stop it: it lands on the shelf or the back of the case behind them)
+	var best = null
+	var best_t := INF
+	for u: Dictionary in units:
+		if u.out or u.claim != null:
+			continue
+		var c: Vector3 = u.at + Vector3(0, 0.07, 0)
+		var t := (c - from).dot(dir)
+		if t < 0.0 or t > hit_d + 0.15 or t > 2.4 or t >= best_t:
+			continue
+		if (c - from - dir * t).length() < 0.05:
+			best = u
+			best_t = t
+	return best
+
+
+func take_aim(hit: Dictionary, hit_d: float, from := Vector3.ZERO, dir := Vector3.ZERO) -> String:
 	aim = {}
 	if not hit or hit_d > 2.4:
 		return ""
@@ -186,14 +304,12 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 			var n := empty_spots().filter(func(u: Dictionary) -> bool: return (u.k != "") == drinks).size()
 			var mine := carry.filter(func(u: Dictionary) -> bool: return (u.k != "") == drinks).size()
 			return "E — grab what the %s racks are missing (%d)" % ["drink" if drinks else "snack", n] if n > 0 else "E — put the stock back" if mine > 0 else "The %s cupboard\nthe racks are full" % ("drinks" if drinks else "snacks")
-	if held != null:
-		if held.left == held.total and at.distance_to(held.u.at) < 0.16:
-			aim = { "putback": true }
-			return "E — put the %s back" % held.u.n.capitalize()
-		return ""
-	if carry.is_empty():  # one for yourself
-		var near = null
-		for u: Dictionary in units:
+	if held != null and held.left == held.total and at.distance_to(held.u.at) < 0.16:  # its own empty spot: back it goes
+		aim = { "putback": true }
+		return "E — put the %s back" % held.u.n.capitalize()
+	if carry.is_empty():  # one for yourself (another, with one in hand: that one goes in its slot)
+		var near = unit_on_ray(from, dir, hit_d) if dir != Vector3.ZERO else null
+		for u: Dictionary in ([] if near != null else units):
 			if not u.out and u.claim == null and at.distance_to(u.at) < (0.1 if near == null else at.distance_to(near.at)):
 				near = u
 		if near != null:
@@ -247,6 +363,9 @@ func on_e() -> bool:
 		return true
 	if aim.has("take"):
 		var u: Dictionary = aim.take
+		if not $"../Tapes".inv_make_room():
+			hud.toast("Your hands are full: 9 is all you can carry")
+			return true
 		set_out(u, true)
 		var n := 8 if u.k != "" else 4
 		held = { "u": u, "left": n, "total": n, "paid": $"../Shift".mode != "customer" }
@@ -320,6 +439,7 @@ func _thermo_build() -> void:  # over the level's (which only ever says what it 
 
 
 func _process(dt: float) -> void:
+	_hand_tick(dt)
 	if _thermo != null and roundi(air) != _thermo_shown:
 		_thermo_shown = roundi(air)
 		_thermo.text = "%d°F" % _thermo_shown
@@ -371,18 +491,22 @@ func popcorn_step(what: String, apply: bool):  # the one place the sequence's ru
 	var act := Callable()
 	if not $"../Shift".owned("popcorn"):
 		tip = "The popcorn machine\nnot plugged in: an upgrade on the register"
-	elif hp == null and (held != null or $"../Tapes".held != null) and what in ["boxes", "corn"]:
-		tip = "Hands full"
+	elif hp == null and $"../Tapes".inv.size() >= $"../Tapes".INV_MAX and what in ["boxes", "corn"]:
+		tip = "Hands full: 9 is all you can carry"
 	elif what == "boxes":
 		if hp == null:
 			tip = "E — take a popcorn box"
-			act = func() -> void: popcorn = { "kind": "box", "fill": 0, "toppings": [], "used": false }
+			act = func() -> void:
+				$"../Tapes".inv_make_room()
+				popcorn = { "kind": "box", "fill": 0, "toppings": [], "used": false }
 		else:
 			tip = "Eat that piece first (click)" if hp.kind == "kernel" else "You've already got a box"
 	elif what == "corn":
 		if hp == null:
 			tip = "E — grab a piece of popcorn"
-			act = func() -> void: popcorn = { "kind": "kernel" }
+			act = func() -> void:
+				$"../Tapes".inv_make_room()
+				popcorn = { "kind": "kernel" }
 		elif hp.kind == "kernel":
 			tip = "Eat that piece first (click)"
 		elif hp.fill == 8:
@@ -444,7 +568,11 @@ func _box(product: String, qty: int) -> void:  # a brown carton, taped, with a l
 	boxes.append({ "n": product, "qty": qty, "node": body })
 
 
-func _boxes_layout() -> void:  # stacked by the door, solid: you go round them (customers, as yet, walk through)
+func box_spots() -> Array:  # where the delivery's stacked, for walking round: the bottom row's (x, z)s
+	return boxes.filter(func(b: Dictionary) -> bool: return not box_carry.has(b) and b.node.position.y < 0.3).map(func(b: Dictionary) -> Vector2: return Vector2(b.node.position.x, b.node.position.z))
+
+
+func _boxes_layout() -> void:  # stacked by the door, solid: you and the customers go round them
 	var i := 0
 	for b: Dictionary in boxes:
 		if box_carry.has(b):

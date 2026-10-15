@@ -3,7 +3,8 @@ extends Node3D
 ## rain, snow in the winter months, fog some mornings. Rain streaks down outside and the lot goes dark and wet, drying
 ## slowly after; snow drifts down and settles on the lot and the grass; the wind slants it all and gusts.
 ## From the web game: exterior/sky.js (weatherTick; wxFall, the rain and snow falling in their shaders; WX_GROUND).
-## Not over: drops on the storefront glass, snow drifting against the kerbs, puddles tracked in, umbrellas, the sound.
+## And rain on the storefront glass, and snow drifting against the kerbs (both at the bottom). What it does to people
+## is people.gd's (env, pace) and person.gd's.
 
 const FALL := """
 shader_type spatial;
@@ -55,6 +56,7 @@ var wet := 0.0  # how wet the ground is
 var cover := 0.0  # how much snow's lying
 var wind := 0.0
 var gust := 0.0
+var blow := Vector2.ZERO  # the wind, m/s along x and z (the way the air's going)
 var fog := 0.0
 var clouds := 0.0
 
@@ -72,6 +74,8 @@ var _ground: Array = []  # [material, dry, wet, snow]
 
 
 func _ready() -> void:
+	_glass_build()
+	_drifts_build.call_deferred()
 	_rain = [_fall(4500, true, FAR), _fall(16000, true, NEAR)]
 	_snow = [_fall(3500, false, FAR), _fall(9000, false, NEAR)]
 	var seen := {}
@@ -129,6 +133,7 @@ func set_now(what: String, hard := 0.9, fogged := 0.0) -> void:  # straight to i
 	k = hard if what != "clear" else 0.0
 	wet = 1.0 if what == "rain" else 0.0
 	cover = 1.0 if what == "snow" else 0.0
+	drift = 1.0 if what == "snow" else 0.0
 	fog = fogged
 	clouds = 0.97 if what != "clear" else clouds
 
@@ -168,7 +173,7 @@ func _process(dt: float) -> void:  # weatherTick
 	var gn := 0.5 + 0.25 * sin(_t * 0.31) + 0.15 * sin(_t * 0.83 + 1.3) + 0.1 * sin(_t * 2.1 + 2.1)
 	gust = minf(1.0, wind * maxf(0.0, gn - 0.35) * 2.2)
 	var wv := wind * 5.0 + gust * 4.0
-	var blow := Vector2(cos(plan.windDir), sin(plan.windDir)) * wv
+	blow = Vector2(cos(plan.windDir), sin(plan.windDir)) * wv
 	_drift += blow * dt
 	for mi in _rain + _snow:
 		var m: ShaderMaterial = mi.mesh.surface_get_material(0)
@@ -186,7 +191,137 @@ func _process(dt: float) -> void:  # weatherTick
 	sky.wx_k = k
 	sky.fog = fog
 	sky.snowing = kind == "snow"
+	_glass_tick(dt, raining)
+	_drifts_tick(dt, snowing)
 	var now := kind if k > 0.15 else "clear"  # what to say about it
+	if _said != null and now != _said and now != "clear":  # is that rain? (snow!) a palm out, a look up
+		for k: Dictionary in Array($"../Shoppers".custs) + Array($"../People".walkers):
+			if k.c.visible and k.c.position.z < 0.25 and randf() < 0.7:
+				k.c.feel_rain()
 	if _said != null and now != _said:
 		hud.toast("It's started raining" if now == "rain" else "It's snowing!" if now == "snow" else "The rain's let up" if _said == "rain" else "It's stopped snowing")
 	_said = now
+
+
+# ---- rain on the outside of the storefront glass (either side of the doors): drops clinging all over it (as wet as
+# the glass is), and drops that grow heavy and run down, leaving a trail and a few beads behind them; two sets of
+# those, running at different speeds, so they don't move as one sheet (sky.js: wxGlass). The level has the three
+# sheets on each pane already; the pictures on them are the web game's own (world/glass_N.png: tests/export-glb.mjs --cars)
+
+const RUN := [0.0, 0.05, 0.11]  # how fast each sheet runs down
+
+var _glass: Array[StandardMaterial3D] = []
+
+
+func _glass_build() -> void:
+	for i in 3:
+		var path := "res://world/glass_%d.png" % i
+		if not ResourceLoader.exists(path):
+			push_warning("world/glass_N.png aren't there: no rain on the glass")
+			_glass = []
+			return
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.albedo_texture = load(path)
+		m.texture_repeat = true
+		m.albedo_color.a = 0.0
+		_glass.append(m)
+	var found := 0
+	for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
+		var at := mi.global_position
+		if absf(at.y - 1.55) < 0.02 and at.z < -0.04 and at.z > -0.055 and mi.get_aabb().size.z < 0.001:
+			mi.material_override = _glass[clampi(roundi((-0.045 - at.z) / 0.002), 0, 2)]
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			found += 1
+	if found != 6:
+		push_warning("the storefront's rain sheets: %d of 6 found in the level" % found)
+
+
+func _glass_tick(dt: float, raining: float) -> void:  # beads: as wet as the glass is; runners: while it's actually coming down
+	for i in _glass.size():
+		_glass[i].albedo_color.a = minf(0.95, wet if kind == "rain" or wet > 0.3 else 0.0) if i == 0 else minf(1.0, raining * 1.6)
+		_glass[i].uv1_offset.y -= dt * RUN[i] * (0.5 + raining)
+
+
+# ---- snow drifting where it would: banked against both sides of the lot's curb, along the far edge of the road, at
+# the foot of the storefront, round the lamp footings and up against the roof's parapet. Lumps, not a strip: each
+# starts at its own point (the shelter gets it first) and they grow over hours of snowing, then slump away slowly
+# once it stops (faster in rain) (sky.js: wxDrifts)
+
+const ROOFS := [[-7.84, 11.1, -0.1, 33.1], [11.1, 12.7, 27.9, 29.9], [-7.07, 1.33, 33.1, 46.6]]
+
+var drift := 0.0  # how deep they are, 0..1
+
+var _lumps: Array = []  # [x, y, z, rx, rz, h, at, ry]
+var _drifts := MultiMeshInstance3D.new()
+var _drift_shown := -1.0
+
+
+func _lump(x: float, z: float, rx: float, rz: float, h: float, y := -0.01, ry := 0.0) -> void:
+	_lumps.append([x, y + (-0.12 if y < 1.0 and $"../People".floor_y(Vector2(x, z)) < 0.0 else 0.0), z, rx, rz, h, randf() * 0.55, ry + (randf() - 0.5) * 0.3])
+
+
+func _lump_run(xa: float, xb: float, z: float, side: float, rz: float, h: float) -> void:
+	var x := xa
+	while x < xb:
+		_lump(x, z + side * rz * 0.5 * randf(), 0.35 + randf() * 0.45, rz * (0.6 + randf() * 0.6), h * (0.4 + randf() * 0.6))
+		x += 0.35 + randf() * 0.5
+
+
+func _drifts_build() -> void:
+	_lump_run(-27.74, 31.0, -12.3 + 0.09, 1.0, 0.22, 0.1)  # the lot side of the curb
+	_lump_run(-27.74, 31.0, -12.3 - 0.09, -1.0, 0.18, 0.07)  # the road side, in the gutter
+	_lump_run(-27.74, 31.0, -20.4 + 0.05, 1.0, 0.3, 0.06)  # the road's far edge, against the grass
+	_lump_run(-7.74, -2.1, -0.06, -1.0, 0.2, 0.09)  # the foot of the storefront, not across the doors
+	_lump_run(2.1, 11.0, -0.06, -1.0, 0.2, 0.09)
+	for lx: float in [-14.74, -1.74, 11.26, 21.96]:  # round the lamp footings
+		for a in 7:
+			var t := a / 7.0 * TAU + randf() * 0.4
+			_lump(lx + cos(t) * 0.36, -13.05 + sin(t) * 0.36, 0.16 + randf() * 0.08, 0.12, 0.08 + randf() * 0.06)
+	var in_foot := func(x: float, z: float) -> bool: return ROOFS.any(func(r: Array) -> bool: return x > r[0] and x < r[1] and z > r[2] and z < r[3])
+	for r: Array in ROOFS:  # up on the roof, against the inside of the parapet (not where one part of the roof runs on into the next)
+		for s: Array in [[r[0], r[2], r[1], r[2], 0.0, 1.0], [r[0], r[3], r[1], r[3], 0.0, -1.0], [r[0], r[2], r[0], r[3], 1.0, 0.0], [r[1], r[2], r[1], r[3], -1.0, 0.0]]:  # each side, the last two pointing in
+			var length := Vector2(s[2] - s[0], s[3] - s[1]).length()
+			var t := 0.35
+			while t < length - 0.35:
+				var x: float = s[0] + (s[2] - s[0]) * t / length
+				var z: float = s[1] + (s[3] - s[1]) * t / length
+				if not in_foot.call(x - s[4] * 0.05, z - s[5] * 0.05):
+					_lump(x + s[4] * 0.26, z + s[5] * 0.26, 0.3 + randf() * 0.45, 0.14 + randf() * 0.1, 0.05 + randf() * 0.07, 4.0 - 0.01, PI / 2.0 if s[4] != 0.0 else 0.0)
+				t += 0.35 + randf() * 0.5
+	var dome := SphereMesh.new()
+	dome.radius = 1.0
+	dome.height = 1.0
+	dome.is_hemisphere = true
+	dome.radial_segments = 12
+	dome.rings = 5
+	dome.material = StandardMaterial3D.new()
+	dome.material.albedo_color = Color("#e9eef3")
+	var tmp := MeshInstance3D.new()  # (onto the room's light, as the ground it lies on is)
+	tmp.mesh = dome
+	add_child(tmp)
+	$"../Room".light(self)
+	tmp.free()
+	_drifts.multimesh = MultiMesh.new()
+	_drifts.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	_drifts.multimesh.mesh = dome
+	_drifts.multimesh.instance_count = _lumps.size()
+	_drifts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_drifts.custom_aabb = AABB(Vector3(-40, -1, -30), Vector3(80, 8, 90))
+	add_child(_drifts)
+
+
+func _drifts_tick(dt: float, snowing: float) -> void:  # ~3 hours of hard snow to full; a day or so to go (a few hours in rain)
+	var hrs := dt / Clock.HOUR
+	if not _forced:
+		drift = clampf(drift + (hrs * 0.33 * snowing if snowing > 0.15 else -hrs * (0.5 if kind == "rain" and k > 0.1 else 0.06)), 0.0, 1.0)
+	if absf(drift - _drift_shown) < 0.004 and not (drift == 0.0 and _drift_shown > 0.0):
+		return
+	_drift_shown = drift
+	_drifts.visible = drift > 0.0
+	for i in _lumps.size():
+		var s: Array = _lumps[i]
+		var g := clampf((drift - s[6]) / (1.0 - s[6]), 0.0, 1.0)  # this lump's own share: none until the snow's been at it a while
+		var w := 0.3 + 0.7 * sqrt(g)
+		_drifts.multimesh.set_instance_transform(i, Transform3D(Basis(Vector3.UP, s[7]) * Basis.from_scale(Vector3(s[3] * w, s[5] * g + 1e-4, s[4] * w)), Vector3(s[0], s[1], s[2])))

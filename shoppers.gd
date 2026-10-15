@@ -17,10 +17,12 @@ extends Node
 ## - They pick up snacks (snacks.gd), ask for help at the counter, come in for holds (phone.gd), bring a kid or a
 ##   friend along, and shove a tape back in the wrong place now and then (chores.gd), the web game's way; but
 ##   nobody stops to chat, and nobody's talked into a snack at the register.
-## - No cars (everyone walks up the sidewalk), nobody going to the theater, nobody signing up.
+## - Some come by car (cars.gd: a member's own, every visit), a friend or a kid in it with them; the weather's on
+##   them out front (people.gd's env and pace: umbrellas, a run for it, shaking off inside the door).
 
 const Nav := preload("res://nav.gd")
 const Staff := preload("res://staff.gd")
+const Traffic := preload("res://traffic.gd")
 const TASTES := [
 	["horror fan", ["Horror", "Horror & Anthology", "MonsterVision"]],
 	["parent", ["Family & Kids", "Kids & Educational", "Animation", "Holiday"]],
@@ -167,6 +169,7 @@ func customer_for(seed: int, female: bool) -> Dictionary:
 		if x < 0.0:
 			who.gait = o[0]
 			break
+	who.umb_own = style.call() < 0.55  # carries an umbrella (the rest get caught out, and run for it with a hand over their head)
 	return who
 
 
@@ -188,13 +191,58 @@ func rush_level() -> float:  # slow mornings, a lunch bump, the after-school wav
 	return r * sh.rep_mult()  # (a better name brings more people in)
 
 
-func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a parent's kid tagging along (not a member: on their parent's number)
+var drives := true  # some of them come by car (off for the self-check's own customers: it times them from the sidewalk)
+
+
+func _by_car(cust: Dictionary) -> bool:  # who drives: decided the first time they come in, and kept on their record (custArriveByCar)
+	var m: Dictionary = cust.member
+	var cars: Node = $"../Cars"
+	if not m.has("car"):
+		m.car = cars.new_look() if randf() < 0.55 else false
+	if not m.car is Dictionary or not drives:
+		return false
+	var car = cars.drive_in(m.car, _parked)
+	if car == null:
+		return false  # the lot's full: they parked down the street (and walk up)
+	car.riders = [cust]
+	car.idling = randf() < 0.12  # somebody's waiting in the car with the engine running: they won't be long
+	_in_car(cust, car)
+	return true
+
+
+func _in_car(cust: Dictionary, car: Dictionary) -> void:
+	cust.car = car
+	cust.c.visible = false
+	cust.c.position = Vector3(0, 0, -40)
+	cust.state = "drivingIn"
+	cust.path = []
+
+
+func _parked(car: Dictionary) -> void:  # out they all get: the driver's side, then the passengers', the kids' out the back
+	var riders: Array = car.riders.filter(func(k: Dictionary) -> bool: return k in custs)
+	if riders.is_empty():
+		car.riders = []
+		$"../Cars".drive_out(car)
+		return
+	for i in riders.size():
+		var k: Dictionary = riders[i]
+		var door: Vector2 = car.door if i == 0 else Vector2(car.sx + 1.2, car.door.y + (0.7 if k.kid else 0.0))  # (east: the passenger side)
+		k.from = door
+		k.via = Vector2(door.x, -1.2)  # (straight across to the sidewalk, then along it: not wandering the lanes)
+		k.c.visible = true
+		k.c.position = Vector3(door.x, people.floor_y(door), door.y)
+		k.path = [k.via, _outside, _inside, _door]
+		k.state = "arrive"
+
+
+func spawn(member = null, kid_of = null, ride := false) -> Dictionary:  # custSpawn. kid_of: a parent's kid tagging along (not a member: on their parent's number). ride: with someone (see _beside), not on their own
 	if member == null:
 		member = _pick_member(true)
 	var who := customer_for(_imul(member.num, 2654435761), member.female) if kid_of == null else _kid_for(kid_of)  # member # -> the same person every time
 	var female: bool = who.female
 	if kid_of == null:
 		_last_member = member
+		member.likes = who.taste  # (for the register: now somebody's noticed)
 		$"../Shift".stats.visitors += 1
 		member.last_visit = Clock.day + Clock.h / 24.0
 	who.patience *= 1.0 + member.loyalty / 200.0  # regulars will wait a bit longer; the fed-up, less
@@ -224,13 +272,15 @@ func spawn(member = null, kid_of = null) -> Dictionary:  # custSpawn. kid_of: a 
 		"path": [_outside, _inside, _door], "from": from, "spot": null, "state": "arrive", "t": 0.6, "paid": false, "reach": "", "reach_copy": null,
 		"thief": kid_of == null and randf() < 0.06 * (0.6 if $"../Shift".owned("cameras") else 1.0) * (0.7 if $"../Shift".owned("sign") else 1.0), "sneaking": false, "tagged": false, "alarmed": false, "known": false, "greeted": false, "watch_t": 0.0, "fess": false, "last_z": 0.0,  # (thief: now and then somebody means to walk out with it)
 		"heard": false, "look_t": 0.0, "fed_up": false,
-		"squeeze": 0.0, "stuck": 0.0, "detour": false, "bump_t": 0.0, "bump_detour": false, "wait_for": null }
+		"car": null, "via": null, "umb": false }
 	if not back.is_empty():
 		c.set_pose("hold")
 		c.hold_tape(mini(3, back.size()))
 	if kid_of != null:  # small
 		c.scale = Vector3.ONE * (0.6 + randf() * 0.08)
 	custs.append(cust)
+	if kid_of == null and not ride:
+		_by_car(cust)  # ...from out front: their car, or up the sidewalk
 	return cust
 
 
@@ -250,7 +300,7 @@ func _process(dt: float) -> void:
 					_bring_along(spawn(m))
 				_arrive = (6.0 + randf() * 20.0) / rush_level()
 	var you: Vector3 = player.global_position
-	if you.y < 2.0 and absf(you.z - _you_z) < 1.0 and absf(you.x) < 2.0 and (_you_z - GATE_Z) * (you.z - GATE_Z) < 0.0 and tapes.inv.any(func(t: Dictionary) -> bool: return not t.get("desens", false)):
+	if you.y < 2.0 and absf(you.z - _you_z) < 1.0 and absf(you.x) < 2.0 and (_you_z - GATE_Z) * (you.z - GATE_Z) < 0.0 and tapes.carried_tapes().any(func(t: Dictionary) -> bool: return not t.get("desens", false)):
 		start_alarm()  # carried a tape through the gates
 	_you_z = you.z
 	if alarm_on:
@@ -423,6 +473,8 @@ func catch_decide(key: int) -> void:
 	catch_call = null
 	hud.call_box("")
 	var k: Array = CATCH_CALLS[key - 1]
+	members.incident(cust.member, "CAUGHT SHOPLIFTING %s" % _what(cust))
+	members.incident(cust.member, "WARNED" if k[2] == "" else k[1])
 	if k[2] != "":
 		cust.member.status = k[2]
 		cust.member.until = Clock.day + k[3]
@@ -549,7 +601,7 @@ func at_the_door() -> bool:  # anyone right at the door: it swings open (interac
 	return custs.any(func(k: Dictionary) -> bool: return Vector2(k.c.position.x - 0.9, k.c.position.z + 0.2).length() < 1.3)
 
 
-func go(cust: Dictionary, state: String, spot: Dictionary, avoid_player := false) -> void:  # head for a spot; state is what to do on arrival
+func go(cust: Dictionary, state: String, spot: Dictionary) -> void:  # head for a spot; state is what to do on arrival
 	var p: Vector3 = cust.c.position
 	if state == "leave":
 		leave_line(cust)
@@ -564,15 +616,10 @@ func go(cust: Dictionary, state: String, spot: Dictionary, avoid_player := false
 				spot.z = q.y
 				break
 	var others: Array = custs.filter(func(k: Dictionary) -> bool: return k != cust and k.c.position.z > 0.3).map(func(k: Dictionary) -> Vector2: return Vector2(k.c.position.x, k.c.position.z))
-	if avoid_player:
-		others.append(you)
-	var way: Array = _nav.path(p.x, p.z, spot.x, spot.z, others)
+	var boxes: Array = $"../Snacks".box_spots()  # (the morning's delivery, stacked by the doors: round it, not through it)
+	var way: Array = _nav.path(p.x, p.z, spot.x, spot.z, others + boxes)
 	if way.is_empty():
-		way = _nav.path(p.x, p.z, spot.x, spot.z)  # someone's standing in the doorway: plan through them (the walk waits them out)
-	if not avoid_player:
-		cust.detour = false
-	cust.stuck = 0.0
-	cust.bump_detour = false
+		way = _nav.path(p.x, p.z, spot.x, spot.z, boxes)  # someone's standing in the doorway: plan through them (the walk waits them out)
 	if way.is_empty():  # no way there right now: try again in a sec (never straight through a wall)
 		cust.path = []
 		cust.repath = [state, spot]
@@ -583,51 +630,6 @@ func go(cust: Dictionary, state: String, spot: Dictionary, avoid_player := false
 	cust.path = way
 	cust.state = state
 	cust.spot = spot
-
-
-func _yield_to_you(cust: Dictionary, to: Vector2, dt: float) -> bool:  # yields while you're right ahead; goes round after a moment; slips past if there's truly no way
-	if cust.squeeze > 0.0:
-		cust.squeeze -= dt  # excuse me...
-		return false
-	var off := Vector2(player.global_position.x - cust.c.position.x, player.global_position.z - cust.c.position.z)
-	if not (off.length() < (0.5 if cust.detour else 0.75) and off.dot(to) > 0.0 and absf(player.global_position.y - cust.c.position.y) < 1.5):
-		return false
-	cust.stuck += dt
-	if cust.stuck > 0.6 and not cust.detour:
-		cust.detour = true
-		go(cust, cust.state, cust.spot, true)  # go around
-		cust.detour = true
-		cust.stuck = 0.01
-	elif cust.stuck > 3.5:
-		cust.squeeze = 1.4  # no way round: slip past
-		cust.stuck = 0.0
-	return true
-
-
-func _bumps(cust: Dictionary, to: Vector2, dt: float) -> bool:  # the same manners with the other shoppers (and Dana): wait a beat, go round, slip past
-	if cust.squeeze > 0.0:
-		return false
-	var here := Vector2(cust.c.position.x, cust.c.position.z)
-	var dir := to.normalized()
-	var who = null
-	for k: Dictionary in custs:
-		var off := Vector2(k.c.position.x, k.c.position.z) - here
-		if k != cust and k.get("wait_for") != cust and off.length() < 0.7 and off.dot(dir) > off.length() * 0.5:
-			who = k
-			break
-	cust.wait_for = who  # (two meeting head-on don't both wait: whoever's already waiting on the other gets the right of way)
-	if who == null:
-		cust.bump_t = 0.0
-		return false
-	cust.bump_t += dt
-	if cust.bump_t > 0.7 and not cust.bump_detour:
-		go(cust, cust.state, cust.spot)  # go around
-		cust.bump_detour = true
-		cust.bump_t = 0.01
-	elif cust.bump_t > 3.0:
-		cust.squeeze = 1.4  # pardon me
-		cust.bump_t = 0.0
-	return true
 
 
 func _line_spot(i: int) -> Dictionary:  # the front of the line stands at the counter, the rest queue back into the store behind them
@@ -779,9 +781,15 @@ func _gone(cust: Dictionary) -> void:
 		catch_call = null
 		hud.call_box("")
 	var stolen: bool = cust.tagged and not cust.paid and not cust.tapes.is_empty()  # walked out with them unpaid: gone for good. A paid one with a missed tag is still just a rental
+	if cust.car != null:  # back in the car, and off once everyone's in (or, not parked yet: just gone)
+		cust.car.riders.erase(cust)
+		if cust.car.riders.is_empty():
+			$"../Cars".drive_out(cust.car)
 	if stolen:
 		if $"../Shift".owned("cameras"):
 			cust.known = true  # it's all on tape
+		if cust.known:  # you know who it was: it goes on their account
+			members.incident(cust.member, "%s %s" % ["SHOPLIFTED" if cust.sneaking else "LEFT WITHOUT PAYING FOR", _what(cust)])
 		$"../Shift".stats.stolen += cust.tapes.size()
 		checkout.score -= 75 * cust.tapes.size()
 		hud.toast("%s walked out with %s: stolen (%d)" % [cust.name if cust.known else "Someone", _what(cust), -75 * cust.tapes.size()])
@@ -801,34 +809,52 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 	var c: Node3D = cust.c
 	var who: Dictionary = cust.who
 	var speed := 0.0
+	if cust.state == "drivingIn":
+		return  # (still in the car: cars.gd says when they're parked)
+	var outdoors := c.position.z < 0.25  # out front, in the weather
+	var rain: bool = outdoors and weather.kind == "rain" and weather.k > 0.2 and who.get("umb_own", false) and not cust.kid
+	if rain and not cust.umb and c.prop == null:  # umbrellas up out front in the rain, down once they're inside
+		cust.umb = true
+		c.hold_prop("umbrella")
+	elif not rain and cust.umb:
+		cust.umb = false
+		if c.prop == "umbrella":
+			c.hold_prop(null)
+	people.env(cust, c, outdoors, dt)
 	if not cust.path.is_empty():  # walking: follow the path
 		var to: Vector2 = cust.path[0] - Vector2(c.position.x, c.position.z)
 		var d := to.length()
 		if d < 0.05:
 			cust.path.pop_front()
-		elif _yield_to_you(cust, to, dt) or _bumps(cust, to, dt):  # you're in the way, or another shopper is
+		elif c.busy():  # mid-slip, shaking off at the door
 			pass
 		else:
 			speed = who.speed * (1.4 if cust.state == "outside" and not cust.paid and cust.holding > 0 else 1.0)  # storming out
+			if outdoors:
+				speed = people.pace(cust, c, speed, to / d, dt)
 			cust.slip_cd = cust.get("slip_cd", 0.0) - dt
 			if cust.slip_cd <= 0.0 and c.position.z > 0.25:  # a wet floor: a puddle tracked in, nobody's mopped it
 				for m: Dictionary in $"../Chores".messes:
 					if m.kind == "puddle" and Vector2(m.x - c.position.x, m.z - c.position.z).length() < 0.4:
 						cust.slip_cd = 6.0
 						if randf() < 0.35:
+							c.slip()
 							c.set_mood("shock")
 							cust.hi = 1.6
 							checkout.score -= 10
 							hud.toast("%s slipped on the wet floor: mop that puddle (-10)" % cust.name)
 						break
+			var vel := Traffic.walk(c.get_instance_id(), Vector2(c.position.x, c.position.z), to / d, speed, "customer", dt, Callable() if outdoors else Callable(_nav, "open_at"), 0.18 if cust.kid else 0.25)  # (round whoever's in the way, out of the cars' road)
+			speed = vel.length()
 			var step := minf(d, speed * dt)
-			c.position += Vector3(to.x, 0.0, to.y) / d * step
+			if speed > 0.001:
+				c.position += Vector3(vel.x, 0.0, vel.y) / speed * step
+				cust.ry = atan2(vel.x, vel.y)
 			cust.step_d = cust.get("step_d", 0.0) + step  # footsteps
 			if cust.step_d > 0.7:
 				cust.step_d = 0.0
 				$"../Ambience".step(c.position)
-			cust.ry = atan2(to.x, to.y)
-			c.position.y = _floor_y(c.position) if c.position.z > 28.5 else 0.0  # (the theater's ramp)
+			c.position.y = _floor_y(c.position) if c.position.z > 28.5 else people.floor_y(Vector2(c.position.x, c.position.z)) if outdoors else 0.0  # (the theater's ramp; the lot, a curb lower than the walk)
 			for door: Dictionary in interact.doors:  # open any unlocked closed door right in front of them
 				if not door.open and not door.locked and not door.push:
 					var mid := Vector2((door.shut.x0 + door.shut.x1) / 2.0, (door.shut.z0 + door.shut.z1) / 2.0)
@@ -855,6 +881,10 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 			"arrive":  # in the door
 				cust.state = "boot"
 				cust.t = 0.0
+				if cust.get("snow", 0.0) > 0.12 or cust.get("soaked", false):  # brushing the snow off, shaking off the wet
+					c.shake()
+					cust.snow *= 0.35
+					cust.soaked = false
 				if (weather.wet > 0.4 or weather.cover > 0.2) and randf() < 0.22:  # wet out: some of it comes in on their shoes
 					$"../Chores".mess_add("puddle", c.position.x + (randf() - 0.5) * 0.8, 1.4 + randf() * 1.6)
 			"outside":  # off up the sidewalk
@@ -1059,6 +1089,7 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 						if not u.out:  # in hand, for real
 							$"../Snacks".set_out(u, true)
 							cust.snacks.append(u)
+							c.hold_item($"../Snacks".proxy(u))
 							$"../Snacks".warm_check(cust, u)
 					c.reach_to(null)
 					if cust.opened_cooler:
@@ -1121,13 +1152,15 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 					catch_call = cust
 					catch_decide(5)
 			"leave":  # out the door, back the way they came
-				cust.path = [_inside, _outside, cust.from]
+				cust.path = [_inside, _outside, cust.from] if cust.via == null else [_inside, _outside, cust.via, cust.from]  # (back to the car, by the way they came)
 				cust.state = "outside"
 	if cust.hi > 0.0:
 		cust.hi -= dt
 		if cust.hi <= 0.0:
 			c.set_mood({ "browse": "browse", "wait": "wait", "inLine": "wait", "impatient": "impatient", "angry": "angry", "asking": "ask" }.get(cust.state, "happy" if cust.holding > 0 else "neutral"))
 	cust.last_z = c.position.z
+	if speed == 0.0 and c.visible:  # (stood still: still somebody to walk round)
+		Traffic.person(c.get_instance_id(), Vector2(c.position.x, c.position.z), Vector2.ZERO, "customer", 0.18 if cust.kid else 0.25)
 	cust.face += angle_difference(cust.face, cust.ry) * minf(1.0, dt * 8.0)
 	c.rotation.y = cust.face
 	c.tick(dt, speed)
@@ -1389,14 +1422,19 @@ func _kid_for(parent: Dictionary) -> Dictionary:  # a kid: small, their own tast
 	return who
 
 
-func _beside(cust: Dictionary, lead: Dictionary) -> void:  # walking up beside them (a step further out along the sidewalk)
+func _beside(cust: Dictionary, lead: Dictionary) -> void:  # arriving with them: in the same car, or walking up beside them (a step further out along the sidewalk)
+	lead.party = [lead, cust]
+	cust.party = lead.party
+	if lead.car != null and lead.state == "drivingIn":
+		lead.car.riders.append(cust)
+		_in_car(cust, lead.car)
+		return
 	var lp: Vector3 = lead.c.position
 	cust.c.position = lp + Vector3((1.0 if lp.x > 0.0 else -1.0) * 0.8, 0.0, -0.35)
 	cust.from = Vector2(cust.c.position.x, cust.c.position.z)
+	cust.via = lead.via
 	cust.path = [_outside, _inside, _door]
 	cust.state = "arrive"
-	lead.party = [lead, cust]
-	cust.party = lead.party
 
 
 func _bring_along(lead: Dictionary) -> void:  # a regular arrival might not be alone
@@ -1405,14 +1443,14 @@ func _bring_along(lead: Dictionary) -> void:  # a regular arrival might not be a
 	var parent: bool = lead.who.taste == "parent"
 	var r := randf()
 	if r < (0.5 if parent else 0.05):
-		_beside(spawn(lead.member, lead), lead)
+		_beside(spawn(lead.member, lead, true), lead)
 		if lead.member.loyalty >= 40.0:
 			hud.toast("%s brought their kid" % lead.name)
 	elif r < (0.62 if parent else 0.24):
 		var ms: Array = members.all.filter(func(m: Dictionary) -> bool: return m != lead.member and not custs.any(func(k: Dictionary) -> bool: return k.member == m) and members.can_visit(m) and m.loyalty > -60.0)
 		if ms.is_empty():
 			return
-		var k := spawn(ms.pick_random())
+		var k := spawn(ms.pick_random(), null, true)
 		_beside(k, lead)
 		k.thief = false  # (nobody shoplifts with a friend watching)
 		lead.thief = false

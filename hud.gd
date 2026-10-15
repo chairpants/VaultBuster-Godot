@@ -18,6 +18,8 @@ var _log_open := true
 
 @onready var till: Node = $"../Checkout"
 var _inv := _label(15)
+var _bar := HBoxContainer.new()  # what you're carrying: nine slots
+var _slots: Array = []
 var _fade := ColorRect.new()
 var _fade_text := _label(40)
 
@@ -40,6 +42,9 @@ func _ready() -> void:
 	add_child(_fade)
 	move_child(_fade_text, -1)
 	Clock.toast.connect(toast)
+	_bar.add_theme_constant_override("separation", 6)
+	_bar.visible = false
+	add_child(_bar)
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -56,12 +61,52 @@ func fade(text: String) -> void:  # the screen gone black with a word on it ("" 
 	_fade_text.text = text
 
 
-func inventory(names: Array, sel: int) -> void:  # what you're carrying, numbered; the one in hand in brackets (nothing shown for one or none)
-	var parts := PackedStringArray()
-	for i in names.size():
-		var n: String = names[i] if names[i].length() <= 22 else names[i].left(21) + "…"
-		parts.append(("[%d %s]" if i == sel else "%d %s") % [i + 1, n])
-	_inv.text = "   ".join(parts) if names.size() > 1 else ""
+func inventory(slots: Array, sel: int) -> void:  # what you're carrying: a bar of nine slots, numbered, the one in hand lit (shown with two or more, or something stashed and your hand empty) (chores.js: invRender)
+	_bar.visible = slots.size() > 1 or (slots.size() == 1 and sel < 0)
+	if not _bar.visible:
+		return
+	if _slots.is_empty():
+		for i in 9:
+			var p := Panel.new()
+			p.custom_minimum_size = Vector2(92, 62)
+			var n := Label.new()
+			n.position = Vector2(5, 1)
+			n.add_theme_font_size_override("font_size", 12)
+			p.add_child(n)
+			var t := Label.new()
+			t.position = Vector2(4, 17)
+			t.size = Vector2(84, 32)
+			t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			t.clip_text = true
+			t.add_theme_font_size_override("font_size", 11)
+			p.add_child(t)
+			var w := ColorRect.new()  # how far it's wound on / eaten: green left, red gone
+			w.position = Vector2(4, 53)
+			w.size = Vector2(84, 4)
+			p.add_child(w)
+			var used := ColorRect.new()
+			used.position = Vector2(4, 53)
+			used.color = Color("#d33")
+			p.add_child(used)
+			_bar.add_child(p)
+			_slots.append(p)
+	for i in 9:
+		var p: Panel = _slots[i]
+		var e: Dictionary = slots[i] if i < slots.size() else {}
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(0, 0, 0, 0.55 if i == sel else 0.38)
+		box.border_color = Color("#ffd400") if i == sel else Color(1, 1, 1, 0.25)
+		box.set_border_width_all(3 if i == sel else 2)
+		box.set_corner_radius_all(4)
+		p.add_theme_stylebox_override("panel", box)
+		p.position.y = -4.0 if i == sel else 0.0
+		(p.get_child(0) as Label).text = str(i + 1)
+		(p.get_child(1) as Label).text = ("%s%s" % [{ "tape": "▭ ", "drink": "🥤 ", "snack": "🍫 ", "popcorn": "🍿 " }.get(e.get("kind", ""), ""), e.name]) if not e.is_empty() else ""
+		var u: float = e.get("used", -1.0) if not e.is_empty() else -1.0
+		(p.get_child(2) as ColorRect).visible = u >= 0.0
+		(p.get_child(2) as ColorRect).color = Color("#3c3")
+		(p.get_child(3) as ColorRect).visible = u > 0.0
+		(p.get_child(3) as ColorRect).size = Vector2(84.0 * clampf(u, 0.0, 1.0), 4)
 
 
 func call_box(text: String) -> void:  # a decision waiting on you ("" clears it)
@@ -109,5 +154,6 @@ func _process(dt: float) -> void:
 	_fade_text.position = (s - _fade_text.size) / 2.0
 	_cross.position = (s - _cross.size) / 2.0
 	_inv.position = Vector2((s.x - _inv.size.x) / 2.0, s.y - 44.0)
+	_bar.position = Vector2((s.x - (9 * 92 + 8 * 6)) / 2.0, s.y - 80.0)
 	_tip.position = Vector2((s.x - _tip.size.x) / 2.0, s.y * 0.78)
 	_toast.position = Vector2((s.x - _toast.size.x) / 2.0, s.y * 0.12)

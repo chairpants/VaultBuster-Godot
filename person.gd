@@ -4,8 +4,10 @@ extends Node3D
 ## From the web game's customers.js: the object build() returns (setMood, setPose, lookAt, holdTape, sigh, talk) and
 ## its tick: the walk cycle (the planted foot stays put on the floor; the hips ride over it; a run over ~2 m/s),
 ## the gaits, sitting and crouching, the arms' poses, the head, breathing.
-## Not over yet: what the weather does to them (hunching, snow on them, gusts, the umbrella up), a second hand
-## reaching, slipping and shaking off, blinking. The body is its one stretched skin (skinLimbs, below), made here
+## And what the weather does to them (the wind leaning on them, hunched in the cold and wet, snow settling on the head
+## and shoulders, a hand up against the rain or the umbrella held straight up whatever the arm does), the one-off
+## moves (shaking it off at the door, a slip, a palm out, a gust's shove), and blinking.
+## The body is its one stretched skin (skinLimbs, below), made here
 ## from the jointed blocks the export has.
 ##
 ## The origin's on the floor between the feet; they face +z.
@@ -24,6 +26,7 @@ const GAITS := {
 const HEAD_Z := 0.05  # the TV sits a touch forward, over the neck
 const LEG := 0.9
 const KNEEL := 0.38  # how far the hips come down, kneeling to the floor
+const BLINKS := ["neutral", "browse", "meh", "wait", "impatient", "angry", "shifty", "ask", "watch"]  # the faces with eyes to shut
 
 var mood := "off"
 var pose := "idle"  # walk idle reach hold wait sit crouch lean read watch
@@ -33,6 +36,11 @@ var height := 1.0
 var talking := false
 var sit_at := {}  # { hipY, tuck }
 var build := 1.0
+var wind := Vector2.ZERO  # the wind on them, world m/s (the way the air's going): they lean into it, and it leans on them
+var hunch := 0.0  # cold / wet: shoulders up, arms in, head down, shorter steps
+var shield := false  # a hand up over the head (caught in the rain, no umbrella)
+var snow := 0.0  # 0..1 settled on the head and shoulders (set_snow)
+var prop = null  # what's in the other hand: "card" / "cash" / "receipt" / "form" / "umbrella", or null
 
 var _body: Node3D
 var _upper: Node3D
@@ -43,6 +51,7 @@ var _arms: Array = []  # [shoulder, elbow]
 var _tapes: Array[Node3D] = []
 var _props := {}  # card, cash, receipt, form, umbrella: in the other hand
 var _reach := { "target": Vector3.ZERO, "on": false, "w": 0.0, "arm": 1, "lean": true }
+var _reach2 := { "target": Vector3.ZERO, "on": false, "w": 0.0, "arm": 0 }  # the other hand, on something too (a mop's handle)
 var _sx := 0.255  # the shoulder joints, off center (hers sit in a little)
 var _face := StandardMaterial3D.new()
 var _moods: Array = []
@@ -51,7 +60,15 @@ var _t := 0.0
 var _phase := 0.0
 var _since := 0.0
 var _sigh := 0.0
-var _st := { "y": 0.0, "squat": 0.0, "nod": 0.0, "ry": 0.0, "rz": 0.0, "rx": 0.0, "ax0": 0.0, "ae0": -0.12, "ax1": 0.0, "ae1": -0.12, "h0": 0.0, "h1": 0.0, "k0": 0.0, "k1": 0.0, "lean": 0.0, "crouch": 0.0, "step": 0.0 }
+var _st := { "y": 0.0, "squat": 0.0, "nod": 0.0, "ry": 0.0, "rz": 0.0, "rx": 0.0, "ax0": 0.0, "ae0": -0.12, "ax1": 0.0, "ae1": -0.12, "h0": 0.0, "h1": 0.0, "k0": 0.0, "k1": 0.0, "lean": 0.0, "crouch": 0.0, "step": 0.0, "hu": 0.0, "hd": 0.0 }
+var _fx := { "shake": 0.0, "slip": 0.0, "feel": 0.0, "stagger": 0.0, "flip": 0.0 }  # one-off moves, each counting down
+var _sdir := 1.0
+var _blink := false
+var _blink_next := 0.0
+var _item := Node3D.new()  # hold_item's slot, in the other hand
+var _canopy: Node3D  # the umbrella's
+var _snow_on: Array[MeshInstance3D] = []  # head, shoulder, shoulder
+var _head_top := Vector3(0.36, 0.3, 0.3)  # the TV (and a hat): how wide, how high its top, how deep
 
 
 func setup(who: Dictionary, face: Texture2D, moods: Array, index: int) -> void:
@@ -78,11 +95,20 @@ func setup(who: Dictionary, face: Texture2D, moods: Array, index: int) -> void:
 		n.visible = false
 	_face.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # the face: one of sixteen on their sheet, picked by the mood
 	_face.albedo_texture = face
-	_face.uv1_scale = Vector3(0.25, -0.25, 1)
+	_face.uv1_scale = Vector3(0.25, -0.125, 1)  # (four across; four rows of them open-eyed, and the same four mid-blink)
+	_blink_next = randf() * 4.0
+	_arms[0][1].add_child(_item)
+	_item.position = Vector3(0, -0.4, 0.07)
+	if _props.has("umbrella"):
+		for n: Node3D in _props.umbrella.get_children():
+			if absf(n.position.y - 0.92) < 0.01:
+				_canopy = n
+	_snow_build()
 	var screen: MeshInstance3D = find_child(pre + "screen", true, false)
 	if screen:
 		screen.material_override = _face
 	_skin_limbs(pre, index, who.female)
+	_ankles_build(pre)
 	set_mood("neutral")
 
 
@@ -91,8 +117,12 @@ func set_mood(m: String) -> void:
 		return
 	mood = m
 	_since = _t
-	var i := maxi(0, _moods.find(m))
-	_face.uv1_offset = Vector3((i % 4) * 0.25, (i / 4 + 1) * 0.25, 0)
+	_face_show()
+
+
+func _face_show() -> void:
+	var i := maxi(0, _moods.find(mood))
+	_face.uv1_offset = Vector3((i % 4) * 0.25, (i / 4 + 1 + (4 if _blink and mood in BLINKS else 0)) * 0.125, 0)
 
 
 func set_pose(p: String, opts := {}) -> void:
@@ -110,8 +140,85 @@ func hold_tape(n: int) -> void:
 
 
 func hold_prop(what) -> void:  # "card" / "cash" / "receipt" / "form" / "umbrella" in the other hand, or null
+	prop = what if what != null and _props.has(what) else null
 	for k: String in _props:
 		_props[k].visible = k == what
+
+
+func hold_item(n: Node3D) -> void:  # a thing of its own in that hand (a snack, a pizza box), at the size it is in the world; null: nothing
+	for c in _item.get_children():
+		c.queue_free()
+	if n == null:
+		return
+	_item.add_child(n)
+	n.scale /= _item.global_basis.get_scale()  # (undo the body's own scaling)
+
+
+func set_snow(k: float) -> void:
+	k = clampf(k, 0.0, 1.0)
+	if absf(k - snow) < 0.004 and (k == 0.0) == (snow == 0.0):
+		return
+	snow = k
+	for m in _snow_on:
+		m.visible = k > 0.02
+	if _snow_on.is_empty() or k <= 0.02:
+		return
+	var w := 0.6 + 0.3 * minf(1.0, k * 2.0)
+	_snow_on[0].scale = Vector3(_head_top.x * w, 0.01 + 0.07 * k, _head_top.z * (w - 0.05))
+	for i in [1, 2]:
+		_snow_on[i].scale = Vector3(0.1 + 0.06 * k, 0.008 + 0.035 * k, 0.12 + 0.06 * k)
+
+
+func _snow_build() -> void:  # lumps on top of the TV (or the hat) and the shoulders, grown by set_snow
+	var top := AABB()
+	for m: MeshInstance3D in _head.find_children("*", "MeshInstance3D", true, false):
+		if m.visible and m.mesh != null:
+			var b: AABB = _head.global_transform.affine_inverse() * m.global_transform * m.get_aabb()
+			top = b if top.size == Vector3.ZERO else top.merge(b)
+	if top.size != Vector3.ZERO:
+		_head_top = Vector3(top.size.x, top.end.y, top.size.z)
+	var lump := SphereMesh.new()  # ponytail: a ball squashed flat, where the web game has a box with its corners rounded off
+	lump.radial_segments = 12
+	lump.rings = 6
+	var white := StandardMaterial3D.new()
+	white.albedo_color = Color("#f4f7fb")
+	white.emission_enabled = true
+	white.emission = Color("#3c4148")  # (a little of its own light: fresh snow reads white even in the overcast)
+	lump.material = white
+	for at: Array in [[_head, Vector3(0, _head_top.y, -0.02)], [_upper, Vector3(-_sx * 0.62, 0.665, -0.01)], [_upper, Vector3(_sx * 0.62, 0.665, -0.01)]]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = lump
+		mi.position = at[1]
+		mi.visible = false
+		at[0].add_child(mi)
+		_snow_on.append(mi)
+
+
+func shake() -> void:  # snow and water off, at the door
+	_fx.shake = 1.0
+
+
+func slip() -> void:  # a wet floor
+	_fx.slip = 1.1
+
+
+func feel_rain() -> void:  # a palm out, a look up: is that rain?
+	_fx.feel = 1.8
+
+
+func stagger(dir := 1.0) -> void:  # shoved by a gust: +1 to their left, -1 to their right
+	if _fx.stagger <= 0.0:
+		_fx.stagger = 0.9
+		_sdir = dir
+
+
+func umbrella_flip() -> void:  # a gust turns it inside out
+	if prop == "umbrella" and _fx.flip <= 0.0:
+		_fx.flip = 1.6
+
+
+func busy() -> bool:  # mid-slip, shaking off: whoever's walking them holds them where they are
+	return _fx.slip > 0.0 or _fx.shake > 0.3
 
 
 func reach_to(point, arm := 1, lean := true) -> void:  # put a hand on a point in the world (eased in and out); null lets go. lean: false = the arm only (counter work: no bowing)
@@ -122,6 +229,25 @@ func reach_to(point, arm := 1, lean := true) -> void:  # put a hand on a point i
 		_reach.on = true
 		_reach.arm = arm
 		_reach.lean = lean
+
+
+func reach_also(point, arm := 0) -> void:  # the other hand to a point as well (the arm only)
+	_reach2.on = point != null
+	if point != null:
+		_reach2.target = point
+		_reach2.arm = arm
+
+
+func _arm_ik(arm: int, target: Vector3, w: float) -> void:  # two-bone IK: the elbow from the law of cosines, the shoulder swung to aim the chain
+	var sh: Node3D = _arms[arm][0]
+	var el: Node3D = _arms[arm][1]
+	var d := _upper.to_local(target) - sh.position
+	var D := clampf(d.length(), 0.12, 0.29 + 0.32 - 0.01)  # (shoulder to elbow 0.29, elbow to hand 0.32)
+	var inner := acos(clampf((0.29 * 0.29 + 0.32 * 0.32 - D * D) / (2.0 * 0.29 * 0.32), -1.0, 1.0))
+	var e := -(PI - inner)  # negative: the forearm folds forward
+	var hand0 := Vector3(0.0, -0.29 - 0.32 * cos(e), -0.32 * sin(e)).normalized()
+	sh.quaternion = sh.quaternion.slerp(Quaternion(hand0, d.normalized()), w)
+	el.rotation.x += (e - el.rotation.x) * w
 
 
 func sigh() -> void:
@@ -139,7 +265,18 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 	var G: Dictionary = GAITS[gait]
 	var run := clampf((speed - 1.9) / 0.8, 0.0, 1.0)  # over ~2 m/s the walk turns into a run
 	# walk cycle: the stride advances with ground speed, so feet don't skate; a faster walker also lengthens their stride
-	var stride: float = (0.34 + 0.12 * clampf(speed - 1.0, 0.0, 1.0)) * (G.stride * (1.0 - run) + run) + 0.36 * run  # radians of hip swing
+	for k: String in _fx:
+		_fx[k] = maxf(0.0, _fx[k] - dt)
+	# the wind in their own frame: x to their left, z the way they face
+	var wl := wind.x * cos(rotation.y) - wind.y * sin(rotation.y)
+	var wf := wind.x * sin(rotation.y) + wind.y * cos(rotation.y)
+	var head_w := clampf(-wf / 8.0, 0.0, 1.0)  # into it
+	var tail_w := clampf(wf / 8.0, 0.0, 1.0)  # with it behind them
+	var slip_k: float = sin(_fx.slip / 1.1 * PI) if _fx.slip > 0.0 else 0.0
+	var shake_k: float = sin(_fx.shake * PI) if _fx.shake > 0.0 else 0.0
+	var feel_k: float = minf(1.0, minf(_fx.feel * 2.0, (1.8 - _fx.feel) * 3.0)) if _fx.feel > 0.0 else 0.0
+	var stag_k: float = sin(_fx.stagger / 0.9 * PI) if _fx.stagger > 0.0 else 0.0
+	var stride: float = (0.34 + 0.12 * clampf(speed - 1.0, 0.0, 1.0)) * (G.stride * (1.0 - run) + run) * (1.0 - 0.3 * hunch * (1.0 - run)) * (1.0 - 0.25 * head_w) + 0.36 * run  # radians of hip swing
 	var A := stride * 1.2
 	var stance_f := 0.6 - 0.22 * run
 	var reach_d := LEG * sin(A)
@@ -173,7 +310,7 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 	var step_in := _ease("step", clampf(maxf(0.0, flat - 0.4) - (0.35 if bend else 0.2), 0.0, 0.2) if w > 0.0 else 0.0, minf(1.0, dt * 5.0)) * w  # really far: a half step in
 	# the gait cycle, per leg (p: 0..1 from its heel strike): a stance of ~60% (less running), then the swing
 	var cyc := _phase / TAU - 0.25
-	var knee_k: float = (G.knee * (1.0 - run) + 1.6 * run) * minf(1.0, 0.55 + 0.35 * speed)
+	var knee_k: float = (G.knee * (1.0 - run) + 1.6 * run) * (1.0 - 0.4 * hunch) * minf(1.0, 0.55 + 0.35 * speed)
 	var kn_end := 0.55 * knee_k
 	var th_end := asin(maxf(-1.0, -reach_d / (LEG * cos(kn_end / 2.0)))) + kn_end / 2.0  # the thigh at toe off, where the swing picks up
 	var gl := [_leg_at(fposmod(cyc, 1.0), stance_f, reach_d, knee_k, th_end, A), _leg_at(fposmod(cyc + 0.5, 1.0), stance_f, reach_d, knee_k, th_end, A)]
@@ -187,31 +324,34 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 		var hx: float = -PI / 2.0 if sit else -gl[i][0] if walking else 0.0  # (thigh forward is -x)
 		var kx: float = PI / 2.0 + sit_at.get("tuck", 0.0) if sit else gl[i][1] if walking else 0.0
 		var lr := 1.0 if walking and not sit else r  # walking: exactly where the cycle puts them (easing lags, and the feet skate)
-		_legs[i][0].rotation.x = _ease("h%d" % i, hx, lr) - crouch * 1.05 + squat * (-1.414 if i == lead else 0.425)
+		_legs[i][0].rotation.x = _ease("h%d" % i, hx - (0.0 if i else slip_k * 0.6), lr) - crouch * 1.05 + squat * (-1.414 if i == lead else 0.425)
 		_legs[i][1].rotation.x = _ease("k%d" % i, kx, lr) + crouch * 1.9 + squat * (1.414 if i == lead else 1.325)  # (the knee down: its shin folded up behind, toes clear of the floor)
 	var seat_y: float = sit_at.get("hipY", 0.5) - 0.9 * height if sit else 0.0  # hips down to the seat
 	var jolt := sin((t - _since) / 0.35 * PI) * 0.06 if mood == "shock" and t - _since < 0.35 else 0.0  # a little jump
 	var bob := 0.0
 	if walking:
 		bob = leg_bob + run * 0.03 * absf(sin(_phase)) + (pow(maxf(0.0, sin(_phase)), 2.0) * 0.06 if G.get("hop", false) and run == 0.0 else 0.0)
-	var body_y := seat_y + jolt + bob
+	var body_y := seat_y + jolt + bob - slip_k * 0.08
 	_st.y += (body_y - _st.y) * (r if absf(body_y - _st.y) > 0.05 else 1.0)  # eased sitting down / getting up, the bob tracked directly
 	_body.position.y = _st.y - crouch * 0.4 - squat * KNEEL * height
 	_body.position.z = step_in - squat * 0.12  # (the hips sit back between the front foot and the knee that's down)
+	_body.position.x = stag_k * 0.12 * _sdir  # a gust shoves them a step sideways
 	var sg := 0.0  # a sigh: up, then a long sag
 	if _sigh > 0.0:
 		_sigh -= dt
 		sg = sin((1.0 - _sigh / 1.3) * PI)
-	_upper.rotation.x = lean + (0.28 if pose == "lean" else 0.0) + maxf(0.0, sg) * 0.08 + (G.lean if walking else 0.0)
+	_upper.rotation.x = lean + (0.28 if pose == "lean" else 0.0) + maxf(0.0, sg) * 0.08 + _ease("hu", hunch * 0.16 + head_w * 0.12, minf(1.0, dt * 3.0)) + (G.lean if walking else 0.0)  # hunched against it
 	if _torso:  # breathing
 		_torso.scale.y = 0.56 * (1.0 + sin(t * 1.7) * 0.012)
 		_torso.scale.z = 0.245 * (1.0 + sin(t * 1.7) * 0.02)
 	var pelvis := _ease("ry", (gl[0][0] - gl[1][0]) / (2.0 * A) * 0.08 * G.twist * (1.0 - 0.6 * run) if walking else 0.0, soft)  # the pelvis turns with the leg going forward
-	_body.rotation.y = pelvis
+	_body.rotation.y = pelvis + shake_k * sin(t * 38.0) * 0.16  # (a shake: twisting it off)
 	_upper.rotation.y = -pelvis * 1.7  # the shoulders counter it, with the arms
-	_body.rotation.z = _ease("rz", (0.0 if walking or sit else sin(t * 0.45) * 0.018) + (G.sway * (1.0 - run) * sin(_phase) if walking else 0.0), r * 0.3)  # idle weight shift, hip to hip; a hip sway
-	_body.rotation.x = _ease("rx", minf(0.08, speed * 0.05) + 0.17 * run if walking and walk_lean else 0.0, r * 0.5)  # lean into the walk (and the run)
-	var a_sw: float = 0.3 * (G.arms * (1.0 - run) + 2.3 * run)
+	var wind_z := clampf(wl * 0.022, -0.16, 0.16)  # leaning into a crosswind (wind to their left: they lean right, into it)
+	_body.rotation.z = _ease("rz", (0.0 if walking or sit else sin(t * 0.45) * 0.018) + (G.sway * (1.0 - run) * sin(_phase) if walking else 0.0) + (0.0 if sit else wind_z), r * 0.3) \
+		- stag_k * 0.2 * _sdir + slip_k * sin(t * 17.0) * 0.12  # idle weight shift, hip to hip; a hip sway; the wind
+	_body.rotation.x = _ease("rx", (minf(0.08, speed * 0.05) + 0.17 * run if walking and walk_lean else 0.0) + (0.0 if sit else head_w * 0.2 - tail_w * 0.05), r * 0.5) - slip_k * 0.3  # lean into the walk (and the run, and a headwind); back on their heels in a slip
+	var a_sw: float = 0.3 * (G.arms * (1.0 - run) + 2.3 * run) * (1.0 - 0.6 * hunch)
 	var lx := sw_u * a_sw if walking else 0.0  # arms: smaller than the legs, trailing them
 	var rx := -sw_u * a_sw if walking else 0.0
 	var le := -0.22 - maxf(0.0, -sw_u) * 0.22 if walking else -0.12  # elbows bend on the forward swing
@@ -220,12 +360,18 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 		le += (-1.45 - maxf(0.0, -sw_u) * 0.25 - le) * run
 		re += (-1.45 - maxf(0.0, sw_u) * 0.25 - re) * run
 	var holding := _tapes.size() > 0 and _tapes[0].visible
-	var free := not pose in ["hold", "reach", "wait", "lean", "read", "watch", "sit"] and not holding
+	var free := not pose in ["hold", "reach", "wait", "lean", "read", "watch", "sit"] and not holding and prop == null
 	if free and walking and G.get("behind", false) and run == 0.0:  # a stroll: hands clasped behind
 		lx = 0.42
 		rx = 0.42
 		le = -0.55
 		re = -0.55
+	if free and hunch > 0.05:  # hugging themselves
+		var k := minf(1.0, hunch * 1.3) * (1.0 - run)
+		lx += (-0.4 - lx) * k
+		rx += (-0.4 - rx) * k
+		le += (-1.6 - le) * k
+		re += (-1.6 - re) * k
 	if pose == "reach":
 		rx = -1.45 - sin(t * 3.0) * 0.05
 		re = -0.2
@@ -254,33 +400,203 @@ func tick(dt: float, speed := 0.0) -> void:  # animate; speed: m/s along the gro
 	if pose == "watch":  # wrist up across the chest
 		lx = -0.45
 		le = -1.55
+	if prop == "umbrella":  # held up, the hand at the chest (wrestling it, inside out)
+		lx = -0.35
+		le = -1.25
+		if _fx.flip > 0.0:
+			lx -= sin(t * 22.0) * 0.3
+			le -= 0.3
+	elif shield:  # a hand up over the head against the rain
+		lx = -2.75
+		le = -0.95
+	if feel_k > 0.0:  # palm out: is that rain?
+		rx += (-1.15 - rx) * feel_k
+		re += (-0.3 - re) * feel_k
+	if shake_k > 0.0:  # brushing it off the shoulders
+		lx += (-1.0 - lx) * shake_k
+		le += (-1.75 + sin(t * 24.0) * 0.25 - le) * shake_k
 	var ar := soft if walking else r  # arms carry some momentum while walking; poses still settle promptly
 	var p2 := [[_ease("ax0", lx, ar), _ease("ae0", le, ar)], [_ease("ax1", rx, ar), _ease("ae1", re, ar)]]
+	var flail := maxf(slip_k, stag_k * 0.6)  # arms out for balance
 	for i in 2:
-		_arms[i][0].rotation = Vector3(p2[i][0], 0.0, -0.06 if i else 0.06)
+		_arms[i][0].rotation = Vector3(p2[i][0] - flail * 0.4, 0.0, (-0.06 if i else 0.06) + flail * (-1.2 if i else 1.2) * (1.0 + sin(t * 15.0 + i) * 0.15))
 		_arms[i][1].rotation.x = p2[i][1]
 	_arms[lead][0].rotation.x -= lean * squat * 0.9  # (knelt: the other arm hangs straight down, to the front knee)
-	if w > 0.0:  # two-bone IK: the elbow from the law of cosines, the shoulder swung to aim the chain
-		var sh: Node3D = _arms[_reach.arm][0]
-		var el: Node3D = _arms[_reach.arm][1]
-		var d := _upper.to_local(_reach.target) - sh.position
-		var D := clampf(d.length(), 0.12, 0.29 + 0.32 - 0.01)  # (shoulder to elbow 0.29, elbow to hand 0.32)
-		var inner := acos(clampf((0.29 * 0.29 + 0.32 * 0.32 - D * D) / (2.0 * 0.29 * 0.32), -1.0, 1.0))
-		var e := -(PI - inner)  # negative: the forearm folds forward
-		var hand0 := Vector3(0.0, -0.29 - 0.32 * cos(e), -0.32 * sin(e)).normalized()
-		sh.quaternion = sh.quaternion.slerp(Quaternion(hand0, d.normalized()), w)
-		el.rotation.x += (e - el.rotation.x) * w
+	_ankles_tick([not walking or gl[0][2] > 0.0, not walking or gl[1][2] > 0.0])
+	_mocap_tick(dt, speed, walking and run < 0.3 and not sit and squat < 0.1 and crouch < 0.1 and w < 0.1 and pose in ["idle", "walk", "hold"], free and pose != "hold")
+	_move_tick(dt, false)  # ponytail: the arms stay procedural, the kneel's capture has them out comforting someone
+	if w > 0.0:
+		_arm_ik(_reach.arm, _reach.target, w)
+	_reach2.w += ((1.0 if _reach2.on else 0.0) - _reach2.w) * minf(1.0, dt * 5.0)
+	if _reach2.w > 0.002 and not (w > 0.0 and _reach.arm == _reach2.arm):
+		_arm_ik(_reach2.arm, _reach2.target, _reach2.w)
 	# head: browsing scans, impatience tilts, otherwise a slow idle drift
 	var yaw: float = _look if _look != null else sin(t * 1.3) * 0.25 if mood == "browse" else sin(t * 2.3) * 0.55 if mood == "shifty" else sin(t * 0.4) * 0.05  # shifty: checking over both shoulders
 	_head.rotation.y += (yaw + (sin(t * 0.9) * 0.06 if talking else 0.0) - _head.rotation.y) * r * 0.6
 	_head.rotation.z += ((0.12 if mood == "impatient" else sin(t * 1.3) * 0.05 if talking else 0.0) - _head.rotation.z) * r * 0.5
 	_head.rotation.x = _ease("nod", cos(_phase * 2.0 - 0.8) * 0.008 if walking else -0.06 if mood == "watch" else maxf(0.0, sin(t * 2.4)) * 0.05 if talking else 0.0, soft) \
-		+ lean * 0.85 + (0.3 if pose == "read" else 0.35 if pose == "watch" else 0.0) + maxf(0.0, sg) * 0.2 + squat * w * 0.25  # (bowing with the upper body; knelt, eyes on what the hand's at)
+		+ lean * 0.85 + (0.3 if pose == "read" else 0.35 if pose == "watch" else 0.0) + maxf(0.0, sg) * 0.2 + squat * w * 0.25 \
+		+ _ease("hd", hunch * 0.14 + head_w * 0.16 - feel_k * 0.4 + (0.08 if walking and G.lean > 0.06 else 0.0), minf(1.0, dt * 3.0)) - slip_k * 0.25  # (bowing with the upper body; knelt, eyes on what the hand's at; down into the weather, up at the sky, thrown back in a slip)
+	_head.rotation.z += shake_k * sin(t * 31.0) * 0.1
 	_head.position = to_local(_upper.to_global(Vector3(0.0, 0.73, HEAD_Z / height)))  # the head rides the top of the neck, wherever the waist has put it
+	if prop == "umbrella":  # straight up in the world, over the head: angled into the wind, shaking in it
+		var wob := sin(t * 7.3) * 0.04 * minf(1.0, wind.length() / 6.0)
+		_props.umbrella.global_basis = Basis.from_euler(Vector3(clampf(-wind.y * 0.045, -0.5, 0.5) + wob, 0.0, clampf(wind.x * 0.045, -0.5, 0.5) - wob), EULER_ORDER_XYZ)
+		if _canopy != null:
+			_canopy.scale.y = -0.7 if _fx.flip > 0.0 else 1.0  # blown inside out
+	if t > _blink_next:  # a blink now and then
+		_blink = not _blink
+		_blink_next = t + (0.12 if _blink else 2.0 + randf() * 3.0)
+		_face_show()
 	for i in _bones.size():  # the skin follows the joints
 		_skel.set_bone_pose_position(i, _bones[i].position)
 		_skel.set_bone_pose_rotation(i, _bones[i].quaternion)
 		_skel.set_bone_pose_scale(i, _bones[i].scale)
+
+
+# ---- ankles: not the web game's (its legs end at the knee, the shoe hung off the shin). A joint where the shin meets
+# the shoe: planted, the foot stays flat on the floor (walking, crouched, knelt, sat), and in the air it hangs a little
+
+var _ankles: Array[Node3D] = []
+
+
+func _ankles_build(pre: String) -> void:
+	for i in 2:
+		var knee: Node3D = _legs[i][1]
+		var a := Node3D.new()
+		a.name = pre + "ankle%d" % i
+		a.position = Vector3(0, -0.37, 0)  # (the shin's foot: the shoe's top)
+		a.rotation_order = EULER_ORDER_XYZ
+		knee.add_child(a)
+		for c in knee.get_children():
+			if c is MeshInstance3D and (c.transform * c.get_aabb().get_center()).y < -0.25:
+				c.reparent(a, true)  # the shoe and everything on it
+		_ankles.append(a)
+
+
+func _ankles_tick(stance: Array) -> void:  # stance: is each foot planted (or on the floor anyway: sat, crouched)
+	for i in _ankles.size():
+		var shin: float = _body.rotation.x + _legs[i][0].rotation.x + _legs[i][1].rotation.x  # the shin's pitch in the world
+		_ankles[i].rotation.x = -shin if stance[i] else -shin * 0.6 + 0.25  # flat on the floor; in the air, toes a little down
+
+
+# ---- mocap: a walk out of the 100STYLE motion capture (Mason, Starke, Komura et al., CC BY 4.0: people/gaits/, made by
+# tools/bvh2gait.py, from its BVH files), played over the procedural walk for the gaits that
+# have one. Every joint the rig has (the pelvis, the waist, the hips, knees, ankles, shoulders, elbows, the head's
+# nod) follows the capture, cycled at the speed the person's going (its stride scaled to their legs). Reaching,
+# sitting, crouching, running and the counter's poses stay procedural; it eases in and out with the walk
+
+const MOCAP := { "plain": "neutral", "brisk": "rushed", "shuffle": "old", "swagger": "strutting", "stroll": "armsbehindback", "bouncy": "elated", "sway": "wigglehips", "stomp": "heavyset", "skip": "skip" }
+
+static var _clips := {}  # gait -> its cycle (or null: none)
+
+var mocap := false  # ponytail: off, the captures looked goofy on this cast (true: play people/gaits/ over the walk)
+var _mw := 0.0
+var _mphase := 0.0
+
+
+static func clip(g: String):
+	if not _clips.has(g):
+		var path := "res://people/gaits/%s.json" % MOCAP.get(g, "-")
+		_clips[g] = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+	return _clips[g]
+
+
+func _mocap_tick(dt: float, speed: float, want: bool, arms_free: bool) -> void:
+	var c = clip(gait) if mocap else null
+	_mw += ((1.0 if want and c != null else 0.0) - _mw) * minf(1.0, dt * 6.0)
+	if c == null or _mw < 0.002:
+		return
+	var per: float = c.period
+	var rate := clampf(speed / maxf(0.2, float(c.stride) * LEG * height), 0.6 / per, 1.5 / per)  # a cycle per stride, at their speed (kept near the style's own pace: a shuffle at a brisk walk would whirl)
+	_mphase = fposmod(_mphase + dt * rate, 1.0)
+	var n: int = c.n
+	var f := _mphase * n
+	var i0 := int(f) % n
+	var i1 := (i0 + 1) % n
+	var k := f - floorf(f)
+	var cv: Dictionary = c.curves
+	var at := func(key: String) -> float: return lerpf(cv[key][i0], cv[key][i1], k) if cv.has(key) else 0.0
+	_body.position.y += at.call("y") * LEG * height * _mw
+	_apply_capture(at, _mw, arms_free, false)
+	_head.rotation.x += (at.call("head_rx") - 0.39) * 0.5 * _mw  # (the capture's neck rides ~22 degrees forward walking: level, that's looking ahead)
+
+
+func _apply_capture(at: Callable, w: float, arms_free: bool, mirror: bool) -> void:  # a capture's joint angles onto the joints, by w (mirror: its left is their right)
+	var m := -1.0 if mirror else 1.0
+	var lean: float = at.call("body_rx")
+	_body.rotation.y = lerpf(_body.rotation.y, at.call("body_ry") * m, w)
+	_body.rotation.x = lerpf(_body.rotation.x, 0.0, w)  # (the lean's the waist's: the legs are measured from upright)
+	_upper.rotation.x = lerpf(_upper.rotation.x, lean, w)
+	_upper.rotation.y = lerpf(_upper.rotation.y, at.call("upper_ry") * m, w)
+	_upper.rotation.z = lerpf(_upper.rotation.z, at.call("body_rz") * m, w)
+	for i in 2:  # (0 is on their right, -x; 1 their left)
+		var s := "R" if (i == 0) != mirror else "L"
+		var out := -1.0 if i == 0 else 1.0
+		_legs[i][0].rotation.x = lerpf(_legs[i][0].rotation.x, -at.call("hip%s_x" % s), w)  # (thigh forward is -x)
+		_legs[i][0].rotation.z = lerpf(_legs[i][0].rotation.z, at.call("hip%s_z" % s) * out, w)
+		_legs[i][1].rotation.x = lerpf(_legs[i][1].rotation.x, at.call("knee%s" % s), w)
+		if i < _ankles.size():
+			_ankles[i].rotation.x = lerpf(_ankles[i].rotation.x, at.call("ankle%s" % s), w)
+		if arms_free:
+			_arms[i][0].rotation.x = lerpf(_arms[i][0].rotation.x, -(at.call("sh%s_x" % s) - lean), w)  # (forward is -x; under the waist's lean)
+			_arms[i][0].rotation.z = lerpf(_arms[i][0].rotation.z, (0.06 if i == 0 else -0.06) + at.call("sh%s_z" % s) * out, w)
+			_arms[i][1].rotation.x = lerpf(_arms[i][1].rotation.x, -at.call("el%s" % s), w)
+
+
+# ---- moves: one-off captures from the CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu: people/moves/, made by
+# tools/bvh2move.py) over the procedural pose. Going down to the floor ("crouch"), the capture plays to its lowest
+# point and holds there while the reaching hand finds the thing (its IK goes on top); letting go of the pose plays the
+# rest of it, back up. Mirrored so the front foot is the one away from the reaching hand
+
+const MOVES := { "crouch": "kneel" }  # pose -> people/moves/<name>.json
+const MOVE_DOWN := 0.7  # seconds to the bottom, whatever the capture took (it took 1.6: too slow for someone's errand, or your crouch key)
+
+static var _moves := {}
+
+var moves := true  # (false: the procedural poses only)
+var _mv := { "clip": null, "t": 0.0, "up": false, "mirror": false }
+
+
+static func move_clip(n: String):
+	if not _moves.has(n):
+		var path := "res://people/moves/%s.json" % n
+		var c = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+		if c != null:
+			var ys: Array = c.curves.y
+			c.low = float(ys.find(ys.min())) / float(c.n - 1)  # (0..1: the bottom)
+		_moves[n] = c
+	return _moves[n]
+
+
+func _move_tick(dt: float, arms_free: bool) -> void:
+	var want: String = MOVES.get(pose, "") if moves else ""
+	if want != "" and (_mv.clip == null or _mv.up):
+		_mv.clip = move_clip(want)
+		_mv.t = 0.0 if not _mv.up else _mv.clip.low * (1.0 - (_mv.t - _mv.clip.low) / (1.0 - _mv.clip.low))  # (back down from as far up as they'd got)
+		_mv.up = false
+		_mv.mirror = _reach.arm == 1
+	var c = _mv.clip
+	if c == null:
+		return
+	var rate: float = c.low / MOVE_DOWN
+	if want == "" and not _mv.up:
+		_mv.up = true
+		_mv.t = c.low + (c.low - _mv.t) / c.low * (1.0 - c.low)  # (up from as far down as they'd got)
+	_mv.t = _mv.t + dt * rate if _mv.up else minf(c.low, _mv.t + dt * rate)
+	if _mv.t >= 1.0:
+		_mv.clip = null
+		return
+	var w := minf(1.0, minf(_mv.t, 1.0 - _mv.t) / 0.08)  # (in and out of it from whatever they were doing)
+	var f: float = _mv.t * (c.n - 1)
+	var i0 := int(f)
+	var i1 := mini(i0 + 1, c.n - 1)
+	var k := f - i0
+	var cv: Dictionary = c.curves
+	var at := func(key: String) -> float: return lerpf(cv[key][i0], cv[key][i1], k) if cv.has(key) else 0.0
+	_body.position.y = lerpf(_body.position.y, _st.y + at.call("y") * LEG * height, w)
+	_body.position.z = lerpf(_body.position.z, at.call("z") * LEG * height, w)
+	_apply_capture(at, w, arms_free, _mv.mirror)
 
 
 func _leg_at(p: float, stance_f: float, reach_d: float, knee_k: float, th_end: float, A: float) -> Array:  # -> [thigh angle forward, knee bend, planted]

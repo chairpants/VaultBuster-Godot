@@ -1,0 +1,7 @@
+The walk cycles here are made from the 100STYLE motion capture dataset:
+  Ian Mason, Sebastian Starke, Taku Komura. "Real-Time Style Modelling of Human Locomotion via
+  Feature-Wise Transformations and Local Motion Phases." Proc. ACM Comput. Graph. Interact. Tech. 5(1), 2022.
+  https://www.ianxmason.com/100style/  ·  data: https://zenodo.org/records/8127870
+  Licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+Changed from the original: one walk cycle per style, averaged over three strides, reduced to the joint angles of
+this game's characters (tools/bvh2gait.py).

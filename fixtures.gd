@@ -6,7 +6,9 @@ extends Node
 ## climb in roofTick), store/checkout.js (how near: 2.6 m for the flap and a lamp, 2.2 for a switch and a ladder
 ## from the ground, 2.4 from the roof; the words of the tips). Where they all are: data/interact.json.
 ## A tap on a switch flips its own zone; held, the whole plate (flipPlate).
-## Different here: the hatch's lid only lifts while you're on the ladder (open, you could walk into the hole); and a
+## Different here: the counter's pass-through has no leaf over it, and its gate's a swinging one on a spring hinge,
+## like the theater's doors: whoever walks through pushes it away from them, and it swings shut behind them.
+## The hatch's lid only lifts while you're on the ladder (open, you could walk into the hole); and a
 ## thing's found by where the crosshair lands near it, not by the mesh it hits.
 
 var flap := {}
@@ -43,6 +45,12 @@ func _ready() -> void:
 			_lid = n
 		elif p.distance_to(Vector3(0, ladders.back.raise, 0)) < 0.02 and n.get_child_count() >= 8:
 			_slide = n
+	if _flap_pivot:  # no leaf over the pass-through: it's an open gap in the counter, gate and all
+		_flap_pivot.visible = false
+		$"../Interact".no_collide.append(_flap_pivot)  # (main.gd makes the level solid after this: not these)
+	if _flap_gate:  # ...and the gate swings out of the way of whoever's walking through (it doesn't stop them)
+		_flap_gate.rotation_order = EULER_ORDER_YXZ
+		$"../Interact".no_collide.append(_flap_gate)
 	for what in [["the counter's leaf", _flap_pivot], ["its gate", _flap_gate], ["the hatch's lid", _lid], ["the back ladder", _slide]]:
 		if what[1] == null:
 			push_warning("%s isn't where the web game has it in the level (moved, or deleted?)" % what[0])
@@ -57,10 +65,8 @@ func on_roof() -> bool:
 
 
 func _process(dt: float) -> void:
-	if _flap_pivot:
-		_flap_pivot.rotation.z += ((flap.openA if flap_open else 0.0) - _flap_pivot.rotation.z) * minf(1.0, dt * 6.0)  # leaf lifts up against the wall
 	if _flap_gate:
-		_flap_gate.rotation.y += ((flap.gateA if flap_open else 0.0) - _flap_gate.rotation.y) * minf(1.0, dt * 5.0)  # gate swings in behind the counter
+		_gate_tick(dt)
 	if _lid:
 		_lid.rotation.x += ((-ladders.hatch.lidA if player.climb != null and player.climb.L == ladders.hatch.climb else 0.0) - _lid.rotation.x) * minf(1.0, dt * 2.5)
 	if _slide and back_down and _slide.position.y > 0.0:  # the back ladder coming down: it falls
@@ -112,10 +118,6 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 				aim = "lamp"
 				aim_what = l
 				return "E — turn lamp %s" % ("off" if l.on else "on")
-		var c: Dictionary = flap.box  # the counter's pass-through: the leaf, or the gate under it
-		if at.x > c.x0 - 0.05 and at.x < c.x1 + 0.05 and at.z > c.z0 - 0.12 and at.z < c.z1 + 0.12 and at.y < 2.8:
-			aim = "flap"
-			return "E — %s the counter pass-through" % ("close" if flap_open else "open")
 	return ""
 
 
@@ -140,6 +142,47 @@ func holdable() -> bool:  # E held on a switch that shares its plate: the whole 
 func hold_done() -> void:
 	if holdable():
 		lights.flip_plate(aim_what.zone)
+
+
+# the gate: pushed from whichever side they come at it (you, the staff), it swings away from them, quick and firm,
+# and once the gap's clear it springs back, swinging past shut a few times (interact.gd's push doors: the same spring)
+
+var gate := { "a": 0.0, "v": 0.0, "side": 0, "moving": false }
+
+
+func _gate_tick(dt: float) -> void:
+	dt = minf(dt, 0.05)
+	var c: Dictionary = flap.box
+	var mid_z: float = (c.z0 + c.z1) / 2.0
+	var who: Array = [player.global_position]
+	for e: Node in preload("res://staff.gd").crew:
+		if e.dana != null:
+			who.append(e.dana.position)
+	var near = null
+	for p: Vector3 in who:
+		if p.x > c.x0 - 0.1 and p.x < c.x1 + 0.1 and absf(p.z - mid_z) < 0.8 and p.y < 2.2:
+			near = p
+			break
+	if near != null:
+		if gate.side == 0:
+			gate.side = 1 if near.z > mid_z else -1  # away from them: in behind the counter, or out to the lobby; held that way till the gap's clear
+			if absf(gate.a) < 0.15:
+				$"../Ambience".door("push", "open", _flap_gate.global_position + Vector3(0.8, 1.0, 0.0))
+	else:
+		gate.side = 0
+	var target: float = flap.gateA * 0.95 * gate.side
+	gate.v += ((90.0 if gate.side else 30.0) * (target - gate.a) - (16.0 if gate.side else 2.2) * gate.v) * dt  # pushed: quick and firm; let go: a loose spring
+	gate.a += gate.v * dt
+	if absf(gate.v) > 0.4:
+		gate.moving = true
+	if gate.side == 0 and absf(gate.a) < 0.002 and absf(gate.v) < 0.01:
+		gate.a = 0.0
+		gate.v = 0.0
+		if gate.moving:
+			gate.moving = false
+			$"../Ambience".door("push", "settle", _flap_gate.global_position + Vector3(0.8, 1.0, 0.0))
+	_flap_gate.rotation.y = gate.a
+	$"../Ambience".swing(_flap_gate, _flap_gate.global_position + Vector3(0.8, 1.0, 0.0), absf(gate.v))
 
 
 func on_e() -> bool:  # true if E was ours

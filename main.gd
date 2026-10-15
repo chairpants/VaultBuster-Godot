@@ -15,6 +15,22 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 		var extras: Node = load("res://world/extras.glb").instantiate()
 		extras.name = "Extras"
 		$World.add_child(extras)
+	for n: Node in $World.find_children("*", "Node3D", true, false):  # the cars the level was written with, stood where they were that day: out (cars.gd parks the day's own)
+		if is_instance_valid(n) and n.get_child_count() >= 20 and absf(n.position.y + 0.12) < 0.005 and n.position.z < -8.0 and n.position.z > -20.0:
+			n.free()
+	var cooler_dz: float = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things.cooler.get("moved", 0.0)
+	for n: Node in $World.find_children("*", "Node3D", true, false):  # the drinks cooler, moved along the wall clear of the counter gate's swing (data/interact.json has it there: cooler.moved)
+		if not n is MeshInstance3D and n.get_child_count() > 100 and Vector2(n.position.x + 7.26, n.position.z - 5.25).length() < 0.02:  # (its own position: nothing's in the tree yet to have a global one)
+			n.position.z += cooler_dz
+	var cars: Node = preload("res://cars.gd").new()  # (the lot's cars and the road's: cars.gd)
+	cars.name = "Cars"
+	add_child(cars)
+	var golf: Node = preload("res://golf.gd").new()  # (golf off the roof: golf.gd)
+	golf.name = "Golf"
+	add_child(golf)
+	var pad: Node = preload("res://pad.gd").new()  # (a gamepad, as the keyboard and mouse: pad.gd)
+	pad.name = "Pad"
+	add_child(pad)
 	var amb: Node = preload("res://ambience.gd").new()
 	amb.name = "Ambience"
 	add_child(amb)
@@ -42,6 +58,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var pos: Node = preload("res://pos.gd").new()  # (and the register's terminal: pos.gd. Last, so it has the keyboard first)
 	pos.name = "POS"
 	add_child(pos)
+	var arcade: Node = preload("res://arcade.gd").new()  # (Tony's cabinets: arcade.gd. Late: at the machine it has the keyboard first)
+	arcade.name = "Arcade"
+	add_child(arcade)
 	var counter: Node = preload("res://counter.gd").new()  # (and rearranging the counter: counter.gd. After the terminal: a click's its first while something's being moved)
 	counter.name = "Counter"
 	add_child(counter)
@@ -54,6 +73,12 @@ func _notification(what: int) -> void:
 
 func _ready() -> void:
 	var solid := 0
+	# the level's collision, kept from the last start (it takes a few seconds to work out): user://, by when the level and its extras were last changed
+	var stamp := "%d_%d" % [FileAccess.get_modified_time("res://world/world.scn"), FileAccess.get_modified_time("res://world/extras.glb") if FileAccess.file_exists("res://world/extras.glb") else 0]
+	var cache_path := "user://collision_%s.res" % stamp
+	var cache: Resource = ResourceLoader.load(cache_path) if ResourceLoader.exists(cache_path) else null
+	var shapes: Dictionary = cache.get_meta("shapes", {}) if cache != null else {}
+	var made := 0
 	for m: MeshInstance3D in $World.find_children("*", "MeshInstance3D", true, false):
 		var size := m.get_aabb().size
 		if size.x > 100.0 and m.global_position.y + m.get_aabb().position.y > 8.0:
@@ -61,8 +86,27 @@ func _ready() -> void:
 			continue
 		if _walk_through(m) or m.get_aabb().get_longest_axis_size() < 0.2:
 			continue
-		m.create_trimesh_collision()  # ponytail: built at every start (a few seconds); bake it into the level if that gets old
+		var key := str($World.get_path_to(m))
+		if shapes.has(key):
+			var body := StaticBody3D.new()
+			var col := CollisionShape3D.new()
+			col.shape = shapes[key]
+			body.add_child(col)
+			m.add_child(body)
+		else:
+			m.create_trimesh_collision()
+			for b in m.get_children():
+				if b is StaticBody3D and b.get_child_count() and b.get_child(0) is CollisionShape3D:
+					shapes[key] = b.get_child(0).shape
+			made += 1
 		solid += 1
+	if made > 0:  # (worked out afresh: kept for next time)
+		var keep := Resource.new()
+		keep.set_meta("shapes", shapes)
+		ResourceSaver.save(keep, cache_path)
+		for f in DirAccess.get_files_at("user://"):  # (and the ones from an older level go)
+			if f.begins_with("collision_") and f != cache_path.get_file():
+				DirAccess.remove_absolute("user://" + f)
 	print("world: %d meshes solid" % solid)
 	print("lights: ceiling panels by zone %s" % [$Lights._panels.keys().map(func(z: String) -> String: return "%s %d" % [z, $Lights._panels[z].size()])])
 	var args := OS.get_cmdline_user_args()
@@ -91,7 +135,77 @@ func _shot(args: PackedStringArray) -> void:
 			$Player.rotation.y = deg_to_rad(v[3])
 			if v.size() > 4:
 				$Player/Camera.rotation.x = deg_to_rad(v[4])
+		elif a.begins_with("--tool="):  # the mop or the sweeper in your hands (--tool=mop:scrub: at work on a spill in front of you)
+			await get_tree().create_timer(0.6).timeout
+			$Chores.tool_take(a.trim_prefix("--tool=").get_slice(":", 0))
+			if a.ends_with(":scrub"):
+				var at: Vector3 = $Player.global_position - $Player.global_basis.z * 1.3
+				$Chores.mess_add("spill", at.x, at.z)
+				$Chores._scrub = { "m": $Chores.messes[-1], "t": 0.0, "dur": 2.4 }
+		elif a.begins_with("--snack"):  # one off the rack, in your hand
+			await get_tree().create_timer(0.6).timeout
+			var u: Dictionary = $Snacks.units.filter(func(u: Dictionary) -> bool: return u.node != null and (u.k != "") == a.ends_with("=drink"))[0]
+			$Snacks.set_out(u, true)
+			$Snacks.held = { "u": u, "left": 4, "total": 4, "paid": true }
+		elif a == "--overdue":  # somebody with a tape six days late (the register's message center has them to call)
+			await get_tree().create_timer(0.6).timeout
+			var late_t: Dictionary = $Tapes.tapes.filter(func(t: Dictionary) -> bool: return not t.off)[0]
+			$Tapes.set_on_shelf(late_t, false)
+			$Shoppers.rented.append([late_t, Clock.day - 11, Clock.day - 6, $Shoppers.members.all[3].num])
+		elif a == "--missed":  # a call that rang out: in the message center, to be rung back
+			await get_tree().create_timer(0.6).timeout
+			$Phone.ring = { "member": $Shoppers.members.all[5], "title": "Alien", "cat": "Sci-Fi & Fantasy", "t": 25.0, "rang": 99.0 }
+			await get_tree().create_timer(0.3).timeout
+		elif a == "--quiet":  # nobody in and nobody coming: what the staff do with themselves (--quiet=stool, --quiet=floor: that one, now)
+			await get_tree().create_timer(0.6).timeout
+			$Shoppers._arrive = 99999.0
+			for k: Dictionary in $Shoppers.custs.duplicate():
+				$Shoppers._gone(k)
+		elif a.begins_with("--quiet="):
+			await get_tree().create_timer(0.6).timeout
+			$Shoppers._arrive = 99999.0
+			for k: Dictionary in $Shoppers.custs.duplicate():
+				$Shoppers._gone(k)
+			if a.ends_with("stool"):
+				$Staff._stool_fetch()
+			else:
+				$Staff._wander_start()
+		elif a == "--postit":  # a couple of overdue-call notes by the phone
+			await get_tree().create_timer(0.6).timeout
+			for m: Dictionary in $Shoppers.members.all.slice(0, 2):
+				$Phone.postit_add(m, true)
+			if "--peel" in args:  # (...one of them peeled off, in your hand)
+				$Phone.aim = "postit"
+				$Phone.aim_note = $Phone.postits[0]
+				$Phone.peel()
+		elif a == "--hands":  # a full-ish inventory: two tapes, a drink, a candy bar, then back to the first tape and to the drink
+			await get_tree().create_timer(0.6).timeout
+			var T2 := $Tapes
+			var Sn2 := $Snacks
+			for t: Dictionary in T2.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not T2._corners(t).is_empty()).slice(0, 2):
+				T2.pickup(t)
+				T2.inspecting = false
+			for drink in [true, false]:
+				Sn2.aim = { "take": Sn2.units.filter(func(u: Dictionary) -> bool: return not u.out and u.node != null and (u.k != "") == drink)[0] }
+				Sn2.on_e()
+				await get_tree().process_frame
+			T2.inv_select(0)
+			await get_tree().process_frame
+			var ok0: bool = T2.held != null and Sn2.held == null
+			T2.inv_select(2)
+			await get_tree().process_frame
+			print("hands: %d carried, tape back in hand %s, drink back in hand %s, snack bar shows %s" % [T2.inv.size(), ok0, Sn2.held != null and Sn2.held.u.k != "" and T2.held == null, T2.inv.map(func(e: Dictionary) -> String: return T2._slot(e).name)])
+		elif a == "--street":  # out front: a few people going by (one of them with a pizza), somebody driving in next door, a customer or two on their way in
+			for i in 4:
+				var w: Dictionary = $People.walker([Vector2(-5.0 + i * 2.2, -1.0 - 0.1 * i), Vector2(24.0 if i % 2 else -24.0, -1.0)])
+				w.umb_own = i < 2
+				if i == 3:
+					$People._box(w, true)
+			$People.pizza_run()
+			for i in 3:
+				$Shoppers.spawn()
 		elif a.begins_with("--co="):  # mid-sale at the counter, that many steps in (two tapes; you're ringing it up)
+			$Shoppers.drives = false
 			var cu: Dictionary = $Shoppers.spawn()
 			cu.returning = []
 			cu.thief = false
@@ -148,6 +262,23 @@ func _shot(args: PackedStringArray) -> void:
 		elif a.begins_with("--weather="):  # rain | snow | fog | clear, straight to it
 			var w := a.trim_prefix("--weather=")
 			$Weather.set_now("clear" if w == "fog" else w, 0.9, 0.8 if w == "fog" else 0.0)
+		elif a == "--gaits":  # one of each gait, walking on the spot side-on, at the pace they'd walk (--gaits --mocap: the 100STYLE captures, to compare)
+			var gaits: Array = preload("res://person.gd").GAITS.keys()
+			for i in gaits.size():
+				var c: Node3D = $People.spawn(i)
+				c.gait = gaits[i]
+				c.mocap = "--mocap" in args
+				c.position = Vector3(-4.8 + i * 1.2, -0.12, -8.0)
+				c.rotation.y = PI / 2.0
+				c.set_mood("neutral")
+				var lbl := Label3D.new()
+				lbl.text = gaits[i]
+				lbl.font_size = 48
+				lbl.pixel_size = 0.004
+				lbl.position = Vector3(-4.8 + i * 1.2, 2.15, -8.0)
+				lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+				add_child(lbl)
+				get_tree().process_frame.connect(func() -> void: c.tick(get_process_delta_time(), 1.3))
 		elif a == "--people":  # a line-up out front: one standing, one walking on the spot, one running, one sat, one crouched, one at a counter
 			var poses := [["idle", 0.0, "happy"], ["walk", 1.3, "neutral"], ["walk", 3.0, "alarm"], ["sit", 0.0, "love"], ["crouch", 0.0, "shifty"], ["wait", 0.0, "impatient"], ["hold", 1.2, "thanks"], ["read", 0.0, "browse"]]
 			for i in poses.size():
@@ -168,7 +299,11 @@ func _shot(args: PackedStringArray) -> void:
 			$POS.log_in()
 			$POS._login = 0.5 if a == "--pos=login" else -1.0
 			for cmd in (a.trim_prefix("--pos=").split(",", false) if a.begins_with("--pos=") and a != "--pos=login" else []):
-				$POS.type(cmd)
+				if cmd.begins_with("!"):  # (a key on a screen with keys of its own: !G on the schedule is AUTO)
+					$POS._frame()
+					$POS._screen.keys.call(OS.find_keycode_from_string(cmd.substr(1)), false)
+				else:
+					$POS.type(cmd)
 			if a == "--pos=login":
 				set_process(false)
 				$POS.set_process(false)
@@ -192,6 +327,7 @@ func _shot(args: PackedStringArray) -> void:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://shot.png")
 	print("shot: %s, on the floor %s, at %s" % [Clock.fmt_clock(Clock.h), $Player.is_on_floor(), $Player.global_position])
+	print("shot: %d on the roster, %d staff nodes (%s), %d customers, %d going by, %d bodies" % [$Staff.roster.size(), $Staff.crew.size(), $Staff.crew.map(func(e: Node) -> String: return e.state), $Shoppers.custs.size(), $People.walkers.size(), $People.get_child_count()])
 	get_tree().quit()
 
 
@@ -214,6 +350,8 @@ func _video(p: PackedStringArray) -> void:
 
 func _check() -> void:
 	var bad: Array[String] = []
+	$Shoppers.drives = false  # (its customers are timed from the sidewalk; the ones by car get their own look, below)
+	$Staff.sits = false  # (and nobody goes for the stool mid-scene: that has its own look too)
 	var I := $Interact
 	var P := $Player
 	await get_tree().create_timer(0.5).timeout
@@ -262,12 +400,14 @@ func _check() -> void:
 	if F._flap_pivot == null or F._flap_gate == null or F._lid == null or F._slide == null:
 		bad.append("not every fixture was found in the level")
 	else:
+		P.fly = false
+		P.global_position = Vector3(-6.8, 0.05, 4.6)  # in the counter's gap from the lobby side: the gate swings in behind the counter
+		await get_tree().create_timer(0.8).timeout
+		var swung: float = F._flap_gate.rotation.y
 		P.global_position = Vector3(0, 0, 10)
-		F.aim = "flap"
-		F.on_e()
-		await get_tree().create_timer(1.2).timeout
-		if absf(F._flap_pivot.rotation.z - F.flap.openA) > 0.1:
-			bad.append("the counter's leaf didn't lift")
+		await get_tree().create_timer(3.0).timeout
+		if swung < 1.0 or absf(F._flap_gate.rotation.y) > 0.05 or F._flap_pivot.visible:
+			bad.append("the counter's gate didn't swing in as you came through and shut behind you (%.2f, then %.2f), or the leaf's still over it" % [swung, F._flap_gate.rotation.y])
 		F.aim = "hatch"
 		F.on_e()
 		await get_tree().create_timer(F.ladders.dur + 0.6).timeout
@@ -1264,5 +1404,248 @@ func _check() -> void:
 	await get_tree().create_timer(9.0).timeout
 	if $Lights._night.is_empty() or $Lights._night[0].light.light_energy <= 0.0:
 		bad.append("the lot's lamps didn't come on after dark (%d of them)" % $Lights._night.size())
+	# out front: the weather on people, the pizza place, the cars, the glass and the drifts; and what's in a hand
+	var Pe := $People
+	var W := $Weather
+	var Ca := $Cars
+	if Ca.parked.size() < 2 or $World.find_children("*", "Node3D", true, false).any(func(n: Node) -> bool: return n.get_child_count() >= 20 and absf(n.position.y + 0.12) < 0.005 and n.position.z < -8.0 and n.position.z > -20.0 and not Ca.is_ancestor_of(n)):
+		bad.append("the lot: %d cars parked for the day, or the level's own are still stood there" % Ca.parked.size())
+	var lot_day: Array = Ca.parked.map(func(g: Node3D) -> Vector3: return g.position)
+	Ca.park_lot(Clock.day, false)
+	if Ca.parked.map(func(g: Node3D) -> Vector3: return g.position) != lot_day:
+		bad.append("the lot isn't the same lot twice in a day")
+	W.set_now("snow")
+	var wa: Dictionary = Pe.walker([Vector2(-6.0, -1.0), Vector2(30.0, -1.0)])
+	await get_tree().create_timer(3.0).timeout
+	if wa.get("snow", 0.0) <= 0.05 or not wa.c._snow_on[0].visible or wa.get("hunch", 0.0) < 0.3 or wa.c.hunch < 0.3:
+		bad.append("snow didn't settle on somebody walking by, or they're not hunched against it (snow %s, hunch %s)" % [wa.get("snow"), wa.get("hunch")])
+	if W._lumps.size() < 100 or not W._drifts.visible:
+		bad.append("no snow drifting against the kerbs (%d lumps)" % W._lumps.size())
+	W.set_now("rain")
+	wa.umb_own = true
+	var wb: Dictionary = Pe.walker([Vector2(-6.0, -1.3), Vector2(30.0, -1.3)])
+	wb.umb_own = false
+	var wb_x: float = wb.c.position.x
+	await get_tree().create_timer(1.0).timeout
+	if wa.c.prop != "umbrella" or wa.c._props.umbrella.global_basis.y.normalized().y < 0.8 or wa.c.shield:
+		bad.append("an umbrella didn't go up in the rain, straight up (%s)" % [wa.c.prop])
+	if wb.c.prop != null or not wb.c.shield or wb.c.position.x - wb_x < 2.0:
+		bad.append("caught in the rain with no umbrella: no hand over the head, or no run for it (%.1f m in a second)" % (wb.c.position.x - wb_x))
+	if W._glass.size() != 3 or W._glass[0].albedo_color.a < 0.5 or W._glass[1].albedo_color.a < 0.5:
+		bad.append("no rain on the storefront glass")
+	W.set_now("clear")
+	wa.c._blink = false
+	wa.c._blink_next = 0.0
+	wa.c.set_mood("neutral")
+	wa.c.tick(0.01, 0.0)
+	if not wa.c._blink or wa.c._face.uv1_offset.y < 0.6:
+		bad.append("they don't blink")
+	wa.c.slip()
+	if not wa.c.busy():
+		bad.append("a slip doesn't hold them up")
+	Pe._box(wa, true)
+	if wa.c._item.get_child_count() != 1 or wa.c.pose != "hold":
+		bad.append("a pizza box isn't in their hand")
+	var wc: Dictionary = Pe.walker([Vector2(Pe.PIZZA_DOOR.x, -1.0), Pe.PIZZA_DOOR])
+	wc.then = Pe._in_tonys.bind(0.5, [Vector2(30.0, -1.0)], null)
+	var n_lot: int = Ca.lot.size() + Pe.walkers.size()
+	Pe.pizza_run()
+	if Ca.lot.size() + Pe.walkers.size() != n_lot + 1:
+		bad.append("nobody set out for a pizza")
+	# a customer by car: along the road, in at the driveway, into a stall, out of it and in to the store; and off again
+	var driver: Dictionary = S.members.all[20]
+	driver.car = Ca.new_look()
+	S.drives = true
+	var dc: Dictionary = S.spawn(driver)
+	S.drives = false
+	if dc.state != "drivingIn" or dc.c.visible or dc.car == null:
+		bad.append("somebody with a car walked up instead (%s)" % dc.state)
+	else:
+		var car: Dictionary = dc.car
+		var t1 := Time.get_ticks_msec()
+		while car.phase != "parked" and Time.get_ticks_msec() - t1 < 60000:
+			await get_tree().process_frame
+		await get_tree().process_frame
+		if car.phase != "parked" or absf(car.g.position.x - car.sx) > 0.05 or absf(car.g.position.z - Ca.PARK_Z) > 0.05 or absf(angle_difference(car.g.rotation.y, PI / 2.0)) > 0.1:
+			bad.append("a car didn't make it into its stall, nose to the road (%s at %s, turned %.2f)" % [car.phase, car.g.position, car.g.rotation.y])
+		if dc.state != "arrive" or not dc.c.visible or Vector2(dc.c.position.x - car.door.x, dc.c.position.z - car.door.y).length() > 1.0 or absf(dc.c.position.y + 0.12) > 0.01:
+			bad.append("its driver didn't get out beside it, down on the lot (%s at %s)" % [dc.state, dc.c.position])
+		S._gone(dc)
+		await get_tree().create_timer(1.0).timeout
+		var braking: bool = car.g.get_children().any(func(n: Node) -> bool: return String(n.name).contains("_lamp_tail_") and n.material_override != null)
+		if car.phase != "startUp" or not braking or not car.g.get_node("pool_rear").visible:
+			bad.append("with everyone back in it the car didn't start up, on the brake, its light on the pavement (%s)" % car.phase)
+		t1 = Time.get_ticks_msec()
+		while car.phase != "gone" and Time.get_ticks_msec() - t1 < 60000:
+			await get_tree().process_frame
+		if car.phase != "gone" or Ca.lot.has(car):
+			bad.append("the car didn't drive off (%s)" % car.phase)
+	var t2 := Time.get_ticks_msec()
+	while not wc.box and Pe.walkers.has(wc) and Time.get_ticks_msec() - t2 < 30000:
+		await get_tree().process_frame
+	if not wc.box:  # (by now they may be home with it)
+		bad.append("nobody came away from Tony's counter with a pizza")
+	# in hand: a drink off the rack, in yours; the mop, in both of them
+	var bottle: Dictionary = Sn.units.filter(func(u: Dictionary) -> bool: return u.node != null and u.k != "" and not u.out)[0]
+	Sn.set_out(bottle, true)
+	Sn.held = { "u": bottle, "left": 4, "total": 4, "paid": true }
+	await get_tree().create_timer(0.2).timeout
+	if Sn._hand.get_child_count() != 1 or not Sn._hand.visible or Sn.proxy(bottle) == null:
+		bad.append("a drink in your hand doesn't show")
+	Sn.held = null
+	Sn.set_out(bottle, false)
+	P.fly = false
+	P.global_position = Vector3(0, 0.05, 8.0)
+	Ch.tool_take("mop")
+	await get_tree().create_timer(0.5).timeout
+	if Ch._rig == null or Ch._rig.global_position.distance_to(P.global_position) > 1.6 or absf(Ch._rig.global_position.y - P.global_position.y) > 0.05 or (P.body != null and not P.body._reach2.on):
+		bad.append("the mop isn't out in front of you on the floor, a hand on it")
+	Ch.tool_return()
+	if Ch._rig != null or not Ch._rig_src.visible:
+		bad.append("the mop didn't go back")
+	# the switches' rockers; no fog indoors
+
+	if Li._rockers.size() != Li.switches.size():
+		bad.append("light switches: %d of %d rockers found" % [Li._rockers.size(), Li.switches.size()])
+	else:
+		var was_on: bool = Li.zone_on.breakroom
+		var rocker: Node3D = Li._rockers.filter(func(r: Array) -> bool: return r[1] == "breakroom")[0][0]
+		var tilt := rocker.rotation.x
+		Li.flip_switch("breakroom")
+		await get_tree().create_timer(0.4).timeout
+		if absf(rocker.rotation.x + tilt) > 0.05 or absf(tilt) < 0.2:
+			bad.append("a light switch's rocker didn't flip with it (%.2f -> %.2f)" % [tilt, rocker.rotation.x])
+		Li.set_zone("breakroom", was_on)
+	W.set_now("clear", 0.9, 0.8)
+	P.global_position = Vector3(0, 0.05, 8.0)
+	await get_tree().create_timer(1.5).timeout
+	var fog_in: float = $WorldEnvironment.environment.fog_density
+	P.global_position = Vector3(0, 0.05, -6.0)
+	await get_tree().create_timer(1.5).timeout
+	if fog_in > 0.002 or $WorldEnvironment.environment.fog_density < 0.02:
+		bad.append("the fog's indoors too (%.3f in the store, %.3f out on the lot)" % [fog_in, $WorldEnvironment.environment.fog_density])
+	W.set_now("clear")
+	P.global_position = Vector3(0, 0.05, 8.0)
+	# the register: a sale on its own screen, its beeps, a member's whole record
+
+	for k: Dictionary in S.custs.duplicate():
+		S._gone(k)
+	var rk: Dictionary = S.spawn()
+	rk.returning = []
+	rk.thief = false
+	rk.path = []
+	rk.c.position = Vector3(S._counter.x, 0, S._counter.z)
+	for t: Dictionary in T.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not T._corners(t).is_empty()).slice(0, 2):
+		T.set_on_shelf(t, false)
+		rk.tapes.append(t)
+	rk.holding = 2
+	St._ring_t = -999.0
+	S.members.incident(rk.member, "returned a tape full of jam")
+	$Checkout.start("player", rk)
+	var sale = $Checkout.ring()
+	if sale == null or sale.carded != false or sale.items.size() < 2 or sale.cash_in != null:
+		bad.append("the register hasn't got the sale (%s)" % [sale])
+	while $Checkout.co != null and $Checkout.step()[0] != "ring":
+		$Checkout._printing = 0.0
+		$Checkout.act($Checkout.step()[1])
+	sale = $Checkout.ring()
+	$POS._frame()
+	screen = "".join($POS._ch)
+	if sale == null or sale.carded != true or sale.cash_in == null or not screen.contains("REGISTER · SALE") or not screen.contains("CASH TENDERED") or not screen.contains("INCIDENT") or not screen.contains("SINCE"):
+		bad.append("the sale isn't on the register's screen, the account and the cash with it")
+	if $POS._mon_glass == null:
+		bad.append("the register's monitor isn't found in the level")
+	if $Ambience._live and not $Ambience._baked.has("beep1900"):
+		bad.append("the register didn't beep at the card")
+	while $Checkout.co != null:
+		$Checkout._printing = 0.0
+		$Checkout.act($Checkout.step()[1])
+	if $Ambience._live and not $Ambience._baked.has("buzz9"):
+		bad.append("the printer didn't buzz")
+	S._gone(rk)
+	var rec: Dictionary = rk.member
+	$POS.log_in()
+	$POS._member_detail(rec)
+	var acct := "\n".join($POS._screen.lines.call())
+	if not acct.contains("ADDRESS..: %s" % rec.addr) or rec.addr.length() < 6 or not acct.contains("MEMBER SINCE: %d" % rec.since) or not acct.contains("RETURNED A TAPE FULL OF JAM") or not acct.contains("NOTES"):
+		bad.append("a member's record hasn't its address, its year, its notes or what's gone on it")
+	$POS.log_off()
+	# the staff: the rewinder before the shelf; the stool when it's quiet; the chute's door; Tony in his own clothes
+	var unwound: Array = T.tapes.filter(func(t: Dictionary) -> bool: return not t.off and not T._corners(t).is_empty()).slice(4, 7)
+	for t: Dictionary in unwound:
+		T.set_on_shelf(t, false)
+		T.set_wind_frac(t, 0.4)
+		T.return_bin.append(t)
+	var used := false
+	var t3 := Time.get_ticks_msec()
+	while (unwound.any(func(t: Dictionary) -> bool: return t.off) or not St.carry.is_empty()) and Time.get_ticks_msec() - t3 < 150000:
+		used = used or T.rewinders.any(func(rw: Dictionary) -> bool: return rw.tape != null and unwound.has(rw.tape))
+		await get_tree().process_frame
+	if unwound.any(func(t: Dictionary) -> bool: return t.off or not T.is_rewound(t)) or not used:
+		bad.append("returns that came back unrewound didn't go through the rewinder and onto the shelf (through it: %s, still out: %d, %s)" % [used, unwound.filter(func(t: Dictionary) -> bool: return t.off).size(), St.state])
+	St.sits = true
+	t3 = Time.get_ticks_msec()
+	while St.state != "stoolSit" and Time.get_ticks_msec() - t3 < 60000:
+		await get_tree().process_frame
+	var stool_at: Vector3 = $Things._stool_at()
+	if St.state != "stoolSit" or $Things.stool_by != St or Vector2(stool_at.x - St.STOOL_AT.x, stool_at.z - St.STOOL_AT.y).length() > 0.05 or St.dana.pose != "sit" or Vector2(St.dana.position.x - stool_at.x, St.dana.position.z - stool_at.z).length() > 0.05:
+		bad.append("with nothing to do, nobody fetched the stool and sat on it by the register (%s, the stool at %s)" % [St.state, stool_at])
+	var late_in: Dictionary = S.spawn()
+	await get_tree().create_timer(3.0).timeout
+	if St.state in ["stoolSit", "stoolSitDown"] or $Things.stool_by != null or St.dana.pose == "sit":
+		bad.append("somebody came in and they stayed on the stool (%s)" % St.state)
+	St.sits = false
+	S._gone(late_in)
+	Ch.chute_use()
+	await get_tree().create_timer(0.5).timeout
+	if Ch._chute_door == null or Ch._chute_door.rotation.x < 0.6:
+		bad.append("the trash chute's door doesn't open")
+	if Pe.tony == null or Pe.cast.who[-1].get("staff", "") != "Tony" or not Pe.tony.name.begins_with("p%d" % (Pe.cast.who.size() - 1)):
+		bad.append("Tony's not in his own clothes")
+	# the schedule and the job board on the register: the grid's keys, and AUTO
+	var keep_sched: Array = St.roster.map(func(w: Dictionary) -> Array: return w.sched.duplicate())
+	var keep_jobs: Array = St.roster.map(func(w: Dictionary) -> Dictionary: return w.jobs.duplicate())
+	$POS.log_in()
+	$POS.type("W")
+	var grid: Dictionary = $POS._screen
+	St.roster[0].sched = [0, 0, 0, 0, 0, 0, 0]
+	$POS._frame()
+	for key in [KEY_1, KEY_D, KEY_S, KEY_ENTER]:  # (the first of them; a day on, an hour down, and set)
+		grid.keys.call(key, false)
+	var one: Array = St.roster[0].sched.duplicate()
+	grid.keys.call(KEY_S, true)  # (shift: painted on down)
+	grid.keys.call(KEY_ENTER, false)  # (and that one cleared again)
+	if St.hours({ "sched": one }) != 1 or St.hours(St.roster[0]) != 1 or St.roster[0].sched == one:
+		bad.append("the schedule's grid: WASD and ENTER didn't set an hour, paint the next, and clear it (%s then %s)" % [one, St.roster[0].sched])
+	grid.keys.call(KEY_G, false)
+	var day_ok := func(m: int) -> bool:  # one unbroken shift, eight hours at most
+		var bits: Array = range(15).filter(func(b: int) -> bool: return (m >> b) & 1 == 1)
+		return bits.is_empty() or (bits[-1] - bits[0] + 1 == bits.size() and bits.size() <= 8)
+	var fri_eve: bool = range(8, 13).all(func(n: int) -> bool: return St.roster.any(func(w: Dictionary) -> bool: return (int(w.sched[5]) >> n) & 1 == 1))
+	if not St.auto_sched or St.roster.any(func(w: Dictionary) -> bool: return St.hours(w) != St.SCHED_MAX or not w.sched.all(day_ok)) or not fri_eve:
+		bad.append("AUTO didn't give everyone their %d hours in whole shifts, Friday evening covered (%s)" % [St.SCHED_MAX, St.roster.map(func(w: Dictionary) -> Array: return w.sched)])
+	grid.keys.call(KEY_ENTER, false)
+	if St.auto_sched:
+		bad.append("touching the schedule didn't take it off AUTO")
+	$POS._back()
+	$POS.type("J")
+	grid = $POS._screen
+	$POS._frame()
+	St.roster[0].jobs.register = 1
+	grid.keys.call(KEY_ENTER, false)
+	grid.keys.call(KEY_D, false)
+	grid.keys.call(KEY_X, false)
+	if St.roster[0].jobs.register != 2 or St.roster[0].jobs.phone != 0:
+		bad.append("the job board: ENTER didn't step a priority on, or X didn't set the next job to never (%s)" % [St.roster[0].jobs])
+	grid.keys.call(KEY_G, false)
+	var best_job: String = St.JOBS.keys().filter(func(j: String) -> bool: return j != "register").reduce(func(a: String, b: String) -> String: return b if St.roster[-1].skills[St.JOB_SKILL[b]][0] > St.roster[-1].skills[St.JOB_SKILL[a]][0] else a)
+	if not St.auto_jobs or St.roster.all(func(w: Dictionary) -> bool: return w.jobs.register != 1) or St.roster[-1].jobs[best_job] > 2 or St.roster.any(func(w: Dictionary) -> bool: return w.jobs.values().any(func(v: int) -> bool: return v < 1 or v > 4)):
+		bad.append("AUTO didn't put each of them on what they're best at, somebody first on the register (%s)" % [St.roster.map(func(w: Dictionary) -> Dictionary: return w.jobs)])
+	$POS.log_off()
+	St.auto_sched = false
+	St.auto_jobs = false
+	for i in St.roster.size():
+		St.roster[i].sched = keep_sched[i]
+		St.roster[i].jobs = keep_jobs[i]
 	print("check: %s" % ("ok" if bad.is_empty() else "; ".join(bad)))
 	get_tree().quit(0 if bad.is_empty() else 1)

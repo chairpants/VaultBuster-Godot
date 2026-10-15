@@ -11,7 +11,8 @@ extends Node3D
 ## cmPickUp, cmSearch, cmSearchBin, cmNotice, the badge terminal: cmTermOpen, cmNoSale, cmTermDraw, cmTermKey).
 ## Different here: what you've found is a list (N shows it, notes and all), not things in your nine pockets, and
 ## the hiding places aren't marked by anything you can see.
-## Not over yet: the staff being wary of you the day after, the drawer coming up short, teeing off from the roof.
+## The drawer twenty short the next morning puts everybody on their guard that day (customer.gd: alert_day).
+## And the end of it: a ball off the roof (golf.gd; customer.gd's tee_off).
 
 const ITEMS := { "breakKey": "Break room key", "closetKey": "Janitor's key", "comboNote": "Folded note", "badge": "Ray's employee badge", "pinNote": "Post-it", "printout": "Register printout" }
 const NOTHING := ["Nothing. A gum wrapper", "Nothing but lint", "Nothing there", "Just dust", "A bottle cap. Nothing useful", "Nothing. Somebody's old receipt"]

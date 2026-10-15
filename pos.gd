@@ -11,8 +11,9 @@ extends CanvasLayer
 ## frame, the logo, the key bar, scanlines (the font's VT323, in fonts/). It's on a screen over the game here.
 ## The arrows walk a list's records or the menu's lines (ENTER opens the highlighted one), and the mouse does the same:
 ## what it's over is highlighted, a click picks it or presses a key on the bar, the wheel turns pages.
-## Not over yet: the picture on the register's own monitor, the sale window,
-## SYSRESET (F9 does that). An order's in boxes by the front doors next morning (snacks.gd); a replacement tape's in the returns bin.
+## The register's own monitor on the counter shows it all too, and the sale as it's rung up (the sale window).
+## The staff's week (W) and their jobs (J) are grids: WASD or the arrows, ENTER to set and clear, or G for AUTO.
+## SYSRESET wipes the saved store (as F9 does). An order's in boxes by the front doors next morning (snacks.gd); a replacement tape's in the returns bin.
 
 const COLS := 80
 const BODY := 22  # body rows under the header
@@ -45,7 +46,8 @@ func _ready() -> void:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	add_child(_view)
-	_view.draw.connect(_paint)
+	_view.draw.connect(func() -> void: _paint(_view, _cell))
+	_mon_build.call_deferred()
 	_font = load(FONT) if ResourceLoader.exists(FONT) else null
 	if _font == null:  # (not imported yet: straight off the disk; and with no file at all, whatever monospace there is)
 		_font = FontFile.new()
@@ -184,19 +186,23 @@ func _call_screen(m: Dictionary) -> void:
 			out.append_array(["", " CALLS....: %d%s" % [m.calls, "  (LAST %s)" % _date(m.last_call) if m.calls > 0 else ""]])
 			if m.last_result != "":
 				out.append(" LAST CALL: %s" % m.last_result)
-			out.append(" CALLED TODAY. TRY AGAIN TOMORROW." if m.last_call == Clock.day else " A POST-IT'S BY THE STORE PHONE: CALL THEM FROM THERE.")
+			out.append(" CALLED TODAY. TRY AGAIN TOMORROW." if m.last_call == Clock.day else " A POST-IT WITH THEIR NUMBER IS BY THE STORE PHONE NOW.")
+			if m.last_call != Clock.day:
+				out.append(" TO CALL: F10 TO LOG OFF, WALK TO THE PHONE, E ON THE PHONE OR THE NOTE.")
 			if m.promise > -9:
 				out.append(" PROMISED.: %s - NOT IN YET" % _date(m.promise))
 			out.append_array(["", " L: BILL THE TAPES AS LOST (REPLACEMENT COST GOES ON THEIR ACCOUNT)" if _worst(m) >= LOST_DAYS and m.calls >= 2 else " (BILL AS LOST: AFTER %d DAYS AND 2 CALLS)" % LOST_DAYS])
 			return out,
 		"submit": func(v: String) -> void:
 			if v != "L":
-				_msg = "L TO BILL AS LOST. CALL FROM THE STORE PHONE."
+				_msg = "CALLS GO OUT FROM THE STORE PHONE: THE POST-IT'S BY IT. (L BILLS AS LOST.)"
 			elif _worst(m) < LOST_DAYS or m.calls < 2:
 				_msg = "NOT YET: %d DAYS LATE AND 2 CALLS FIRST." % LOST_DAYS
 			else:
 				for r: Array in late_of(m):  # what it costs to replace, and the fee it ran up, on their account; the copy's a lost one now (B reorders it)
 					m.owed = snappedf(m.owed + (64.95 if r[0].n else 24.95) + _late(r) * (2.0 if r[0].n else 1.0), 0.01)
+				shoppers.members.incident(m, "BILLED FOR %d UNRETURNED TAPE%s" % [late_of(m).size(), "" if late_of(m).size() == 1 else "S"])
+				for r: Array in late_of(m):
 					shoppers.rented.erase(r)
 					r[0].lost = true
 				m.promise = -9
@@ -208,8 +214,10 @@ func inbox() -> int:  # what's waiting in the message center: calls not made tod
 	return to_call().filter(func(m: Dictionary) -> bool: return m.last_call != Clock.day).size() + notes.filter(func(n: Dictionary) -> bool: return not n.read).size()
 
 
-func message(text: String) -> void:  # a note in the message center
+func message(text: String, back := {}) -> void:  # a note in the message center (back: a missed call, and what it was about: it can be rung back)
 	notes.append({ "day": Clock.day, "text": text.to_upper(), "read": false })
+	if not back.is_empty():
+		notes[-1].back = back
 	if notes.size() > 40:
 		notes.pop_front()
 
@@ -325,12 +333,17 @@ func _member_detail(m: Dictionary) -> void:
 		"lines": func() -> Array:
 			var rs: Array = shoppers.rentals_of(m)
 			var stars := "*".repeat(roundi((m.loyalty + 100.0) / 40.0)).rpad(5, ".")
-			var out: Array = [" MEMBER #.: %d" % m.num, " NAME.....: %s" % _full(m), " PHONE....: %s" % _phone(m),
+			var out: Array = [" MEMBER #.: %d                 MEMBER SINCE: %d" % [m.num, m.since], " NAME.....: %s" % _full(m), " ADDRESS..: %s" % m.addr, " PHONE....: %s" % _phone(m),
 				" STATUS...: %s" % ("*** ARRESTED - DO NOT RENT ***" if m.status == "arrested" else "*** MEMBERSHIP CANCELLED ***" if m.status == "cancelled" else "*** BANNED UNTIL %s ***" % _date(m.until) if m.status == "banned" and m.until > Clock.day
 					else "FEES DUE $%.2f - COLLECT BEFORE RENTAL" % _fees(m) if _fees(m) > 0.0 else "ACTIVE" if not rs.is_empty() else "GOOD STANDING"),
-				" LOYALTY..: %s  %s" % [stars, "REGULAR" if m.loyalty >= 40.0 else "UNHAPPY" if m.loyalty <= -40.0 else ""], "",
-				"  #   OUT      DUE      TITLE                                 LATE FEE" if not rs.is_empty() else "  NO RENTALS OUT."]
-			for i in mini(9, rs.size()):
+				" LOYALTY..: %s  %s%s" % [stars, "REGULAR" if m.loyalty >= 40.0 else "UNHAPPY" if m.loyalty <= -40.0 else "", "      LIKES: %s" % m.likes.to_upper() if m.likes != "" else ""],
+				" NOTES....: %s" % (m.notes if m.notes != "" else "-")]
+			var inc: Array = m.incidents.slice(-3)
+			for i in inc.size():
+				out.append((" %s: %s %s" % ["INCIDENT." if i == 0 else "         ", _date(inc[i][0]), inc[i][1]]).left(COLS - 2))
+			out.append_array(["",
+				"  #   OUT      DUE      TITLE                                 LATE FEE" if not rs.is_empty() else "  NO RENTALS OUT."])
+			for i in mini(6, rs.size()):
 				out.append("  %d   %s%s%s%s" % [i + 1, L(_date(rs[i][1]), 9), L(_date(rs[i][2]), 9), L(rs[i][0].t.to_upper(), 38), "$%.2f" % (_late(rs[i]) * (2.0 if rs[i][0].n else 1.0)) if _late(rs[i]) > 0 else "-"])
 			return out,
 		"submit": func(v: String) -> void:
@@ -339,6 +352,248 @@ func _member_detail(m: Dictionary) -> void:
 				_title_detail(rs[int(v) - 1][0].t)
 			else:
 				_msg = "INVALID SELECTION." })
+
+
+# ---- the staff's week and their jobs, each on a grid (pos.js: schedScreen; staff.js: the job board). WASD or the
+# arrows move, ENTER (or SPACE) sets and clears, the mouse clicks and drags. AUTO hands it over: the hours go where
+# they're wanted most, the jobs to whoever's best at them, and both are redone when somebody's hired; touch a square
+# and it's yours again
+
+const CREW_C := [Color("#55ffff"), Color("#ff55ff"), Color("#55ff55"), Color("#ffaa00")]
+const MOVES := { KEY_A: [-1, 0], KEY_LEFT: [-1, 0], KEY_D: [1, 0], KEY_RIGHT: [1, 0], KEY_W: [0, -1], KEY_UP: [0, -1], KEY_S: [0, 1], KEY_DOWN: [0, 1] }
+
+
+func _sched_screen() -> Dictionary:
+	var st: Node = main.get_node("Staff")
+	var X0 := 8
+	var DW := 10  # day d's cells: X0 + d*DW .. +DW-2, a bar between days
+	var at := { "d": Clock.date().weekday, "n": clampi(int(Clock.h) - 9, 0, 14), "e": 0, "paint": null }
+	var lane := func() -> int: return maxi(2, 8 / maxi(1, st.roster.size()))
+	var on_at := func(e: int, d: int, n: int) -> bool: return (int(st.roster[e].sched[d]) >> n) & 1 == 1
+	var put_at := func(d: int, n: int, e: int, on) -> bool:  # set, clear, or (on: null) the other of what it is -> what it is now
+		var want: bool = on if on != null else not on_at.call(e, d, n)
+		if want != on_at.call(e, d, n):
+			_msg = st.set_sched(e, d, n, want)
+			if st.auto_sched:
+				st.auto_sched = false
+				_msg = "AUTO OFF: THE SCHEDULE'S YOURS." if _msg == "" else _msg
+		return on_at.call(e, d, n)
+	var click := func(d: int, n: int, e: int) -> void:
+		at.d = d
+		at.n = n
+		at.e = e
+		at.paint = put_at.call(d, n, e, null)
+	var drag := func(d: int, n: int, e: int) -> void:  # (the mouse held down and moved on: the same again, down that one's lane)
+		if at.paint != null and e == at.e and (d != at.d or n != at.n):
+			at.d = d
+			at.n = n
+			put_at.call(d, n, e, at.paint)
+	var pick_who := func(e: int) -> void: at.e = e
+	var lbl := func(n: int) -> String: return "%d%s" % [12 if (9 + n) % 12 == 0 else (9 + n) % 12, "AM" if 9 + n < 12 else "PM"]
+	var press := func(key: int) -> void: _screen.keys.call(key, false)
+	var scr := { "title": "STAFF - WEEKLY SCHEDULE", "prompt": "WASD MOVE, ENTER SETS, TAB WHO, G AUTO", "lines": func() -> Array: return [] }
+	scr.submit = func(v: String) -> void:  # (typed, as it used to be: # DAY FROM-TO, or OFF)
+		var a := v.split(" ", false)
+		var i := int(a[0]) - 1 if a.size() == 3 and a[0].is_valid_int() else -1
+		var d: int = Clock.WEEKDAYS.find(a[1]) if a.size() == 3 else -1
+		var h := a[2].split("-") if a.size() == 3 else PackedStringArray()
+		var off: bool = a.size() == 3 and a[2] == "OFF"
+		if i < 0 or i >= st.roster.size() or d < 0 or (not off and (h.size() != 2 or not h[0].is_valid_int() or not h[1].is_valid_int() or int(h[0]) < 9 or int(h[1]) > 24 or int(h[1]) <= int(h[0]))):
+			_msg = "EXAMPLE: 1 FRI 17-22   OR: 1 FRI OFF"
+			return
+		var was: int = st.roster[i].sched[d]
+		st.roster[i].sched[d] = 0
+		for b in ([] if off else range(int(h[0]) - 9, int(h[1]) - 9)):
+			st.roster[i].sched[d] |= 1 << b
+		if st.hours(st.roster[i]) > st.SCHED_MAX:
+			st.roster[i].sched[d] = was
+			_msg = "PART TIME: %d HOURS A WEEK AT MOST." % st.SCHED_MAX
+		else:
+			st.auto_sched = false
+			_msg = "SCHEDULE UPDATED."
+	scr.render = func(top: int) -> void:
+		var n_crew: int = st.roster.size()
+		if n_crew == 0:
+			_color_line(top + 1, " NO STAFF ON THE PAYROLL YET.")
+			_color_line(top + 2, " HIRE SOMEONE UNDER UPGRADES (U): HIRE AN EMPLOYEE.")
+			return
+		at.e = mini(at.e, n_crew - 1)
+		var lw: int = lane.call()
+		var today: int = Clock.date().weekday
+		var now_n := int(Clock.h) - 9
+		_tint(top, 1, COLS - 2, P.yel, P.deep)
+		_put(top, 2, "HOUR", P.cyan)
+		for d in 7:
+			var x := X0 + d * DW
+			_put(top, x - 1, "│", P.dcyan)
+			_center(top, "%s ◄" % Clock.WEEKDAYS[d] if d == today else Clock.WEEKDAYS[d], P.yel if d == today else P.hi, null, x, x + DW - 2)
+		for n in 15:
+			var r := top + 1 + n
+			_put(r, 2, lbl.call(n).lpad(4), P.gray if n == 0 else P.yel if n == now_n else P.fg)
+			for d in 7:
+				var x := X0 + d * DW
+				_put(r, x - 1, "│", P.dcyan)
+				for e in mini(n_crew, 4):
+					var c0 := x + 1 + e * lw
+					var on: bool = on_at.call(e, d, n)
+					if on:
+						_tint(r, c0, c0 + lw - 1, P.blk, CREW_C[e])
+						if n == 0 or not on_at.call(e, d, n - 1):
+							_put(r, c0, st.roster[e].first[0], P.blk)
+					else:
+						_put(r, c0 + (lw >> 1) - (1 if lw > 2 else 0), "·", P.shadow if n == 0 else P.deep)
+					if d == at.d and n == at.n and e == at.e:  # where you are
+						_tint(r, c0, c0 + lw - 1, P.hi if on else P.blk, P.blk if on else P.hi)
+						if not on:
+							_put(r, c0, " ".repeat(lw), P.blk, P.hi)
+					_hits.append({ "r": r, "c0": c0, "c1": c0 + lw - 1, "act": click.bind(d, n, e), "drag": drag.bind(d, n, e) })
+		var lr := top + 17
+		_put(lr - 1, 1, "─".repeat(COLS - 2), P.dcyan)
+		var c := 2
+		for e in mini(n_crew, 4):
+			var w: Dictionary = st.roster[e]
+			var t := "%s %d/%dH" % [w.first.to_upper().left(9), st.hours(w), st.SCHED_MAX]
+			_put(lr, c, "►" if e == at.e else " ", P.yel)
+			_put(lr, c + 1, "  ", P.blk, CREW_C[e])
+			_put(lr, c + 4, t, P.red if st.hours(w) > st.SCHED_MAX else P.hi if e == at.e else P.fg)
+			_hits.append({ "r": lr, "c0": c, "c1": c + 3 + t.length(), "act": pick_who.bind(e) })
+			c += t.length() + 7
+		var open_hrs := 0
+		var pay := 0.0
+		for d in 7:
+			for n in range(1, 15):
+				open_hrs += int(not st.roster.any(func(w: Dictionary) -> bool: return (int(w.sched[d]) >> n) & 1 == 1))
+		for w: Dictionary in st.roster:
+			pay += st.hours(w) * st.rate(w)
+		_put(lr + 1, 2, "OPEN HOURS NOBODY'S ON:", P.cyan)
+		_put(lr + 1, 26, str(open_hrs), P.yel if open_hrs > 0 else P.grn)
+		_put(lr + 1, 32, "WEEKLY PAYROLL:", P.cyan)
+		_put(lr + 1, 48, _money(pay), P.grn)
+		_put(lr + 1, 60, "AUTO:", P.cyan)
+		_put(lr + 1, 66, "ON " if st.auto_sched else "OFF", P.grn if st.auto_sched else P.gray)
+		_hits.append({ "r": lr + 1, "c0": 60, "c1": 69, "act": press.bind(KEY_G) })
+		_put(lr + 2, 2, "WASD MOVE · ENTER SET/CLEAR · SHIFT PAINTS · TAB/1-4 WHO · X CLEARS · G AUTO", P.gray)
+	scr.keys = func(key: int, shift_held: bool) -> bool:
+		var n_crew: int = st.roster.size()
+		if n_crew == 0:
+			return false
+		if MOVES.has(key):
+			at.d = posmod(at.d + MOVES[key][0], 7)
+			at.n = clampi(at.n + MOVES[key][1], 0, 14)
+			_msg = ""
+			if shift_held:
+				put_at.call(at.d, at.n, at.e, true)
+		elif key in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE] and _input == "":
+			put_at.call(at.d, at.n, at.e, null)
+		elif key == KEY_TAB:
+			at.e = posmod(at.e + (-1 if shift_held else 1), mini(n_crew, 4))
+		elif key >= KEY_1 and key <= KEY_4 and key - KEY_1 < n_crew and _input == "":
+			at.e = key - KEY_1
+		elif key == KEY_X:
+			for n in 15:
+				put_at.call(at.d, n, at.e, false)
+			_msg = "CLEARED %s'S %s." % [st.roster[at.e].first.to_upper(), Clock.WEEKDAYS[at.d]]
+		elif key == KEY_G:  # AUTO: on (and done now), or off (and left as it is)
+			st.auto_sched = not st.auto_sched
+			if st.auto_sched:
+				st.auto_schedule()
+			_msg = "AUTO ON: HOURS SET FOR THE WEEK, AND AGAIN WHEN YOU HIRE." if st.auto_sched else "AUTO OFF: THE SCHEDULE'S YOURS."
+		else:
+			return false
+		return true
+	return scr
+
+
+func _jobs_screen() -> Dictionary:
+	var st: Node = main.get_node("Staff")
+	var J: Array = st.JOBS.keys()
+	var at := { "r": 0, "c": 0 }
+	var X0 := 22
+	var CW := 9
+	var set_pri := func(r: int, c: int, p: int) -> void:
+		st.roster[r].jobs[J[c]] = p
+		if st.auto_jobs:
+			st.auto_jobs = false
+			_msg = "AUTO OFF: THE JOB BOARD'S YOURS."
+	var press := func(key: int) -> void: _screen.keys.call(key, false)
+	var click := func(r: int, c: int) -> void:
+		at.r = r
+		at.c = c
+		_screen.keys.call(KEY_ENTER, false)
+	var scr := { "title": "STAFF JOBS - 1 FIRST, 4 LAST, X NEVER", "prompt": "WASD MOVE, ENTER STEPS, 0-4 SETS, G AUTO", "lines": func() -> Array: return [] }
+	scr.submit = func(v: String) -> void:  # (typed, as it used to be: # JOB PRIORITY)
+		var a := v.split(" ", false)
+		var i := int(a[0]) - 1 if a.size() == 3 and a[0].is_valid_int() else -1
+		var job := -1
+		for c in J.size():
+			if a.size() == 3 and st.JOBS[J[c]][0].begins_with(a[1]):
+				job = c
+		if i < 0 or i >= st.roster.size() or job < 0 or not a[2].is_valid_int() or int(a[2]) < 0 or int(a[2]) > 4:
+			_msg = "EXAMPLE: 1 RETURNS 1   (0 = NEVER)"
+		else:
+			_msg = "JOB BOARD UPDATED."
+			set_pri.call(i, job, int(a[2]))
+	scr.render = func(top: int) -> void:
+		if st.roster.is_empty():
+			_color_line(top + 1, " NO STAFF ON THE PAYROLL YET.")
+			_color_line(top + 2, " HIRE SOMEONE UNDER UPGRADES (U): HIRE AN EMPLOYEE.")
+			return
+		at.r = mini(at.r, st.roster.size() - 1)
+		_tint(top, 1, COLS - 2, P.yel, P.deep)
+		_put(top, 2, "STAFF", P.cyan)
+		for c in J.size():
+			_center(top, st.JOBS[J[c]][0].replace("FLOOR HELP", "FLOOR"), P.yel if c == at.c else P.hi, null, X0 + c * CW, X0 + c * CW + CW - 2)
+		for r in st.roster.size():
+			var w: Dictionary = st.roster[r]
+			var y: int = top + 2 + r * 3
+			var on_now: bool = r < st.crew.size() and st.crew[r].dana != null
+			_put(y, 2, ("► " if r == at.r else "  ") + ("%s %s" % [w.first, w.last]).to_upper().left(17), P.hi if r == at.r else P.fg)
+			_put(y + 1, 4, "%s · $%.2f/H" % ["ON NOW" if on_now else "OFF", st.rate(w)], P.grn if on_now else P.gray)
+			for c in J.size():
+				var p: int = w.jobs.get(J[c], 0)
+				var x := X0 + c * CW
+				var here: bool = r == at.r and c == at.c
+				var ink: Color = [P.gray, P.grn, P.cyan, P.yel, P.fg][clampi(p, 0, 4)]
+				_tint(y, x + 1, x + CW - 3, P.blk if here else ink, P.hi if here else P.deep)
+				_center(y, str(p) if p > 0 else "X", P.blk if here else ink, P.hi if here else P.deep, x + 1, x + CW - 3)
+				_center(y + 1, "%s %d" % [st.SKILLS[st.JOB_SKILL[J[c]]][0], w.skills[st.JOB_SKILL[J[c]]][0]], P.gray, null, x, x + CW - 2)  # (what it leans on, and how good they are at it)
+				_hits.append({ "r": y, "c0": x + 1, "c1": x + CW - 3, "act": click.bind(r, c) })
+		var lr := top + 2 + STAFF_ROWS * 3
+		_put(lr, 1, "─".repeat(COLS - 2), P.dcyan)
+		_put(lr + 1, 2, st.JOBS[J[at.c]][0] + ":", P.cyan)
+		_put(lr + 1, 4 + st.JOBS[J[at.c]][0].length(), JOB_DESC[J[at.c]], P.fg)
+		_put(lr + 1, 66, "AUTO:", P.cyan)
+		_put(lr + 1, 72, "ON " if st.auto_jobs else "OFF", P.grn if st.auto_jobs else P.gray)
+		_hits.append({ "r": lr + 1, "c0": 66, "c1": 75, "act": press.bind(KEY_G) })
+		_put(lr + 2, 2, "WASD/ARROWS MOVE · ENTER STEPS 1-2-3-4-X · 0-4 SETS · X NEVER · G AUTO", P.gray)
+	scr.keys = func(key: int, _shift_held: bool) -> bool:
+		if st.roster.is_empty():
+			return false
+		if MOVES.has(key):
+			at.c = posmod(at.c + MOVES[key][0], J.size())
+			at.r = posmod(at.r + MOVES[key][1], st.roster.size())
+			_msg = ""
+		elif key in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE] and _input == "":
+			var p: int = st.roster[at.r].jobs.get(J[at.c], 0)
+			set_pri.call(at.r, at.c, p + 1 if p > 0 and p < 4 else 0 if p > 0 else 1)  # 1, 2, 3, 4, X, 1...
+		elif key >= KEY_0 and key <= KEY_4 and _input == "":
+			set_pri.call(at.r, at.c, key - KEY_0)
+		elif key in [KEY_X, KEY_BACKSPACE, KEY_DELETE] and _input == "":
+			set_pri.call(at.r, at.c, 0)
+		elif key == KEY_G:
+			st.auto_jobs = not st.auto_jobs
+			if st.auto_jobs:
+				st.auto_assign_jobs()
+			_msg = "AUTO ON: EACH TO WHAT THEY'RE BEST AT, AND AGAIN WHEN YOU HIRE." if st.auto_jobs else "AUTO OFF: THE JOB BOARD'S YOURS."
+		else:
+			return false
+		return true
+	return scr
+
+
+const STAFF_ROWS := 4
+const JOB_DESC := { "register": "RING UP CUSTOMERS, SIGN PEOPLE UP", "phone": "ANSWER CALLS, PUT HOLDS ASIDE", "floor": "FETCH WHAT PEOPLE ASK FOR AT THE COUNTER",
+	"returns": "REWIND AND RESHELVE, FIX MISSHELVED TAPES", "restock": "FILL THE SNACK AND DRINK RACKS FROM STOCK", "cleanup": "LITTER, SPILLS, TAKING OUT THE TRASH" }
 
 
 func _find_titles(q: String) -> Array:
@@ -416,7 +671,12 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 						_call_screen(it)
 						return
 					it.read = true
-					_go({ "title": "MESSAGE", "prompt": "D TO DELETE, ESC TO RETURN", "lines": func() -> Array: return ["", " " + _date(it.day), "", " " + it.text],
+					var caller = shoppers.members.by_num.get(int(it.back.num)) if it.has("back") else null
+					if caller != null and it.day == Clock.day:  # a call that was missed today: a post-it goes by the phone, to ring them back
+						$"../Phone".postit_add(caller, false, it.back)
+					_go({ "title": "MESSAGE", "prompt": "D TO DELETE, ESC TO RETURN", "lines": func() -> Array: return ["", " " + _date(it.day), "", " " + it.text] + (
+							["", " A POST-IT WITH THEIR NUMBER IS BY THE STORE PHONE NOW.", " TO CALL BACK: F10 TO LOG OFF, WALK TO THE PHONE, E ON THE PHONE OR THE NOTE."] if caller != null and it.day == Clock.day
+							else ["", " (YESTERDAY'S NEWS: TOO LATE TO RING BACK.)"] if caller != null else []),
 						"submit": func(v: String) -> void:
 							if v == "D":
 								notes.erase(it)
@@ -430,7 +690,8 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 				"   RETURNS          RETURNS BIN             REPORT            DAILY SUMMARY",
 				"   VER              VERSION                 LOGOFF / EXIT     END SESSION",
 				"   SUPPLIES         ORDER SNACKS/DRINKS     REPLACE           ORDER LOST COPIES",
-				"   MESSAGES         MISSED CALLS, NOTES     GATES             THE GATE SYSTEM", "",
+				"   MESSAGES         MISSED CALLS, NOTES     GATES             THE GATE SYSTEM",
+				"   SCHEDULE         THE STAFF'S WEEK        SYSRESET          WIPE THE SAVED STORE", "",
 				" ESC GOES BACK ONE SCREEN. F10 LOGS OFF FROM ANYWHERE.", "",
 				" SYSTEM PROBLEMS? CALL DENNIS (DISTRICT) - DO NOT REBOOT THE SERVER."]))
 		"S":
@@ -548,66 +809,10 @@ func _pick(key: String) -> bool:  # a menu selection. -> false if there's no suc
 					_back()
 					_msg = err if err != "" else "FEATURE SET: %s AT 8 PM. TICKETS $4.00 AT THE REGISTER." % t.to_upper(),
 				"THE THEATER ISN'T OPEN YET." if not shift.owned("theater") else "NO FILMS ON THE SHELF."))
-		"W":  # the staff's week: each one's hours by the day (part time: up to 25 a week)
-			var st: Node = main.get_node("Staff")
-			_go({ "title": "STAFF - WEEKLY SCHEDULE", "prompt": "# DAY FROM-TO (OR OFF)  EX: 1 FRI 17-22",
-				"lines": func() -> Array:
-					var out: Array = ["  #  NAME          " + "".join(Clock.WEEKDAYS.map(func(d: String) -> String: return L(d, 7))) + " HRS   RATE"]
-					for i in st.roster.size():
-						var w: Dictionary = st.roster[i]
-						var days := ""
-						for d in 7:
-							var bits: Array = range(15).filter(func(b: int) -> bool: return (int(w.sched[d]) >> b) & 1 == 1)
-							days += L("%d-%d" % [9 + bits[0], 10 + bits[-1]] if not bits.is_empty() else "--", 7)
-						out.append("  %d  %s%s %s  %s" % [i + 1, L(w.first + " " + w.last, 14), days, R(st.hours(w), 3), R("$%.2f" % st.rate(w), 6)])
-					if st.roster.is_empty():
-						out.append("  NOBODY ON STAFF YET: HIRE SOMEONE (U)")
-					return out,
-				"submit": func(v: String) -> void:
-					var a := v.split(" ", false)
-					var i := int(a[0]) - 1 if a.size() == 3 and a[0].is_valid_int() else -1
-					var d: int = Clock.WEEKDAYS.find(a[1]) if a.size() == 3 else -1
-					if i < 0 or i >= st.roster.size() or d < 0:
-						_msg = "EXAMPLE: 1 FRI 17-22   OR: 1 FRI OFF"
-						return
-					var mask := 0
-					if a[2] != "OFF":
-						var h := a[2].split("-")
-						if h.size() != 2 or not h[0].is_valid_int() or not h[1].is_valid_int() or int(h[0]) < 9 or int(h[1]) > 24 or int(h[1]) <= int(h[0]):
-							_msg = "HOURS 9 TO 24, FROM-TO."
-							return
-						for b in range(int(h[0]) - 9, int(h[1]) - 9):
-							mask |= 1 << b
-					var was: int = st.roster[i].sched[d]
-					st.roster[i].sched[d] = mask
-					if st.hours(st.roster[i]) > 25:
-						st.roster[i].sched[d] = was
-						_msg = "PART TIME: 25 HOURS A WEEK AT MOST."
-					else:
-						_msg = "SCHEDULE UPDATED." })
+		"W":  # the staff's week: each one's hours on a grid (part time: up to 25 a week)
+			_go(_sched_screen())
 		"J":  # the job board: what each of them gets to first when there's more than one thing to do
-			var st: Node = main.get_node("Staff")
-			_go({ "title": "STAFF JOBS - 1 FIRST, 4 LAST, 0 NEVER", "prompt": "# JOB PRIORITY  EX: 1 RETURNS 1",
-				"lines": func() -> Array:
-					var out: Array = ["  #  NAME          " + "".join(st.JOBS.keys().map(func(j: String) -> String: return L(st.JOBS[j][0], 10)))]
-					for i in st.roster.size():
-						var w: Dictionary = st.roster[i]
-						out.append("  %d  %s%s" % [i + 1, L(w.first + " " + w.last, 14), "".join(st.JOBS.keys().map(func(j: String) -> String: return L(str(w.jobs.get(j, 0)) if w.jobs.get(j, 0) > 0 else "X", 10)))])
-					if st.roster.is_empty():
-						out.append("  NOBODY ON STAFF YET: HIRE SOMEONE (U)")
-					return out,
-				"submit": func(v: String) -> void:
-					var a := v.split(" ", false)
-					var i := int(a[0]) - 1 if a.size() == 3 and a[0].is_valid_int() else -1
-					var job := ""
-					for j: String in st.JOBS:
-						if a.size() == 3 and st.JOBS[j][0].begins_with(a[1]):
-							job = j
-					if i < 0 or i >= st.roster.size() or job == "" or not a[2].is_valid_int() or int(a[2]) < 0 or int(a[2]) > 4:
-						_msg = "EXAMPLE: 1 RETURNS 1   (0 = NEVER)"
-					else:
-						st.roster[i].jobs[job] = int(a[2])
-						_msg = "JOB BOARD UPDATED." })
+			_go(_jobs_screen())
 		"0": log_off()
 		_: return false
 	return true
@@ -637,6 +842,15 @@ func _main_menu() -> Dictionary:
 				_go(_list("TITLE SEARCH: %s" % arg, TITLE_HEAD, _find_titles(arg), _title_row, _title_detail))
 			elif cmd in ["MEMBER", "CUST"] and arg != "":
 				_go(_list("MEMBER SEARCH: %s" % arg, MEMBER_HEAD, _find_members(arg), _member_row, _member_detail))
+			elif cmd == "SYSRESET":
+				_go({ "title": "SYSTEM RESET", "prompt": "TYPE RESET TO CONFIRM, ESC TO CANCEL", "lines": func() -> Array: return ["",
+						" THIS WIPES THE SAVED STORE: INVENTORY, RETURNS, RENTALS, LIGHTS, WHERE YOU", " ARE STANDING, THE TAPE IN THE VCR. THE STORE RELOADS FRESH."],
+					"submit": func(c: String) -> void:
+						if c == "RESET":
+							log_off()
+							main.get_node("Save").fresh_store()
+						else:
+							_msg = "TYPE RESET TO CONFIRM." })
 			elif cmd == "VER":
 				_msg = "POS/NET 2.3 (C) 1993 VIDEOTRAK SYSTEMS INC.  LICENSED TO VAULTBUSTER VIDEO #0417"
 			else:
@@ -689,6 +903,8 @@ func _unhandled_input(e: InputEvent) -> void:
 				_menu_cur = over[0].pick
 			else:
 				_screen.pick.cur = over[0].pick
+		elif e is InputEventMouseMotion and e.button_mask & MOUSE_BUTTON_MASK_LEFT and not over.is_empty() and over[0].has("drag"):
+			over[0].drag.call()  # (a drag paints the schedule)
 		elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not over.is_empty():
 			over[0].act.call()
 		elif e is InputEventMouseButton and e.pressed and e.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_UP] and _screen.get("pager", false):
@@ -696,6 +912,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		return
 	if not (e is InputEventKey and e.pressed) or (_login >= 0.0 and e.keycode != KEY_F10):
 		return
+	if _screen.has("keys") and _screen.keys.call(e.keycode, e.shift_pressed):
+		return  # (a screen with keys of its own: the schedule's grid, the job board's)
 	match e.keycode:
 		KEY_F10: log_off()
 		KEY_ESCAPE: _back()
@@ -744,6 +962,7 @@ func _arrow(down: int, across: int) -> void:  # the arrows: up and down the reco
 
 
 func _process(dt: float) -> void:
+	_mon_tick(dt)
 	if not open or _screen.is_empty():
 		return
 	_blink += dt
@@ -962,6 +1181,123 @@ func _login_screen() -> void:  # what the monitor shows till you're in
 	_key_bar(ROWS - 1, [])
 
 
+# ---- the register: a sale window over whatever's on screen while someone's being rung up (pos.js: saleWindow). The
+# sale's the checkout's (checkout.gd: ring); the member's account is from here
+
+func _sale_window(s: Dictionary) -> void:
+	var m: Dictionary = s.member
+	var r0 := 1
+	var r1 := ROWS - 3
+	var c0 := 1
+	var c1 := COLS - 2
+	var W := c1 - c0 - 3
+	for r in range(r0, r1 + 1):
+		_tint(r, c0, c1, P.fg, P.deep)
+		_put(r, c0, " ".repeat(c1 - c0 + 1))
+		for c in range(c0, c1 + 1):
+			_px.erase(r * COLS + c)
+	_hits.clear()
+	_box(r0, c0, r1, c1, true, P.cyan)
+	_put(r0, c0 + 2, " NEW MEMBER " if s.signup else " REGISTER · SALE ", P.yel)
+	if s.clerk != "":
+		_put(r0, c1 - s.clerk.length() - 9, " CLERK: %s " % s.clerk, P.fg)
+	var at := [r0 + 1]
+	var line := func(t: String, fg: Color = P.fg) -> void:
+		_put(at[0], c0 + 2, L(t, W), fg)
+		at[0] += 1
+	var lr := func(l: String, v: String, fg: Color = P.fg, vfg: Color = P.hi) -> void:
+		_put(at[0], c0 + 2, L(l, W), fg)
+		_put(at[0], c1 - 2 - v.length(), v, vfg)
+		at[0] += 1
+	var blink := fmod(Time.get_ticks_msec() / 1000.0, 1.06) < 0.53
+	if s.carded == null:
+		at[0] += 1
+		line.call("  CASH SALE · NO MEMBER CARD", P.gray)
+		at[0] += 1
+	elif not s.carded:
+		at[0] += 1
+		line.call("  ► %s" % ("ENTER NEW MEMBER" if s.signup else "TAP MEMBER CARD ON READER") if blink else "", P.yel)
+		at[0] += 1
+	else:
+		var fees := _fees(m)
+		var rs: Array = shoppers.rentals_of(m)
+		var late: int = rs.filter(func(r: Array) -> bool: return _late(r) > 0).size()
+		lr.call("#%d  %s" % [m.num, _full(m)], "SINCE %d" % m.since, P.hi, P.cyan)
+		line.call("LOYALTY %s  %s%s" % ["*".repeat(roundi((m.loyalty + 100.0) / 40.0)).rpad(5, "."), "REGULAR" if m.loyalty >= 40.0 else "UNHAPPY" if m.loyalty <= -40.0 else "", "   LIKES: %s" % m.likes.to_upper() if m.likes != "" else ""], P.red if m.loyalty <= -40.0 else P.fg)
+		var st := "*** BANNED UNTIL %s ***" % _date(m.until) if m.status == "banned" and m.until > Clock.day else "*** MEMBERSHIP CANCELLED ***" if m.status == "cancelled" else "*** DO NOT RENT ***" if m.status == "arrested" else ""
+		line.call(st if st != "" else "OUT: %d/%d TAPES%s%s" % [rs.size(), shoppers.members.RENT_MAX, " · %d LATE" % late if late > 0 else "", " · FEES %s" % _money(fees) if fees > 0.0 else " · GOOD STANDING"], P.red if st != "" or late > 0 or fees > 0.0 else P.grn)
+		if m.notes != "":
+			line.call("NOTES: %s" % m.notes, P.yel)
+		if not m.incidents.is_empty():
+			line.call("INCIDENT %s: %s" % [_date(m.incidents[-1][0]), m.incidents[-1][1]], P.red)
+	_rule(at[0], c0, c1, "mid", P.cyan)
+	at[0] += 1
+	for it: Array in s.items.slice(0, 7):
+		lr.call("  %s" % str(it[0]).to_upper(), _money(it[1]))
+	if s.items.size() > 7:
+		line.call("  ... %d MORE" % (s.items.size() - 7))
+	if s.fees > 0.0:
+		lr.call("  LATE FEES", _money(s.fees), P.red, P.red)
+	if s.waived > 0.0:
+		lr.call("  LATE FEES WAIVED", "-%s" % _money(s.waived), P.gray, P.gray)
+	at[0] = maxi(at[0], r1 - 6)
+	_rule(at[0], c0, c1, "mid", P.cyan)
+	at[0] += 1
+	if not s.signup:
+		lr.call("TOTAL DUE", _money(s.total), P.yel, P.yel)
+		if s.cash_in != null:
+			lr.call("CASH TENDERED", _money(s.cash_in), P.fg, P.grn)
+			lr.call("CHANGE DUE", _money(s.change) if s.change > 0.0 else "EXACT", P.fg, P.yel if s.change > 0.0 and blink else P.hi)
+	if s.next != "":
+		at[0] = r1 - 1
+		line.call("► %s" % s.next.to_upper(), P.cyan)
+
+
+# ---- the register's own monitor, on the counter: whatever the terminal's showing, or (nobody at it) the login
+# screen; the sale over either. Painted into a picture of its own, a few times a second (title.js: the mirror)
+
+const MON_CELL := Vector2(10, 20)
+
+var _mon := SubViewport.new()
+var _mon_view := Control.new()
+var _mon_t := 0.0
+var _mon_glass: MeshInstance3D
+
+
+func _mon_build() -> void:
+	_mon.size = Vector2i(COLS * 10, ROWS * 20)
+	_mon.disable_3d = true
+	_mon.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_mon)
+	_mon.add_child(_mon_view)
+	_mon_view.draw.connect(_paint.bind(_mon_view, MON_CELL))
+	var at: Vector3 = $"../Checkout"._at.pos
+	for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):  # the level's: the monitor's glass
+		var size := mi.get_aabb().size
+		if absf(size.x - 0.3) < 0.01 and absf(size.y - 0.235) < 0.01 and size.z < 0.005 and mi.global_position.distance_to(at) < 0.8:
+			_mon_glass = mi
+	if _mon_glass == null:
+		push_warning("the register's monitor isn't where the web game has it: its screen stays as the level has it")
+		return
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_texture = _mon.get_texture()
+	m.uv1_scale = Vector3(1, -1, 1)  # (the level's pictures are the other way up)
+	m.uv1_offset = Vector3(0, 1, 0)
+	_mon_glass.material_override = m
+
+
+func _mon_tick(dt: float) -> void:
+	_mon_t -= dt
+	if _mon_t > 0.0:
+		return
+	_mon_t = 0.1 if open else 0.3
+	if not open:  # (at the keyboard the grid's this frame's already)
+		_frame()
+	_mon_view.queue_redraw()
+	_mon.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
 func _frame() -> void:  # the grid for this moment
 	_ch.resize(COLS * ROWS)
 	_fg.resize(COLS * ROWS)
@@ -972,8 +1308,11 @@ func _frame() -> void:  # the grid for this moment
 	_px.clear()
 	_hits.clear()
 	_box(0, 0, ROWS - 2, COLS - 1, true, P.dcyan)
-	if _login >= 0.0:
+	var sale = $"../Checkout".ring()
+	if _login >= 0.0 or not open:
 		_login_screen()
+		if sale != null:  # (at the keyboard, logged in, the screen's yours: the sale waits)
+			_sale_window(sale)
 		return
 	var lines: Array = _screen.lines.call()
 	var big: bool = _screen.get("menu", false)
@@ -1001,6 +1340,8 @@ func _frame() -> void:  # the grid for this moment
 			if i == pk.cur:
 				_tint(r, 1, COLS - 2, P.bg, P.fg)
 			_hits.append({ "r": r, "c0": 1, "c1": COLS - 2, "act": type.bind(str(i + 1)), "pick": i })
+		if _screen.has("render"):  # (a screen that draws its own body: the schedule, the job board)
+			_screen.render.call(top)
 	_rule(ROWS - 5, 0, COLS - 1, "mid", P.dcyan)
 	if _msg != "":
 		_put(ROWS - 4, 2, _msg.left(COLS - 4), P.red if _re.msg_bad.search(_msg) != null else P.grn if _re.msg_good.search(_msg) != null else P.yel)
@@ -1037,7 +1378,7 @@ func _strokes(ch: String, l: float, t: float, w: float, h: float, d: float) -> A
 	return []
 
 
-func _paint() -> void:
+func _paint(_view: Control, _cell: Vector2) -> void:  # onto the screen over the game, or the monitor's own picture
 	if _ch.size() != COLS * ROWS:
 		return  # (shown before its first frame's been laid out)
 	var w := _cell.x

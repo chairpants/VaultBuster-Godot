@@ -14,7 +14,7 @@ extends Node
 ## one step that can be skipped (E on the customer for the cash instead): the tapes can still go over it any time till
 ## they're handed back, and whatever doesn't sets the gates off on the way out (-75 a tag). Leave somebody standing
 ## mid-sale half a minute and whoever's free on staff takes it over; 45 seconds, and they walk out (-100).
-## Not over yet: the register's beeps and the printer's buzz.
+## The register beeps and the printer buzzes (ambience.gd: beep, buzz); the sale's on the register's own screen as it goes (ring, below; pos.gd draws it).
 ## E on the register with no sale waiting on it logs in to its terminal (pos.gd).
 
 const STEPS := [  # [id, where it's done]
@@ -288,8 +288,28 @@ func _print_receipt() -> void:
 	_strip.scale = Vector3(1, 0.001, 0.001)
 
 
-func pad_flash() -> void:  # a tape's gone over the pad: its light's green for a moment (core.js: desensFlash)
+func pad_flash() -> void:  # a tape's gone over the pad: its light's green for a moment, and its confirm beep-beep (core.js: desensFlash, desensitize)
 	_led_t = 0.6
+	$"../Ambience".beep(_at.pad, 1760.0)
+	$"../Ambience".beep(_at.pad, 2350.0, 0.11)
+
+
+func ring():  # what the register's screen shows for this sale, or null (checkout.js: coRing)
+	if co == null:
+		return null
+	var k: Dictionary = co.cust
+	var signup: bool = co.get("kind", "") == "signup"
+	var at := func(id: String) -> int: return _steps().map(func(s: Array) -> String: return s[0]).find(id)
+	var items: Array = [["NEW MEMBERSHIP", 0.0]]
+	if not signup:
+		items = k.tapes.map(func(t: Dictionary) -> Array: return [t.t, price(t)]) + k.snacks.map(func(u: Dictionary) -> Array: return [u.n, $"../Snacks".price(u)])
+		if k.get("tickets", 0) > 0:
+			items.append(["SHOW TICKET x%d" % k.tickets, k.tickets * $"../Shift".SHOW.ticket])
+	return { "member": k.member, "signup": signup, "clerk": co.emp.first.to_upper() if co.by == "dana" and co.get("emp") != null else "",
+		"carded": co.i > at.call("enroll") if signup else co.i > at.call("tap") if not k.tapes.is_empty() else null,  # (null: snacks only, no card)
+		"items": items, "fees": co.fees, "waived": co.get("waived", 0.0), "total": co.total,
+		"cash_in": co.bill if not signup and co.i > at.call("cash") else null, "change": co.change,
+		"next": tip() if co.by == "player" else "" }
 
 
 func _led_find() -> void:  # the level's own: the little red light on the pad
@@ -443,7 +463,10 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			k.c.hold_prop(null)
 			co.hand = "form"
 		"enroll":
+			$"../Ambience".beep(_at.pos, 1900.0)
+			$"../Ambience".beep(_at.pos, 1500.0, 0.12)
 			k.member.active = true
+			k.member.since = Clock.date().year
 			co.hand = "newcard"
 		"newcard":
 			var pts := 40 + maxi(0, roundi(40.0 - (_now - co.start)))
@@ -464,6 +487,7 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 			k.t = 1.5
 			return true
 		"tap":  # their account comes up
+			$"../Ambience".beep(_at.pos, 1900.0)
 			var m: Dictionary = k.member
 			var late: int = shoppers.rentals_of(m).filter(func(r: Array) -> bool: return r[2] < Clock.day).size()
 			if co.by == "player":
@@ -475,6 +499,7 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 		"cash":
 			co.hand = "cash"
 		"tear":
+			$"../Ambience".beep(_at.printer, 3200.0)
 			_strip.visible = false
 			co.hand = "change" if co.change > 0.0 else "receipt"
 		"change":
@@ -510,6 +535,8 @@ func act(at: String) -> bool:  # do the step in hand, if it's done here (coAct)
 				shoppers.rented.append([t, Clock.day, Clock.day + (2 if t.n else 5), k.member.num])
 			co.hand = ""
 			drawer_open = 1.0
+			$"../Ambience".beep(_at.pos, 1200.0)
+			$"../Ambience".buzz(_at.printer, 0.9)
 			_print_receipt()
 		"handback":  # done: how'd that go (yours, or Dana's)
 			var secs: float = _now - co.start
@@ -565,6 +592,7 @@ func fees(charge: bool) -> void:  # late fees on their account: charge them (mon
 		co.cust.c.set_mood("meh")
 		hud.toast("%s %s their late fees ($%.2f)" % ["Dana charged" if co.by == "dana" else "Charged", co.cust.name, amt])
 	else:
+		co.waived = co.get("waived", 0.0) + amt
 		$"../Shift".stats.fees_waived += amt
 		co.cust.c.set_mood("love")
 		hud.toast("Waived %s's $%.2f in late fees" % [co.cust.name, amt])
@@ -633,7 +661,7 @@ func take_aim(hit: Dictionary, hit_d: float) -> String:
 	var at: Vector3 = hit.position
 	var mine: bool = co != null and co.by == "player"
 	var near := ""  # the register, the pad or the printer: whichever the crosshair's landed nearest, within its reach
-	for z: Array in [["pad", _at.pad, 0.3], ["printer", _at.printer, 0.34], ["printer", _strip.global_transform * Vector3(0, 0.6, 0.06), 0.2 if _strip.visible else 0.0], ["register", _at.pos, 0.55]]:
+	for z: Array in [["pad", _at.pad, 0.3], ["printer", _at.printer, 0.34], ["printer", _strip.global_transform * Vector3(0, 0.6, 0.06) if _strip.is_inside_tree() else Vector3.ZERO, 0.2 if _strip.visible else 0.0], ["register", _at.pos, 0.55]]:
 		if at.distance_to(z[1]) < z[2] and (near == "" or at.distance_to(z[1]) / z[2] < _near_k):
 			near = z[0]
 			_near_k = at.distance_to(z[1]) / z[2]

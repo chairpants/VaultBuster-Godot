@@ -45,8 +45,12 @@ func _build_folds() -> void:
 	var dark := StandardMaterial3D.new()
 	dark.albedo_color = Color.hex(0x1c1a1eff)
 	var cushion := BoxMesh.new()  # top at y 0, running 0.44 forward of the hinge
-	cushion.size = Vector3(0.48, 0.11, 0.44)
+	cushion.size = Vector3(0.46, 0.08, 0.42)
 	cushion.material = plush
+	var puff := SphereMesh.new()  # ...and its top, plumped up: the edges rounded off
+	puff.radius = 0.24
+	puff.height = 0.07
+	puff.material = plush
 	var pan := BoxMesh.new()
 	pan.size = Vector3(0.44, 0.025, 0.38)
 	pan.material = dark
@@ -56,10 +60,12 @@ func _build_folds() -> void:
 		var hinge := Node3D.new()
 		hinge.position = Vector3(s.x, s.y + 0.45, s.z - 0.23)
 		hinge.rotation_order = EULER_ORDER_XYZ
-		for part: Array in [[cushion, Vector3(0, -0.055, 0.22)], [pan, Vector3(0, -0.125, 0.22)]]:
+		for part: Array in [[cushion, Vector3(0, -0.07, 0.22)], [puff, Vector3(0, -0.035, 0.22)], [pan, Vector3(0, -0.125, 0.22)]]:
 			var mi := MeshInstance3D.new()
 			mi.mesh = part[0]
 			mi.position = part[1]
+			if part[0] == puff:
+				mi.scale = Vector3(1.0, 1.0, 0.9)
 			hinge.add_child(mi)
 		holder.add_child(hinge)
 		hinge.rotation.x = -1.45
@@ -139,6 +145,8 @@ func _process(dt: float) -> void:
 				$"../Counter".start()
 			elif fixtures.holdable():
 				fixtures.hold_done()
+			elif $"../Phone".holdable():  # a post-it: peeled off
+				$"../Phone".peel()
 			else:
 				things.pick_up()
 
@@ -244,6 +252,16 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip("Locked" if aim_door.locked else "E — %s the door" % ("close" if aim_door.open else "open"))
 		return
+	var arcade_tip: String = $"../Arcade".take_aim(hit, hit_d)  # next door: the cabinets, and Tony's counter (see arcade.gd)
+	if arcade_tip != "":
+		tapes.clear_aim()
+		hud.tip(arcade_tip)
+		return
+	var golf_tip: String = $"../Golf".take_aim(hit, hit_d)  # up on the roof: the practice mat (see golf.gd)
+	if golf_tip != "":
+		tapes.clear_aim()
+		hud.tip(golf_tip)
+		return
 	var trail_tip: String = $"../Trail".take_aim(hit, hit_d)  # as a customer: somewhere to look, a padlock, the register with a badge (see trail.gd)
 	if trail_tip != "":
 		tapes.clear_aim()
@@ -282,7 +300,7 @@ func _aim() -> void:  # what the crosshair's on, and what E would do about it
 		tapes.clear_aim()
 		hud.tip(fix_tip)
 		return
-	var snack_tip: String = $"../Snacks".take_aim(hit, hit_d)  # a stock cupboard, an empty spot on a rack (see snacks.gd)
+	var snack_tip: String = $"../Snacks".take_aim(hit, hit_d, from, dir)  # a stock cupboard, an empty spot on a rack (see snacks.gd)
 	if snack_tip != "" and not things.carrying:
 		tapes.clear_aim()
 		hud.tip(snack_tip)
@@ -326,7 +344,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	if not e is InputEventKey or e.echo or e.physical_keycode != KEY_E:
 		return
 	if e.pressed:
-		if things.holdable() or fixtures.holdable() or $"../Counter".holdable():
+		if things.holdable() or fixtures.holdable() or $"../Counter".holdable() or $"../Phone".holdable():
 			_hold = 0.0  # a tap does one thing, a hold lifts it: wait and see which
 		else:
 			on_e()
@@ -336,7 +354,7 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func on_e() -> void:
-	if things.on_e_first():
+	if things.on_e_first() or $"../Phone".held_e() or $"../Golf".on_e() or $"../Arcade".on_e():
 		return
 	if player.seat != null:  # E always stands you up
 		player.stand(stood_at.at, stood_at.yaw)

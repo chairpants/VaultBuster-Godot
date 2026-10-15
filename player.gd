@@ -5,6 +5,7 @@ extends CharacterBody3D
 ## F: fly (through walls too; Space up, Ctrl down).
 ## Esc frees the mouse; click to take it back. Look down and you're there: in the uniform, or (a customer) your own clothes.
 
+const Traffic := preload("res://traffic.gd")
 const SPEED := 3.2
 const RUN := 6.5
 const JUMP := 4.2
@@ -143,6 +144,9 @@ func _body_tick(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	_body_tick(dt)
+	if not fly and global_position.y < 1.5:  # you, to everybody else: they go round you, cars stop for you (not up on the roof, or flying about)
+		var rv := get_real_velocity()
+		Traffic.person(get_instance_id(), Vector2(global_position.x, global_position.z), Vector2(rv.x, rv.z), "player", 0.3)
 	if seat == null:
 		seat_fov = FOV  # walking resets the seat's zoom
 	cam.fov += (seat_fov - cam.fov) * minf(1.0, dt * 8.0)

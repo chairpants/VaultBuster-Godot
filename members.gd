@@ -3,7 +3,7 @@ extends RefCounted
 ## their member number is their seed, so the same member always looks and acts the same (shoppers.gd).
 ## From the web game's pos.js (the seeded customers: the same numbers and names as over there; owed, settle,
 ## setStatus, canVisit, loyal). In a sandbox everyone's a member from the start; a simulation starts with forty.
-## Not over yet: addresses and notes, incidents on a record.
+## Each has an address, a year they joined, a note on the account now and then, and whatever's gone on the record since.
 
 const FIRST := ["JOHN", "MARY", "DAVID", "LISA", "MIKE", "KAREN", "STEVE", "SUSAN", "CHRIS", "AMY", "BRIAN", "DONNA", "KEVIN", "TINA", "JASON",
 	"HEATHER", "SCOTT", "WENDY", "TODD", "DAWN", "GREG", "SHANNON", "RAY", "TRACY", "DOUG", "ANGELA", "PHIL", "KIM", "ERIC", "MELISSA", "RON", "JILL",
@@ -12,6 +12,11 @@ const LAST := ["SMITH", "JOHNSON", "MILLER", "DAVIS", "GARCIA", "WILSON", "ANDER
 	"WHITE", "LOPEZ", "HARRIS", "CLARK", "LEWIS", "ROBINSON", "WALKER", "YOUNG", "ALLEN", "KING", "WRIGHT", "SCOTT", "HILL", "GREEN", "ADAMS",
 	"BAKER", "NELSON", "CARTER", "MITCHELL", "ROBERTS", "TURNER", "PHILLIPS", "CAMPBELL", "PARKER", "EVANS", "EDWARDS", "COLLINS", "STEWART",
 	"MORRIS", "MURPHY", "COOK", "ROGERS", "REED", "BAILEY", "KOWALSKI", "NGUYEN", "OKAFOR", "BRENNAN", "DELUCA"]
+const STREETS := ["MAPLE AVE", "OAK ST", "ELM ST", "CEDAR LN", "PINE RIDGE RD", "LAKEVIEW DR", "2ND ST", "MAIN ST", "HIGHLAND AVE", "SUNSET BLVD",
+	"WILLOW CT", "BIRCH WAY", "PARK PL", "RIVER RD", "HILLCREST DR", "ORCHARD LN", "MILL ST", "CHESTNUT ST", "FAIRVIEW AVE", "BROOKSIDE DR"]
+const NOTES := ["", "", "", "", "", "PAYS IN QUARTERS", "DAMAGED TAPE 03/96 - PAID", "NO R-RATED (PARENT REQUEST)", "HORROR FAN - CALL ON NEW ARRIVALS",
+	"BOUNCED CHECK 11/95 - CASH ONLY", "EMPLOYEE FAMILY", "REWIND FEE WAIVED 2X - LAST WARNING", "ON RESERVE LIST FOR NEW RELEASES",
+	"ALWAYS ASKS FOR STAFF PICKS", "RETURNED TAPE IN WRONG CASE 2X", "ACCT FROZEN ONCE - FEES PAID 07/96"]
 const RENT_MAX := 3  # tapes out at once, per member
 
 var all: Array = []  # { num, first, last, female, heavy, owed, loyalty, last_visit, status, until }
@@ -36,8 +41,12 @@ func _init() -> void:
 		var m := { "num": num, "first": first, "female": FIRST.find(first) % 2 == 1, "last": LAST[int(_rnd() * LAST.size())],
 			"active": true, "owed": 0.0, "loyalty": 0.0, "last_visit": -9.0, "status": "", "until": 0,
 			"calls": 0, "last_call": -1, "last_result": "", "promise": -9 }  # (the overdue calls: how many, the day of the last, what came of it, the day they said they'd bring it in)
-		for skip in 5:  # (their address, since when, lifetime rentals, the note on their account: the terminal's)
-			_rnd()
+		m.addr = "%d %s" % [12 + int(_rnd() * 9859), STREETS[int(_rnd() * STREETS.size())]]
+		m.since = 1987 + int(_rnd() * 10)
+		m.lifetime = 3 + int(_rnd() * 638)
+		m.notes = NOTES[int(_rnd() * NOTES.size())]
+		m.incidents = []  # [day, what]: the last few show on the account
+		m.likes = ""  # (what they go for, once somebody's noticed: shoppers.gd)
 		m.heavy = _rnd() < 0.2
 		by_num[num] = m
 		all.append(m)
@@ -64,11 +73,15 @@ func loyal(m: Dictionary, d: float) -> void:  # how they feel about the store: -
 	m.loyalty = clampf(m.loyalty + d, -100.0, 100.0)
 
 
+func incident(m: Dictionary, what: String) -> void:  # on their record (pos.js: incident)
+	m.incidents.append([Clock.day, what.to_upper()])
+
+
 func records() -> Dictionary:  # for the save: whoever's got anything on their account
 	var out := {}
 	for m: Dictionary in all:
-		if m.owed > 0.0 or m.loyalty != 0.0 or m.status != "" or m.last_visit > -9.0 or m.calls > 0:
-			out[str(m.num)] = [m.owed, m.loyalty, m.last_visit, m.status, m.until, m.calls, m.last_call, m.last_result, m.promise]
+		if m.owed > 0.0 or m.loyalty != 0.0 or m.status != "" or m.last_visit > -9.0 or m.calls > 0 or not m.incidents.is_empty():
+			out[str(m.num)] = [m.owed, m.loyalty, m.last_visit, m.status, m.until, m.calls, m.last_call, m.last_result, m.promise, m.get("car"), m.incidents, m.likes, m.since]
 	return out
 
 
@@ -86,3 +99,9 @@ func restore(d: Dictionary) -> void:
 				m.last_call = int(d[k][6])
 				m.last_result = d[k][7]
 				m.promise = int(d[k][8])
+			if d[k].size() > 9 and d[k][9] != null:  # (what they drive, or false: on foot)
+				m.car = d[k][9]
+			if d[k].size() > 12:
+				m.incidents = d[k][10].map(func(x: Array) -> Array: return [int(x[0]), x[1]])
+				m.likes = d[k][11]
+				m.since = int(d[k][12])

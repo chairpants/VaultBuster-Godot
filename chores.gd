@@ -11,8 +11,8 @@ extends Node3D
 ## it wants putting back in its own slot.
 ## And ceiling lights that burn out, one every couple of shifts (lightDie, lightFix, deadLightTick): the step
 ## ladder's in the janitor's closet too.
-## Not over yet: the mop's and sweeper's pose in your hands as you work (it stands in front of you, and sways), the
-## heap rising in a bin, the bags' look and sounds, the chute's door, climbing the step ladder (carry it under a dark panel and E does the rest).
+## The mop and the sweeper are worked with both hands, head on the floor out in front (_tool_tick).
+## Not over yet: climbing the step ladder (carry it under a dark panel and E does the rest).
 
 const MESS := {  # kind -> [what it's called, the tool it wants]
 	"spill": ["spilled soda", "mop"], "wrapper": ["candy wrapper", ""], "popcorn": ["spilled popcorn", "sweeper"],
@@ -32,6 +32,8 @@ var strays: Array = []  # tapes shoved in anywhere: { copy, node, at, ry }
 var aim := {}  # what the crosshair's on: { mess } | { tool } | { bin } | { bag } | { chute } | { stray }
 
 var _chute := Vector3.ZERO
+var _chute_door: Node3D  # the hopper door, hinged along its bottom edge
+var _chute_t := 0.0
 var _scrub = null  # { m, t, dur }
 var _carried := Node3D.new()  # the tool in your hands
 var _hands := Node3D.new()  # the bags in your hands
@@ -58,12 +60,73 @@ func _ready() -> void:
 		b.spilled = false
 		bins.append(b)
 	_chute = Vector3(T.chute.at[0], T.chute.at[1], T.chute.at[2])
+	_heaps_build.call_deferred()
 	add_child(_carried)
 	$"../Player/Camera".add_child.call_deferred(_hands)
 	call_deferred("_find_tools")
 
 
+# ---- an open-top bin's heap of crumpled paper, rising with the fill (the lobby's has a swing flap: nothing to see)
+# (chores.js: binList's heap, binShow)
+
+var _heaps := {}  # bin id -> its heap
+
+
+func _heaps_build() -> void:
+	for b: Dictionary in bins:
+		if b.id == "lobby":
+			continue
+		var g := Node3D.new()
+		var disc := MeshInstance3D.new()
+		disc.mesh = CylinderMesh.new()
+		disc.mesh.top_radius = b.r * 0.97
+		disc.mesh.bottom_radius = b.r * 0.97
+		disc.mesh.height = 0.004
+		disc.mesh.material = StandardMaterial3D.new()
+		disc.mesh.material.albedo_color = Color("#2a2a2a") if not b.towels else Color("#e9e9e4")
+		g.add_child(disc)
+		var colors: Array = ["#f6f3ea"] if b.towels else ["#f2f0ea", "#e8e2d0", "#c23a32", "#7a5434", "#e0b020", "#3b7bd2"]
+		for i in 9:
+			var a := i * 2.4
+			var rr: float = (0.0 if i == 0 else 0.35 + 0.5 * randf()) * b.r * 0.75
+			var sz: float = b.r * (0.22 + randf() * 0.12)
+			var m := MeshInstance3D.new()
+			m.mesh = SphereMesh.new()  # ponytail: crumpled balls, where the web game has twenty-sided ones
+			m.mesh.radius = sz
+			m.mesh.height = sz * 1.6
+			m.mesh.radial_segments = 6
+			m.mesh.rings = 3
+			m.mesh.material = StandardMaterial3D.new()
+			m.mesh.material.albedo_color = Color(colors[i % colors.size()])
+			m.position = Vector3(cos(a) * rr, sz * 0.6 + (i % 3) * sz * 0.4, sin(a) * rr)
+			m.rotation = Vector3(randf() * 3.0, randf() * 3.0, 0.0)
+			g.add_child(m)
+		g.position = Vector3(b.x, 0.0, b.z)
+		add_child(g)
+		$"../Room".light(g)
+		_heaps[b.id] = g
+
+
+func _heaps_tick() -> void:  # how full it looks
+	for b: Dictionary in bins:
+		var g: Node3D = _heaps.get(b.id)
+		if g != null:
+			g.visible = b.n > 0
+			g.position.y = 0.02 + (b.rimY - 0.07) * minf(1.0, float(b.n) / b.cap)
+
+
+func chute_use(bags := 1) -> void:  # the hopper door: down, (bags in), back up (chuteUse)
+	_chute_t = 1.3
+	$"../Ambience".chute(_chute, bags)
+
+
 func _find_tools() -> void:  # the level's own mop and sweeper: whatever sits in each one's spot
+	for n: Node in $"../World".find_children("*", "Node3D", true, false):
+		if not n is MeshInstance3D and n.get_child_count() >= 3 and n.global_position.distance_to(_chute + Vector3(0, -0.21, -0.045)) < 0.03:
+			_chute_door = n
+			_chute_door.rotation_order = EULER_ORDER_XYZ
+	if _chute_door == null:
+		push_warning("the trash chute's door isn't where the web game has it: it won't open")
 	for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
 		var c: Vector3 = mi.global_transform * mi.get_aabb().get_center()
 		for t: Dictionary in tools.values():
@@ -268,6 +331,11 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	_heaps_tick()
+	if _chute_door != null:  # 0.3 s down, held, 0.3 s back up
+		_chute_t = maxf(0.0, _chute_t - dt)
+		var e := 1.3 - _chute_t
+		_chute_door.rotation.x = 0.8 * (e / 0.3 if e < 0.3 else 1.0 if e < 1.0 else (1.3 - e) / 0.3) if _chute_t > 0.0 else 0.0
 	for d: Dictionary in dead:
 		if d.t > 0.0:
 			d.t -= dt
@@ -300,20 +368,114 @@ func _process(dt: float) -> void:
 			k.litter_t = INF
 			var r := randf()
 			mess_add("wrapper" if r < 0.5 else "popcorn" if r < 0.8 else "spill", k.c.position.x, k.c.position.z)
-	if tool_held != "":  # out in front of you, a bit to the right; working a mess over, side to side
-		var fwd := -player.global_basis.z
-		var right := player.global_basis.x
-		var sway := sin(_scrub.t * TAU / 0.8) * 0.26 if _scrub != null else 0.0
-		_carried.global_position = player.global_position + fwd * 0.6 + right * (0.14 + sway)
+	if tool_held != "":
+		_tool_tick(dt)
+	if _scrub != null and (not messes.has(_scrub.m) or tool_held == ""):
+		_scrub = null  # (somebody beat you to it)
+
+
+# the mop or sweeper in your hands: its business end on the floor out in front of you, a bit to the right, the handle
+# back up to your hands (the mop: left hand on top, right hand lower down; the sweeper: one hand on the grip). E on a
+# mess with it walks you up to it and works it over: the mop side to side, the sweeper up and back in passes
+# (chores.js: toolTick; core.js: toolPose, TOOLS)
+
+const HOLD := { "mop": [0.14, 0.1, 1.12, 0.32, 1.42], "sweeper": [0.12, 0.18, 1.02, 0.38, 1.2] }  # the head's reach to the right; the top hand: right, up, forward; the handle's length
+
+var _rig: Node3D  # the one in your hands: a copy of the level's, head and pole
+var _rig_src: Node3D  # ...and the level's own, out of sight meanwhile
+var _tool_f := Vector3.ZERO
+var _tool_snap := true
+
+
+func _tool_tick(dt: float) -> void:
+	if tool_held == "ladder" or _rig == null:  # (the ladder, or a level with no rig to pose: just carried along in front)
+		_carried.global_position = player.global_position - player.global_basis.z * 0.6 + player.global_basis.x * 0.14
 		_carried.rotation.y = player.rotation.y
 		_carried.visible = player.seat == null
+		if _scrub != null:
+			_scrub.t += dt
+			if _scrub.t >= _scrub.dur:
+				_scrub_end()
+		return
+	var body = player.body
+	var away: bool = player.seat != null or $"../Things".on_stool  # sat down: it waits, out of sight, till you're up again
+	_rig.visible = not away
+	if away:
+		if body != null:
+			body.reach_to(null)
+			body.reach_also(null)
+		_tool_snap = true
+		return
+	var H: Array = HOLD[tool_held]
+	var head: Node3D = _rig.get_child(0)
+	var pole: Node3D = head.get_child(0)
+	var f := -player.global_basis.z
+	var r := player.global_basis.x
+	var b := player.global_position - f * 0.21  # your body (it stands behind the eye)
+	var hy: float = H[2] - (0.5 if player.crouched else 0.0)
+	var rise := hy - pole.position.y
+	var ff: float = H[3] + sqrt(maxf(0.04, pow(H[4] - 0.06, 2.0) - rise * rise))  # the head out just as far as puts the top of the handle in your hand
+	var cr: float = H[0]  # the head and the top hand, in your frame (right, forward)
+	var cf := ff
+	var ar: float = H[1]
+	var af: float = H[3]
 	if _scrub != null:
-		_scrub.t += dt
-		if not messes.has(_scrub.m) or tool_held == "":
-			_scrub = null  # (somebody beat you to it)
-		elif _scrub.t >= _scrub.dur:
-			mess_clean(_scrub.m)
-			_scrub = null
+		var s: Dictionary = _scrub
+		var m: Dictionary = s.m
+		s.t += dt
+		var to := Vector3(m.x - b.x, 0.0, m.z - b.z)
+		var d := to.length()
+		if d - ff > 0.03:  # too far to reach: step up to it
+			player.global_position += to / d * minf(d - ff, dt * 2.2)
+		var w: float = minf(1.0, minf(s.t / 0.3, maxf(0.0, s.dur - s.t) / 0.3))  # eased into the work and out of it
+		var a: float = s.t * TAU / (0.8 if tool_held == "mop" else 0.7)
+		var u := sin(a) * 0.26 if tool_held == "mop" else sin(a * 0.3) * 0.1  # the mop: side to side, a lazy figure eight;
+		var v := sin(2.0 * a) * 0.05 if tool_held == "mop" else sin(a) * 0.3  # the sweeper: up and back, edging across a row each pass
+		cr += (to.dot(r) + u * w - cr) * w
+		cf += (to.dot(f) + v * w - cf) * w
+		ar += u * 0.35 * w  # the hands go with it, a little
+		af += v * 0.4 * w
+		var k: float = minf(1.0, s.t / (s.dur * 0.85))  # and the mess goes as it's worked over
+		if is_instance_valid(m.node):
+			m.node.scale = Vector3(1.0 - 0.9 * k, 1.0, 1.0 - 0.9 * k)
+		if s.t >= s.dur:
+			_scrub_end()
+	var want := b + r * cr + f * cf
+	var was_f := _tool_f
+	if _tool_snap:
+		_tool_f = want
+		_tool_snap = false
+	else:
+		_tool_f = _tool_f.lerp(want, minf(1.0, dt * (20.0 if _scrub != null else 12.0)))  # walking, it trails a touch behind you
+	var hand := b + r * ar + f * af + Vector3(0, hy, 0)
+	_rig.global_transform = Transform3D(Basis(), _tool_f)
+	if tool_held == "sweeper":  # its wheels roll with it (chores.js: sweeperWheel)
+		var moved := Vector2(_tool_f.x - was_f.x, _tool_f.z - was_f.z)
+		var hr: float = _rig.get_child(0).rotation.y
+		var roll := signf(moved.x * sin(hr) + moved.y * cos(hr)) * moved.length() / 0.017
+		for w in _rig.find_children("sweeperWheel*", "", true, false):
+			(w as Node3D).rotate_object_local(Vector3.UP, roll)
+	var d3 := hand - _tool_f - Vector3(0, pole.position.y, 0)
+	var flat := Vector2(d3.x, d3.z).length()
+	head.rotation = Vector3(0, atan2(d3.x, d3.z), 0)  # the head's +z: back toward your hands
+	pole.rotation = Vector3(atan2(flat, d3.y), 0, 0)  # ...and the handle leans that way
+	if body == null:
+		return
+	var foot := _tool_f + Vector3(0, pole.position.y, 0)
+	var dir := d3.normalized()
+	var length := minf(d3.length(), H[4] - 0.04)
+	if tool_held == "mop":  # left hand on top, the right lower down: wherever on the handle it's nearest the shoulder
+		body.reach_also(foot + dir * length, 1)
+		body.reach_to(foot + dir * clampf((body._arms[0][0].global_position - foot).dot(dir), length * 0.45, length * 0.85), 0, false)
+	else:
+		body.reach_to(foot + dir * length, 0, false)
+
+
+func _scrub_end() -> void:
+	var m: Dictionary = _scrub.m
+	_scrub = null
+	if messes.has(m):
+		mess_clean(m)
 
 
 func tool_take(id: String) -> void:  # toolTake
@@ -321,10 +483,27 @@ func tool_take(id: String) -> void:  # toolTake
 	tool_held = id
 	for c in _carried.get_children():
 		c.queue_free()
+	var head: Node = $"../World".find_child({ "mop": "toolHead", "sweeper": "toolHead2" }.get(id, "-"), true, false)
+	if head != null:  # the mop / sweeper: out in the world, its head on the floor in front of you (_tool_tick)
+		_rig = head.get_parent().duplicate()
+		for body in _rig.find_children("*", "CollisionObject3D", true, false):
+			body.free()  # (in your hands it doesn't bump into things)
+		for n: Node3D in _rig.find_children("*", "Node3D", true, false):
+			n.visible = true
+		var strands: Node3D = _rig.find_child("mopStrands", true, false)
+		if strands != null:
+			strands.scale = Vector3.ONE  # (out of the bucket: the strands flop out)
+		_rig.get_child(0).rotation_order = EULER_ORDER_XYZ
+		_rig.get_child(0).get_child(0).rotation_order = EULER_ORDER_XYZ
+		add_child(_rig)
+		_tool_snap = true
+		_rig_src = head.get_parent()
+		_rig_src.visible = false
+		return
 	for mi: MeshInstance3D in t.nodes:
 		var c: MeshInstance3D = mi.duplicate()
 		for body in c.find_children("*", "CollisionObject3D", true, false):
-			body.free()  # (in your hands it doesn't bump into things)
+			body.free()
 		_carried.add_child(c)
 		c.global_transform = Transform3D(mi.global_basis, mi.global_position - Vector3(t.home.x, 0.0, t.home.z))  # upright, as it stood
 		mi.visible = false
@@ -335,6 +514,13 @@ func tool_return() -> void:  # toolReturn
 		mi.visible = true
 	for c in _carried.get_children():
 		c.queue_free()
+	if _rig != null:
+		_rig.queue_free()
+		_rig = null
+		_rig_src.visible = true
+		if player.body != null:
+			player.body.reach_to(null)
+			player.body.reach_also(null)
 	tool_held = ""
 	_scrub = null
 
@@ -438,6 +624,7 @@ func on_e() -> bool:
 			hud.toast("Hands full: take these to the chute first" if tool_held == "" else "Put the %s back first" % tools[tool_held].label)
 		else:
 			bag_carry.append({ "bin": b.id, "n": b.n })  # the bag out, and a fresh liner in
+			$"../Ambience".bag(Vector3(b.x, b.rimY, b.z))
 			b.n = 0
 			b.acc = 0.0
 			b.spilled = false
@@ -455,6 +642,7 @@ func on_e() -> bool:
 	elif aim.has("chute") and not bag_carry.is_empty():  # chuteDrop
 		var n := bag_carry.size()
 		bag_carry.clear()
+		chute_use(n)
 		_show_hands()
 		checkout.score += 10 * n
 		$"../Staff".xp("you", "str", 3.0 * n)

@@ -52,6 +52,7 @@ const PANEL_OFF := Color(0.051, 0.063, 0.086)  # 0x0d1016
 
 
 func _ready() -> void:
+	_find_rockers.call_deferred()
 	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).lights
 	names = d.names
 	switches = d.switches
@@ -242,6 +243,23 @@ func set_zone(zone: String, on: bool) -> void:
 			p.albedo_color = PANEL_OFF
 
 
+var _rockers: Array = []  # each switch's rocker, in the level: [node, zone, the angle it sits at flat]
+
+
+func _find_rockers() -> void:  # the smallest thing right at each switch
+	for s: Dictionary in switches:
+		var at := Vector3(s.p[0], s.p[1], s.p[2])
+		var best: MeshInstance3D = null
+		for mi: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):
+			if mi.global_position.distance_to(at) < 0.03 and (best == null or mi.get_aabb().get_longest_axis_size() < best.get_aabb().get_longest_axis_size()):
+				best = mi
+		if best != null:
+			best.rotation_order = EULER_ORDER_XYZ
+			_rockers.append([best, s.zone])
+	if _rockers.size() != switches.size():
+		push_warning("light switches: %d of %d rockers found in the level" % [_rockers.size(), switches.size()])
+
+
 func flip_switch(zone: String) -> void:
 	set_zone(zone, not zone_on[zone])
 
@@ -292,6 +310,8 @@ func _flicker_schedule(duration: float) -> Array:  # when one tube's lit while i
 
 
 func _process(dt: float) -> void:  # fluorescents restriking, tube by tube (lightingTick)
+	for r: Array in _rockers:  # the rocker snaps up / down with its zone (main.js)
+		r[0].rotation.x += ((-0.32 if zone_on[r[1]] else 0.32) - r[0].rotation.x) * minf(1.0, dt * 25.0)
 	var day: Vector3 = sky.day_c * sky.level + Vector3(0.035, 0.045, 0.08) * (1.0 - sky.level)  # what comes in through the glass: daylight, or moonlight and the lot's lamps
 	for w in _windows:
 		w.light_color = Color(day.x, day.y, day.z).linear_to_srgb()

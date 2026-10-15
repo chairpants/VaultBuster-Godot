@@ -42,6 +42,7 @@ void fragment() {
 var T := {}  # data/interact.json's things
 var aim := ""
 var on_stool := false
+var stool_by = null  # one of the staff has it (fetching it, carrying it, sat on it: staff.gd): it's not yours to take meanwhile
 var carrying := ""  # "stool" | "cutout" | ""
 var cooler_open := false
 var locked := false
@@ -88,13 +89,15 @@ func _ready() -> void:
 				_water_y = n.position.y
 		elif n.get_child_count():
 			if p.distance_to(Vector3(T.stool.x, 0, T.stool.z)) < 0.02:
+				if _stool != null:
+					continue  # (a part of it with the same origin: the first one found is the whole stool)
 				_stool = n
 				for c in n.get_children():
 					if c is Node3D and not c is MeshInstance3D and absf(c.position.y - T.stool.SEAT) < 0.01:
 						_stool_top = c  # everything that turns
-			elif p.distance_to(Vector3(T.cutout.x, 0, T.cutout.z)) < 0.02:
+			elif _cutout == null and p.distance_to(Vector3(T.cutout.x, 0, T.cutout.z)) < 0.02:
 				_cutout = n
-			elif p.distance_to(_v(T.cooler.pivot)) < 0.02:
+			elif _cooler == null and p.distance_to(_v(T.cooler.pivot)) < 0.02:
 				_cooler = n
 	for what in [["the stool", _stool], ["the standee", _cutout], ["the cooler's door", _cooler], ["the deadbolt", _turn]]:
 		if what[1] == null:
@@ -154,7 +157,7 @@ func _stool_at() -> Vector3:
 func _process(dt: float) -> void:
 	# the stool: bearing friction winds the spin down (a constant drag plus a little that grows with speed); you turn with the seat
 	if _vel > 0.0:
-		var drag: float = (T.stool.DRAG + T.stool.VISC * _vel) * (1.0 if on_stool else T.stool.EMPTY) * dt
+		var drag: float = (T.stool.DRAG + T.stool.VISC * _vel) * (1.0 if on_stool or stool_by != null else T.stool.EMPTY) * dt
 		var v := maxf(0.0, _vel - drag)
 		var d := (_vel + v) / 2.0 * dt  # averaged over the step, so a stop lands smoothly
 		_vel = v
@@ -223,7 +226,7 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 		return ""
 	var at: Vector3 = hit.position
 	if hit_d < 2.2:
-		if _stool and Vector2(at.x - _stool_at().x, at.z - _stool_at().z).length() < 0.34 and at.y < _stool_at().y + 0.9:
+		if _stool and stool_by == null and Vector2(at.x - _stool_at().x, at.z - _stool_at().z).length() < 0.34 and at.y < _stool_at().y + 0.9:
 			aim = "stool"
 			return "Lifting…" if lifting else "E — sit on the stool\nHold E — pick it up"
 		if at.distance_to(_v(T.lock.at)) < 0.2:
@@ -242,7 +245,7 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 		if _cutout and Vector2(at.x - _cutout.global_position.x, at.z - _cutout.global_position.z).length() < 0.5 and at.y < 2.0:
 			aim = "cutout"
 			return "Lifting…" if lifting else "Hold E — pick up the standee"
-		if at.distance_to(_v(T.cooler.hit)) < 0.75 or (_cooler and cooler_open and at.distance_to(_cooler.global_position + Vector3(0, 1.0, 0)) < 0.9):
+		if (at.distance_to(_v(T.cooler.hit)) < 0.75 or (_cooler and cooler_open and at.distance_to(_cooler.global_position + Vector3(0, 1.0, 0)) < 0.9)) and not (cooler_open and $"../Snacks".unit_on_ray(from, dir, hit_d) != null):  # (open, a drink you're looking at is the drink, not the door)
 			aim = "cooler"
 			return "E — %s the cooler\n%d°F inside%s" % ["close" if cooler_open else "open", roundi($"../Snacks".air), " · some drinks still warm" if $"../Snacks".any_warm() else ""]
 		var b := _v(T.bed.at)

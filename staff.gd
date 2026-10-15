@@ -16,11 +16,13 @@ extends Node
 ## Floor help: whoever's been asking at the counter twenty seconds gets what they asked for fetched from the shelf
 ## (or a pick from their kind of thing). Lunch: half an hour in the break room around midday, on a five-hour shift.
 ## With nothing on they lean on the counter, look about, and two of them near each other get talking.
-## Not over yet: the stool, the sandwich,
-## what the INT and WIS unlocks light up. They put
-## a tape away rewound without a trip to the rewinder, and carry a bag of trash without it showing.
+## With nothing at all to do for a bit they fetch the stool, park it by the register and sit (and spin, once bored),
+## or take a turn round the floor: a few shelves faced up, a look out the window.
+## What came back unrewound goes through a rewinder before it's shelved; lunch is a sandwich.
+## Your INT and WIS milestones light things up: the slot for the tape in hand, misshelved tapes, a shoplifter.
 
 const Nav := preload("res://nav.gd")
+const Traffic := preload("res://traffic.gd")
 const PACE := 1.3  # m/s
 const STAFF_MAX := 4
 const SKILLS := {  # [short, long, what it's for, XP rate: so the rarer kinds of work level about as fast as the constant ones]
@@ -189,7 +191,7 @@ func hours(w: Dictionary, weekday := -1) -> int:  # scheduled, that day (or the 
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if idx == 0 and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_K:  # the character sheet
+	if idx == 0 and e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_K and not $"../POS".open:  # the character sheet
 		_sheet_layer.visible = not _sheet_layer.visible
 
 
@@ -228,6 +230,103 @@ func _dana() -> Dictionary:  # DANA_APP
 	return { "first": "Dana", "last": "Reyes", "female": true, "skills": _skills({ "dex": 3, "int": 3, "cha": 3, "str": 2, "con": 2, "wis": 2 }) }
 
 
+# ---- the week's hours and the job board, set from the register (pos.gd): by hand, or left on AUTO
+# (staff.js: setSched, SCHED_MAX. AUTO isn't the web game's: there it's all by hand)
+
+const SCHED_MAX := 25  # part time: hours a week, each
+const JOB_SKILL := { "register": "dex", "phone": "cha", "floor": "int", "returns": "int", "restock": "str", "cleanup": "con" }  # what each job leans on
+
+var auto_sched := false  # ($Staff's) the schedule's kept for you: redone when somebody's hired
+var auto_jobs := false  # ...and the job board
+
+
+func set_sched(i: int, d: int, n: int, on: bool) -> String:  # one hour of one day, for one of them -> what's wrong with that, or ""
+	var w: Dictionary = roster[i]
+	if ((int(w.sched[d]) >> n) & 1 == 1) == on:
+		return ""
+	if on and hours(w) >= SCHED_MAX:
+		return "%s IS AT %d HOURS (PART TIME)." % [w.first.to_upper(), SCHED_MAX]
+	w.sched[d] = int(w.sched[d]) ^ (1 << n)
+	return ""
+
+
+func slot_weight(d: int, n: int) -> float:  # how much an hour wants somebody on: the evening rush most, lunch, the weekend; before opening least
+	var h := 9 + n
+	var by_hour := 0.3 if h < 10 else 3.0 if h >= 17 and h < 22 else 2.0 if h >= 11 and h < 14 else 1.5 if h >= 14 and h < 17 else 1.2 if h >= 22 else 1.0
+	return by_hour * (1.3 if d in [5, 6] else 1.1 if d == 0 else 1.0)
+
+
+func auto_schedule() -> void:  # everyone's 25 hours, on the hours that want them most: whole shifts, nobody over eight hours a day, as much of the week covered as there are people for
+	for w: Dictionary in roster:
+		w.sched = [0, 0, 0, 0, 0, 0, 0]
+	var slots: Array = []
+	for d in 7:
+		for n in 15:
+			slots.append([d, n])
+	slots.sort_custom(func(a: Array, b: Array) -> bool: return slot_weight(a[0], a[1]) > slot_weight(b[0], b[1]) or (slot_weight(a[0], a[1]) == slot_weight(b[0], b[1]) and a[0] * 15 + a[1] < b[0] * 15 + b[1]))
+	for pass_n in 2:  # the hours nobody's on first; then, with hours to spare, a second pair of hands on the busiest
+		for s: Array in slots:
+			var d: int = s[0]
+			var n: int = s[1]
+			if pass_n == 1 and slot_weight(d, n) < 2.0:
+				continue
+			if pass_n == 0 and roster.any(func(w: Dictionary) -> bool: return (int(w.sched[d]) >> n) & 1 == 1):
+				continue
+			var best := -1
+			var best_k := -1.0
+			for i in roster.size():
+				var w: Dictionary = roster[i]
+				var day: int = w.sched[d]
+				if (day >> n) & 1 == 1 or hours(w) >= SCHED_MAX or hours(w, d) >= 8:
+					continue
+				var beside := (n > 0 and (day >> (n - 1)) & 1 == 1) or (n < 14 and (day >> (n + 1)) & 1 == 1)
+				if day != 0 and not beside:
+					continue  # (one shift a day: no coming back in for an hour)
+				var k := (2.0 if beside else 0.0) + float(SCHED_MAX - hours(w)) / SCHED_MAX
+				if k > best_k:
+					best_k = k
+					best = i
+			if best >= 0:
+				roster[best].sched[d] = int(roster[best].sched[d]) | (1 << n)
+	for w: Dictionary in roster:  # nobody comes in for an hour or two: those go, and the hours go on the ends of their real shifts (where nobody's on, first; then the busiest)
+		for d in 7:
+			if hours(w, d) < 3:
+				w.sched[d] = 0
+		while hours(w) < SCHED_MAX:
+			var pick := []
+			var pick_k := -1.0
+			for d in 7:
+				var day: int = w.sched[d]
+				if day == 0 or hours(w, d) >= 8:
+					continue
+				for n in 15:
+					if (day >> n) & 1 == 0 and ((n > 0 and (day >> (n - 1)) & 1 == 1) or (n < 14 and (day >> (n + 1)) & 1 == 1)):
+						var k := slot_weight(d, n) + (10.0 if not roster.any(func(o: Dictionary) -> bool: return (int(o.sched[d]) >> n) & 1 == 1) else 0.0)
+						if k > pick_k:
+							pick_k = k
+							pick = [d, n]
+			if pick.is_empty():
+				break
+			w.sched[pick[0]] = int(w.sched[pick[0]]) | (1 << pick[1])
+
+
+func auto_assign_jobs() -> void:  # each to what they're best at: their strongest job first, on down; whoever's quickest at the register always has it first
+	var top := -1
+	for i in roster.size():
+		if top < 0 or roster[i].skills.dex[0] > roster[top].skills.dex[0]:
+			top = i
+	for i in roster.size():
+		var w: Dictionary = roster[i]
+		var order: Array = JOBS.keys()
+		order.sort_custom(func(a: String, b: String) -> bool: return w.skills[JOB_SKILL[a]][0] > w.skills[JOB_SKILL[b]][0] or (w.skills[JOB_SKILL[a]][0] == w.skills[JOB_SKILL[b]][0] and JOBS[a][1] < JOBS[b][1]))
+		for k in order.size():
+			w.jobs[order[k]] = mini(4, 1 + k if k < 2 else 2 + k / 2)  # 1, 2, 3, 3, 4, 4
+		if i == top or roster.size() == 1:
+			w.jobs.register = 1
+		elif w.jobs.register > 2:
+			w.jobs.register = 2  # (and nobody's too busy to ring somebody up)
+
+
 func hire(w: Dictionary) -> void:  # onto the roster: five 5-hour shifts, staggered (evenings, the rush; every other hire afternoons), the job board's usual order
 	var i := roster.size()
 	if not w.has("sched"):
@@ -240,6 +339,10 @@ func hire(w: Dictionary) -> void:  # onto the roster: five 5-hour shifts, stagge
 		if not w.jobs.has(id):
 			w.jobs[id] = JOBS[id][1]
 	roster.append(w)
+	if auto_sched:
+		auto_schedule()
+	if auto_jobs:
+		auto_assign_jobs()
 	if i == 0:
 		who = w
 		first = w.first
@@ -345,6 +448,314 @@ func _hire(arrive: bool) -> void:  # already at their post if the store's just l
 		hud.toast("%s clocked in" % first)
 
 
+# ---- the stool: when nothing's going on at the register for a bit, they fetch it (wherever you left it, if they can
+# walk there), park it beside the register and sit; looking about, a lazy half turn now and then, and once they're
+# bored stiff, a real spin. Anything to do gets them off it (staff.js: empFetchStool, empStoolSit, the stool states)
+
+const STOOL_AT := Vector2(-4.75, 2.7)  # where it's parked: beside the register, clear of the shuffle to the pad
+const STOOL_WAIT := 8.0  # seconds of nothing going on before they go for it
+const BORED_AT := 25.0  # seconds up there before they're bored enough to really spin
+
+static var sits := true  # (off for the self-check's own scenes: nobody wanders off for the stool in the middle of one)
+
+var _idle := 0.0
+var _stool_plan := ""
+var _stool_home := 0.0
+var _bored := 0.0
+var _spins := 0
+var _spin_t := 0.0
+var _side := Vector2.ZERO
+var _sat := 0.0
+
+
+func _quiet() -> bool:  # nothing for them to do: nobody in, no sale, no alarm, nothing in the returns
+	return sits and on_duty() and shoppers.custs.is_empty() and checkout.co == null and not shoppers.alarm_on and tapes.return_bin.is_empty() and not _lunch_due()
+
+
+func _stool_side(toward: Vector2):  # somewhere to stand beside it, on the side nearest there, that they can walk to (or null)
+	var things: Node = $"../Things"
+	var at := Vector2(things._stool_at().x, things._stool_at().z)
+	var a0 := atan2(toward.x - at.x, toward.y - at.y)
+	for da: float in [0.0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.4, -2.4, PI]:
+		var p := at + Vector2(sin(a0 + da), cos(a0 + da)) * 0.6
+		if p.distance_to(Vector2(dana.position.x, dana.position.z)) < 0.1 or not _nav.path(dana.position.x, dana.position.z, p.x, p.y).is_empty():
+			return p
+	return null
+
+
+func _stool_fetch() -> void:
+	var things: Node = $"../Things"
+	if things._stool == null or things.stool_by != null or things.on_stool or things.carrying == "stool":
+		return
+	var at := Vector2(things._stool_at().x, things._stool_at().z)
+	var side = _stool_side(Vector2(dana.position.x, dana.position.z))
+	if side == null:
+		return  # can't get to it (a closed door, boxed in)
+	things.stool_by = self
+	_stool_plan = "sit" if at.distance_to(STOOL_AT) < 0.3 else "carry"
+	dana.set_mood("happy")
+	_go(side, "toStool")
+	if state != "toStool":
+		things.stool_by = null
+
+
+func _stool_sit() -> void:  # back onto the seat from wherever they're standing
+	dana.reach_to(null)
+	dana.set_pose("sit", { "hipY": 0.77, "tuck": 0.5 })  # up on the seat, feet pulled back onto the footring
+	state = "stoolSitDown"
+	_t = 0.7
+	_from = Vector2(dana.position.x, dana.position.z)
+
+
+func _stool_leave() -> void:  # dropped mid-whatever: let go of it right now
+	var things: Node = $"../Things"
+	if things.stool_by != self:
+		return
+	things._solid(things._stool, true)
+	if state in ["stoolSitDown", "stoolSit", "stoolStandUp"]:
+		var side = _stool_side(Vector2(_post.x, _post.z))
+		if side != null:
+			dana.position.x = side.x
+			dana.position.z = side.y
+	dana.set_pose("idle")
+	dana.reach_to(null)
+	dana.look_at_yaw(null)
+	things.stool_by = null
+
+
+# ---- a turn round the floor: with nothing going on, as likely as the stool. A few shelves faced up (a hand along the
+# row, a look at it), a look out the front windows, and back. (Not the web game's: there it's the stool or the counter)
+
+var _rounds := 0  # stops left on this turn round the floor
+
+
+func _spare() -> bool:  # somebody else has the register: no call to stand there with them
+	return sits and on_duty() and not shoppers.alarm_on and crew.any(func(e: Node) -> bool: return e != self and e.idx < idx and e.dana != null and e.state == "post")
+
+
+func _wander_start() -> bool:
+	if shoppers._spots.is_empty():
+		return false
+	_rounds = 2 + randi() % 3
+	return _wander_next()
+
+
+func _wander_next() -> bool:  # -> on the way to the next stop (or home: that was the last)
+	dana.reach_to(null)
+	dana.look_at_yaw(null)
+	dana.set_pose("idle")
+	_rounds -= 1
+	if _rounds < 0 or not (_quiet() or _spare()):
+		_go(Vector2(_post.x, _post.z), "toPost")
+		return false
+	if randf() < 0.25:  # the front windows: what's it doing out there
+		_target = { "x": -3.0 + randf() * 9.0, "z": 1.3, "ry": PI, "window": true }
+	else:
+		_target = shoppers._spots.pick_random()
+	_go(Vector2(_target.x, _target.z), "toTidy")
+	return state == "toTidy"
+
+
+func _wander_tick() -> bool:  # -> it was one of its states
+	match state:
+		"toTidy":  # there: straighten the row (or just look out)
+			_ry = _target.ry
+			state = "tidy"
+			_t = 2.5 + randf() * 2.5
+			dana.set_mood("watch" if _target.has("window") else "browse")
+			if not _target.has("window"):
+				dana.reach_to(dana.position + Vector3(sin(_ry), 0.0, cos(_ry)) * 0.7 + Vector3(0, 1.0 + randf() * 0.5, 0))
+		"tidy":
+			if _t <= 0.0 or not (_quiet() or _spare()):
+				dana.set_mood("neutral")
+				_wander_next()
+		_:
+			return false
+	return true
+
+
+func _stool_tick(dt: float) -> bool:  # -> it was one of the stool's states
+	var things: Node = $"../Things"
+	var at := Vector2(things._stool_at().x, things._stool_at().z)
+	match state:
+		"toStool":
+			if not _quiet():
+				_stool_leave()
+				_go(Vector2(_post.x, _post.z), "toPost")
+			elif _stool_plan == "sit":
+				_stool_sit()
+			else:  # a hand on the seat
+				dana.reach_to(Vector3(at.x, 0.72, at.y), 1, true)
+				state = "stoolGrab"
+				_t = 0.7
+		"stoolGrab":
+			if _t <= 0.0:
+				things._solid(things._stool, false)
+				things._vel = 0.0
+				dana.reach_to(null)
+				dana.set_pose("hold")
+				_go(Vector2(STOOL_AT.x, STOOL_AT.y - 0.5), "stoolCarry")  # behind its spot, facing the counter
+				if state != "stoolCarry":
+					_stool_leave()
+		"stoolCarry":  # there: down it goes, and they're straight onto it
+			things._stool.global_position = Vector3(STOOL_AT.x, 0.0, STOOL_AT.y)
+			things._solid(things._stool, true)
+			_ry = 0.0
+			_stool_sit()
+		"stoolSitDown":
+			var k := 1.0 - maxf(0.0, _t) / 0.7
+			dana.position.x = lerpf(_from.x, at.x, k)
+			dana.position.z = lerpf(_from.y, at.y, k)
+			if _t <= 0.0:
+				things._angle = _face - PI
+				_stool_home = _face
+				state = "stoolSit"
+				_t = 3.0 + randf() * 5.0
+				_bored = 0.0
+				_spins = 0
+				_sat = 0.0
+				dana.set_mood("neutral")
+		"stoolSit":
+			_sat += dt
+			if not _quiet() or things.on_stool or _sat > 75.0:  # something's up (or it's been a while: a look round for something to do): off they get
+				var side = _stool_side(Vector2(_post.x, _post.z))
+				_side = side if side != null else Vector2(dana.position.x, dana.position.z - 0.6)
+				_from = Vector2(dana.position.x, dana.position.z)
+				state = "stoolStandUp"
+				_t = 0.5
+				dana.set_pose("idle")
+				dana.look_at_yaw(null)
+				dana.set_mood("neutral")
+				return true
+			_bored += dt
+			if _spins > 0:  # bored stiff: shove after shove, same as you tapping E
+				_spin_t -= dt
+				if _spin_t <= 0.0:
+					_spins -= 1
+					_spin_t = 0.22 + randf() * 0.12
+					things._vel = minf(things.T.stool.MAX, things._vel + things.T.stool.PUSH)
+					if _spins == 0:
+						dana.set_mood("love")  # wheeeee
+			if things._vel == 0.0:  # stopped facing who-knows-where: scoot back round to the counter
+				var d := angle_difference(things._angle, _stool_home - PI)
+				things._angle += signf(d) * minf(absf(d), 0.9 * dt)
+			_ry = things._angle + PI
+			_face = _ry
+			if _t <= 0.0 and things._vel == 0.0 and _chat_with == null:  # a whim: the longer nothing happens, the more bored they get
+				var r := randf()
+				if _bored > BORED_AT:  # that's it: a real spin
+					_bored = 0.0
+					_spins = 4 + randi() % 4
+					_spin_t = 0.0
+					dana.look_at_yaw(null)
+					dana.set_mood("happy")
+				elif r < 0.2:  # a lazy half turn
+					things._vel = minf(things.T.stool.MAX, 1.5 + randf() * 1.5)
+					dana.set_mood("happy")
+					dana.look_at_yaw(null)
+				elif r < 0.5:  # what's going on over there
+					dana.look_at_yaw((randf() * 2.0 - 1.0) * 1.1)
+					dana.set_mood("browse")
+				else:  # sigh
+					dana.look_at_yaw(null)
+					dana.set_mood("meh" if _bored > BORED_AT / 2.0 else "neutral")
+				_t = 4.0 + randf() * 8.0
+		"stoolStandUp":
+			var k := 1.0 - maxf(0.0, _t) / 0.5
+			dana.position.x = lerpf(_from.x, _side.x, k)
+			dana.position.z = lerpf(_from.y, _side.y, k)
+			if _t <= 0.0:
+				things.stool_by = null
+				_idle = 0.0
+				_go(Vector2(_post.x, _post.z), "toPost")
+		_:
+			return false
+	return true
+
+
+# ---- the rewinders: what came back unrewound goes through one before it's shelved, both machines at once if there
+# are the tapes for it (staff.js: the "rewind" state; chores.js: rewinderSpot)
+
+var _rewinding: Array = []  # theirs, in the machines
+
+
+func _rewinders() -> Array:  # the ones that are there to use
+	return tapes.rewinders.slice(0, 2 if $"../Shift".owned("rewinder2") else 1)
+
+
+func _rewinder_spot() -> Vector2:  # on the staff's side of the counter, at the free one nearest (or the first)
+	var rws: Array = _rewinders()
+	var free: Array = rws.filter(func(rw: Dictionary) -> bool: return rw.tape == null)
+	var pick: Dictionary = (free if not free.is_empty() else rws)[0]
+	for rw: Dictionary in (free if not free.is_empty() else rws):
+		if rw.at.distance_to(dana.position) < pick.at.distance_to(dana.position):
+			pick = rw
+	return Vector2(clampf(pick.at.x, -5.67, -3.1), 3.2) if pick.at.z > 3.6 else Vector2(-3.05, pick.at.z)  # (the north run of the counter, or the east one)
+
+
+func _rewind_tick() -> void:
+	for t: Dictionary in _rewinding.duplicate():  # someone else took it out: it's theirs now
+		if not tapes.rewinders.any(func(rw: Dictionary) -> bool: return is_same(rw.tape, t)):
+			carry.erase(t)
+			_rewinding.erase(t)
+	if _t > 0.0:
+		return  # one hand, one tape at a time
+	var mine := func(t) -> bool: return _rewinding.any(func(x: Dictionary) -> bool: return is_same(x, t))
+	for rw: Dictionary in tapes.rewinders:
+		if rw.done and rw.tape != null and mine.call(rw.tape):  # out it comes, rewound
+			_rewinding.erase(rw.tape)
+			_ry = atan2(rw.at.x - dana.position.x, rw.at.z - dana.position.z)
+			dana.reach_to(rw.at + Vector3(0, 0.08, 0))
+			rw.tape = null
+			_t = 0.5
+			dana.set_mood("neutral")
+			dana.hold_tape(mini(3, carry.size() - _rewinding.size()))
+			return
+	var next = null
+	for t: Dictionary in carry:
+		if not tapes.is_rewound(t) and not mine.call(t):
+			next = t
+			break
+	var free: Array = _rewinders().filter(func(rw: Dictionary) -> bool: return rw.tape == null)
+	if next != null and not free.is_empty():  # in it goes
+		var rw: Dictionary = free[0]
+		rw.tape = next
+		rw.f0 = tapes.wind_frac(next)
+		rw.t = 0.0
+		rw.dur = maxf(1.0, rw.f0 * 10.0) * (0.5 if $"../Shift".owned("rewinders") else 1.0)
+		rw.done = rw.f0 <= 0.0
+		_rewinding.append(next)
+		_ry = atan2(rw.at.x - dana.position.x, rw.at.z - dana.position.z)
+		dana.reach_to(rw.at + Vector3(0, 0.08, 0))
+		_t = 0.8
+		dana.set_mood("wait")
+		dana.hold_tape(mini(3, carry.size() - _rewinding.size()))
+		return
+	if _rewinding.is_empty():  # nothing of theirs running: done, or both machines taken by someone else
+		if next != null:
+			dana.set_mood("impatient")
+		else:
+			dana.reach_to(null)
+			_next()
+		return
+	dana.reach_to(null)  # waiting on the machines
+	dana.set_pose("hold")
+
+
+func _sandwich() -> Node3D:  # in its wax paper (staff.js: sandwichMesh)
+	var g := Node3D.new()
+	for l: Array in [[0.11, 0.015, 0.09, "#e0b878", 0.0], [0.115, 0.008, 0.095, "#5aa83a", 0.011], [0.11, 0.008, 0.09, "#d65a4a", 0.018], [0.11, 0.015, 0.09, "#e0b878", 0.03]]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = BoxMesh.new()
+		mi.mesh.size = Vector3(l[0], l[1], l[2])
+		mi.mesh.material = StandardMaterial3D.new()
+		mi.mesh.material.albedo_color = Color(l[3])
+		mi.position.y = l[4]
+		g.add_child(mi)
+	$"../Room".light(g)
+	return g
+
+
 func _go(to: Vector2, then: String) -> void:
 	_path = _nav.path(dana.position.x, dana.position.z, to.x, to.y)
 	state = then
@@ -359,17 +770,75 @@ func _next() -> void:  # the next return to put away, or home
 		dana.set_pose("idle")
 		_go(Vector2(_post.x, _post.z), "toPost")
 		return
-	_target = carry[0]
 	dana.hold_tape(mini(3, carry.size()))
 	dana.set_pose("hold")
+	if carry.any(func(t: Dictionary) -> bool: return not tapes.is_rewound(t)):  # be kind: the rewinder first
+		var spot := _rewinder_spot()
+		if Vector2(dana.position.x, dana.position.z).distance_to(spot) < 0.1:
+			state = "rewind"
+			_path = []
+		else:
+			_go(spot, "toRewinder")
+		if state != "toPost":
+			return
+	_target = carry[0]
 	var fx := cos(_target.ry)  # (shelves face their local +x)
 	var fz := -sin(_target.ry)
 	_go(Vector2(_target.p[0] + fx * 0.8, _target.p[2] + fz * 0.8), "toShelf")
 
 
+# ---- your own skills' milestones that show something: Shelf Sense (INT 5) lights the slot for the tape in your hand,
+# Keen Eye (INT 10) the misshelved tapes, Watchful (WIS 5) a red light over anyone sneaking something out (staff.js:
+# milestoneTick, beaconAt)
+
+var _beacons: Array[MeshInstance3D] = []
+
+
+func _beacon(i: int, at: Vector3, ry: float, color: Color, size: Vector3) -> void:
+	while _beacons.size() <= i:
+		var m := MeshInstance3D.new()
+		m.mesh = BoxMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.no_depth_test = false
+		m.material_override = mat
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(m)
+		_beacons.append(m)
+	var b := _beacons[i]
+	b.visible = true
+	b.transform = Transform3D(Basis(Vector3.UP, ry).scaled(size), at)
+	var c := color
+	c.a = 0.35 + 0.25 * sin(Time.get_ticks_msec() / 180.0)  # a slow pulse
+	(b.material_override as StandardMaterial3D).albedo_color = c
+
+
+func _beacons_tick() -> void:
+	var n := 0
+	var T: Vector3 = tapes.size
+	var held = tapes.held
+	if held != null and held.get("off", false) and has("you", "int", 5):
+		_beacon(n, Vector3(held.p[0], held.p[1], held.p[2]), held.ry, Color("#66ffcc"), Vector3(T.x * 1.4, T.y * 1.1, T.z * 1.1))
+		n += 1
+	if has("you", "int", 10):
+		for st: Dictionary in chores.strays:
+			if st.node != null and is_instance_valid(st.node):
+				_beacon(n, st.node.global_position, st.node.global_rotation.y, Color("#ffcc33"), Vector3(T.x * 1.3, T.y * 1.2, T.z * 1.3))
+				n += 1
+	if has("you", "wis", 5):
+		for k: Dictionary in shoppers.custs:
+			if k.get("sneaking", false) and not k.get("alarmed", false):
+				_beacon(n, k.c.position + Vector3(0, 2.05, 0), 0.0, Color("#ff3030"), Vector3.ONE * 0.18)
+				n += 1
+	for i in range(n, _beacons.size()):
+		_beacons[i].visible = false
+
+
 func _process(dt: float) -> void:
 	_clock_t += dt
 	if idx == 0:
+		_beacons_tick()
 		if not _rostered and _clock_t > 0.4:
 			_rostered = true
 			_muster()
@@ -404,7 +873,10 @@ func _process(dt: float) -> void:
 			_path.pop_front()
 		else:
 			speed = PACE * (1.0 + 0.03 * (lv(self, "con") - 1))  # (CON: quicker on their feet)
-			dana.position += Vector3(to.x, 0.0, to.y) / d * minf(d, speed * dt)
+			var vel := Traffic.walk(dana.get_instance_id(), Vector2(dana.position.x, dana.position.z), to / d, speed, "staff", dt, Callable(_nav, "open_at") if dana.position.z > 0.25 else Callable())  # (out of the customers' way: they're who it's for)
+			speed = vel.length()
+			if speed > 0.001:
+				dana.position += Vector3(vel.x, 0.0, vel.y) / speed * minf(d, speed * dt)
 			_step_d += minf(d, speed * dt)
 			for door: Dictionary in interact.doors:  # they get the doors
 				if not door.open and not door.locked and not door.push and Vector2((door.shut.x0 + door.shut.x1) / 2.0, (door.shut.z0 + door.shut.z1) / 2.0).distance_to(Vector2(dana.position.x, dana.position.z)) < 1.2:
@@ -412,19 +884,32 @@ func _process(dt: float) -> void:
 			if _step_d > 0.7:
 				_step_d = 0.0
 				$"../Ambience".step(dana.position)
-			_ry = atan2(to.x, to.y)
+			if speed > 0.001:
+				_ry = atan2(vel.x, vel.y)
+			if state == "stoolCarry":  # (the stool, out in front of them)
+				$"../Things"._stool.global_position = dana.position + Vector3(sin(_ry), 0.0, cos(_ry)) * 0.45
 		# called away: somebody's at the counter, nobody's at the register, and they're out on the floor. Home first
-		if waiting != null and checkout.co == null and crew[0].clerk() == null and _pri("register") < 9 and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag", "toStray", "stockGo", "stockTo"]:
+		if waiting != null and checkout.co == null and crew[0].clerk() == null and _pri("register") < 9 and state in ["toBin", "toShelf", "toMess", "toTrash", "toBag", "toStray", "stockGo", "stockTo", "toTidy"]:
 			_restock_end(true)
 			_trash = null
 			_mess = null
 			_go(Vector2(_post.x, _post.z), "toPost")
+	elif _stool_tick(dt) or _wander_tick():
+		_t -= dt
 	else:
 		_t -= dt
 		match state:
 			"post":
 				_ry = _post.ry
 				_at_post(dt, waiting)
+			"toRewinder":
+				state = "rewind"
+			"rewind":
+				if waiting != null and checkout.co == null and crew[0].clerk() == null and _pri("register") < 9:  # somebody's at the counter: back to the register (what's in the machines keeps)
+					dana.reach_to(null)
+					_go(Vector2(_post.x, _post.z), "toPost")
+				else:
+					_rewind_tick()
 			"toPost":
 				state = "post"
 			"toStray":
@@ -509,6 +994,8 @@ func _process(dt: float) -> void:
 						_go(Vector2(_post.x, _post.z), "toPost")
 					else:
 						_bag = { "bin": _trash.id, "n": _trash.n }
+						dana.hold_item(chores._bag_mesh(_bag.bin))  # (tied off, in hand)
+						$"../Ambience".bag(Vector3(_trash.x, _trash.rimY, _trash.z))
 						_trash.n = 0
 						_trash.acc = 0.0
 						_trash.spilled = false
@@ -528,17 +1015,20 @@ func _process(dt: float) -> void:
 						chores.bags_down.erase(_trash)
 						_trash.node.queue_free()
 						_bag = { "bin": _trash.bin, "n": _trash.n }
+						dana.hold_item(chores._bag_mesh(_bag.bin))
 						_go(_chute_spot, "toChute")
 					else:
 						_go(Vector2(_post.x, _post.z), "toPost")
 					_trash = null
 			"toChute":
 				dana.reach_to(chores._chute)
+				chores.chute_use()
 				state = "chuting"
 				_t = 1.3
 			"chuting":
 				if _bag != null and _t < 0.9:  # in it goes
 					_bag = null
+					dana.hold_item(null)
 					checkout.score += 10
 					crew[0].xp(self, "str", 3.0)
 					crew[0].xp(self, "con", 2.0)
@@ -614,7 +1104,8 @@ func _process(dt: float) -> void:
 					state = "lunch"
 					_t = Clock.HOUR * 0.5
 					_bite_t = 0.0
-					dana.set_mood("happy")  # ponytail: no sandwich in hand; person.gd's props are the counter's (card, cash, receipt)
+					dana.hold_item(_sandwich())
+					dana.set_mood("happy")
 			"lunch":  # eating, looking about, the odd glance at the clock
 				_bite_t -= dt
 				if _bite_t <= 0.0:
@@ -623,6 +1114,7 @@ func _process(dt: float) -> void:
 					dana.set_mood("happy" if r < 0.4 else "neutral" if r < 0.7 else "love" if r < 0.85 else "sleep")
 					dana.look_at_yaw((randf() * 2.0 - 1.0) * 0.8 if r > 0.6 else null)
 				if _t <= 0.0 or not on_duty():
+					dana.hold_item(null)
 					dana.set_pose("idle")
 					dana.look_at_yaw(null)
 					dana.set_mood("neutral")
@@ -654,8 +1146,6 @@ func _process(dt: float) -> void:
 				if _t <= 0.0:  # back in its slot, rewound, tag re-armed
 					carry.erase(_target)
 					_target.desens = false
-					_target.ep = 0
-					_target.at = 0.0
 					tapes.set_on_shelf(_target, true)
 					checkout.score += 5
 					crew[0].xp(self, "int", 4.0)
@@ -663,6 +1153,8 @@ func _process(dt: float) -> void:
 					_next()
 	_face += angle_difference(_face, _ry) * minf(1.0, dt * 8.0)
 	dana.rotation.y = _face
+	if speed == 0.0:  # (stood still: still somebody to walk round)
+		Traffic.person(dana.get_instance_id(), Vector2(dana.position.x, dana.position.z), Vector2.ZERO, "staff")
 	dana.tick(dt, speed)
 
 
@@ -752,6 +1244,16 @@ func _at_post(dt: float, waiting) -> void:
 			return
 		if job == "cleanup" and _cleanup():
 			return
+	_idle = _idle + dt if (_quiet() or _spare()) and _t <= 0.0 and _chat_with == null else 0.0  # nothing going on (or somebody else has the register): the stool, or a turn round the floor
+	if _idle > STOOL_WAIT:
+		_idle = 0.0
+		var stool_free: bool = _quiet() and _pri("register") < 9 and $"../Things".stool_by == null
+		if (not stool_free or randf() < 0.5) and _wander_start():
+			return
+		if stool_free:
+			_stool_fetch()
+		if state != "post":
+			return
 	_idle_tick(dt)
 
 
@@ -786,6 +1288,7 @@ func _restock_next() -> void:
 		_go(Vector2(_post.x, _post.z), "toPost")
 		return
 	var u: Dictionary = _restock.got[0]
+	dana.hold_item($"../Snacks".proxy(u))  # (the next one to go out, in hand)
 	dana.set_pose("hold")
 	_go(Vector2(u.at.x + u.f.x * 0.75, u.at.z + u.f.y * 0.75), "stockTo")
 	if state == "toPost":  # (no way to that one: back in the cupboard with what's left)
@@ -801,6 +1304,7 @@ func _restock_end(called_away: bool) -> void:  # done, or called away: what's st
 		$"../Things".cooler_open = false
 		_opened_cooler = false
 	if dana != null:
+		dana.hold_item(null)
 		dana.set_pose("idle")
 		dana.reach_to(null)
 	if _restock.n > 0:
@@ -1018,13 +1522,15 @@ func _lunch_start() -> bool:
 # ---- for the save ($Staff's)
 
 func snapshot() -> Dictionary:
-	return { "roster": roster, "hires": hires, "you": you }
+	return { "roster": roster, "hires": hires, "you": you, "auto_sched": auto_sched, "auto_jobs": auto_jobs }
 
 
 func restore(d: Dictionary) -> void:
 	if d.is_empty():
 		return
 	hires = int(d.get("hires", 0))
+	auto_sched = d.get("auto_sched", false)
+	auto_jobs = d.get("auto_jobs", false)
 	for k: String in d.get("you", {}):
 		if you.has(k):
 			you[k] = [int(d.you[k][0]), d.you[k][1]]

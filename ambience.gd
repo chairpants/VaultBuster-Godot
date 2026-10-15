@@ -67,7 +67,7 @@ func _exit_tree() -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_M:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_M and not $"../POS".open:  # (at the register's keyboard, M is a letter: its message center)
 		muted = not muted
 		AudioServer.set_bus_mute(AudioServer.get_bus_index("Store"), muted)
 		$"../HUD".toast("Store sounds off (M)" if muted else "Store sounds on (M)")
@@ -110,6 +110,63 @@ func chime(at: Vector3) -> void:  # ding... dong
 
 func ring(at: Vector3) -> void:  # the phone
 	_shot("ring", at, 0.09, 3.0)
+
+
+func beep(at: Vector3, f: float, after := 0.0) -> void:  # the register's: a tenth of a second of square wave (checkout.js: posBeep)
+	if after > 0.0:
+		get_tree().create_timer(after).timeout.connect(beep.bind(at, f))
+		return
+	var key := "beep%d" % int(f)
+	if _live and not _baked.has(key):
+		var d := _zeros(int(RATE * 0.1))
+		for i in int(RATE * 0.09):
+			d[i] = 1.0 if fmod(i * f / RATE, 1.0) < 0.5 else -1.0
+		_baked[key] = [_wav(d)]
+	_shot(key, at, 0.035, 1.0)
+
+
+func buzz(at: Vector3, secs: float) -> void:  # the dot-matrix printer: a buzzy rasp, pulsing line by line (checkout.js: printBuzz)
+	var key := "buzz%d" % int(secs * 10.0)
+	if _live and not _baked.has(key):
+		var d := _zeros(int(RATE * secs))
+		for i in d.size():
+			var t := float(i) / RATE
+			d[i] = (fmod(t * 118.0, 1.0) * 2.0 - 1.0) * (0.014 + (0.012 if fmod(t * 9.0, 1.0) < 0.5 else -0.012)) / 0.026
+		_baked[key] = [_wav(d)]
+	_shot(key, at, 0.026, 1.0)
+
+
+func bag(at: Vector3) -> void:  # a full liner pulled out and tied off: plastic crinkle, the can rocking back
+	_shot("bag", at, 0.35)
+
+
+func chute(at: Vector3, bags: int) -> void:  # the hopper door tipping open, the bag(s) in and away down the duct, the door slapping shut
+	_shot("chute%d" % clampi(bags, 1, 3), at, 0.5, 2.0)
+
+
+func drive(dir: int, v: float) -> void:  # a car on the road out front that's turning in to the lot: heard the same as one going by (cars.gd shows it itself)
+	if _pass.is_empty():
+		_pass = { "dir": float(dir), "v": v, "t": 0.0, "g": (0.7 if $"../Sky".level < 0.4 else 1.0) * (0.7 + randf() * 0.5) }
+
+
+func tone(at: Vector3, f: float, dur := 0.06, wave := "square", vol := 0.05, slide := 0.0) -> void:  # a blip, from where it's made (the arcade's: siBeep): a note sliding by `slide` over `dur`, dying away
+	var key := "tone%d_%d_%s_%d" % [int(f), int(dur * 1000.0), wave, int(slide)]
+	if _live and not _baked.has(key):
+		var d := _zeros(int(RATE * (dur + 0.02)))
+		var ph := 0.0
+		var n := int(RATE * dur)
+		for i in n:
+			ph = fmod(ph + (f + slide * float(i) / n) / RATE, 1.0)
+			var w := sin(TAU * ph) if wave == "sine" else (4.0 * absf(ph - 0.5) - 1.0) if wave == "triangle" else (ph * 2.0 - 1.0) if wave == "sawtooth" else (1.0 if ph < 0.5 else -1.0)
+			d[i] = w * exp(log(0.002) * float(i) / n)
+		_baked[key] = [_wav(d)]
+	_shot(key, at, vol * 1.6, 1.5)
+
+
+func golf(kind: String, at: Vector3, vol := 1.0) -> void:  # what a golf ball does out there: clank, glass, thud, screech, horn, alarm, rattle (roof.js: golfSnd)
+	if _live and not _baked.has("golf_" + kind):
+		_baked["golf_" + kind] = [_wav(_golf(kind))]
+	_shot("golf_" + kind, at, 0.5 * vol, 8.0)
 
 
 func flush(at: Vector3) -> void:
@@ -226,6 +283,7 @@ func _process(dt: float) -> void:
 		_car_t = 0.0
 		_next_car = 25.0 + randf() * 50.0 if night > 0.6 else 5.0 + randf() * 14.0
 		_pass = { "dir": 1.0 if randf() < 0.5 else -1.0, "v": 10.0 + randf() * 7.0, "t": 0.0, "g": (0.7 if night > 0.6 else 1.0) * (0.7 + randf() * 0.5) }
+		$"../Cars".pass_by(int(_pass.dir), _pass.v)  # (and there it goes: cars.gd)
 	if not _pass.is_empty():
 		_pass.t += dt
 		var x: float = _pass.dir * (_pass.v * _pass.t - 35.0)
@@ -350,6 +408,9 @@ func _bake() -> void:
 			ding = _ring(ding, bar[1], bar[0] * m[0], m[1], 0.003, m[2] * 5.0)
 	_baked.chime = [_wav(ding)]
 	_baked.flush = [_wav(_flush())]
+	_baked.bag = [_wav(_bag())]
+	for bags in [1, 2, 3]:
+		_baked["chute%d" % bags] = [_wav(_chute(bags))]
 	var bell := _zeros(int(RATE * 2.6))  # the phone, a desk-set ringer: a clapper buzzing between two small gongs twenty times a second for two seconds
 	for gong: Array in [[1180.0, 0.0], [1390.0, 0.025]]:
 		for part: Array in [[1.0, 1.0], [2.32, 0.35], [4.1, 0.12]]:
@@ -567,6 +628,92 @@ func _step(tile: bool) -> PackedFloat32Array:
 	var out := _ring(_zeros(int(RATE * 0.16)), 0.0, 140.0 if tile else 95.0, 0.5 if tile else 0.8, 0.004, 0.09, 55.0, 0.06)  # the heel: a damped low thump
 	var sole := _filter(_colour("white", int(RATE * 0.15)), "bandpass" if tile else "lowpass", 2400.0 + randf() * 800.0 if tile else 600.0 + randf() * 300.0, 0.9 if tile else 0.7)
 	return _mix(out, _env(sole, 0.9 if tile else 0.6, 0.006, 0.07 if tile else 0.12), 0.0)  # the scuff of the sole
+
+
+func _golf(kind: String) -> PackedFloat32Array:  # (roof.js: golfSnd)
+	var tone := func(o: PackedFloat32Array, wave: String, f: float, a: float, t0: float, t1: float) -> PackedFloat32Array:
+		var i0 := int(t0 * RATE)
+		var n := mini(int((t1 - t0) * RATE), o.size() - i0)
+		var k := log(0.0005 / a) / maxf(1.0, n)
+		for i in n:
+			var ph := fmod(i * f / RATE, 1.0)
+			var w := sin(TAU * ph) if wave == "sine" else (4.0 * absf(ph - 0.5) - 1.0) if wave == "triangle" else (1.0 if ph < 0.5 else -1.0)
+			o[i0 + i] += w * a * exp(k * i)
+		return o
+	var out: PackedFloat32Array
+	match kind:
+		"clank":
+			out = _zeros(int(RATE * 0.4))
+			for m: Array in [[1150.0, 0.12], [1720.0, 0.08], [2630.0, 0.05], [420.0, 0.1]]:
+				out = tone.call(out, "sine", m[0], m[1], 0.0, 0.35)
+			out = _burst(out, 0.0, 0.05, "bandpass", 3000.0, 0.5, 0.2)
+		"glass":
+			out = _zeros(int(RATE * 0.65))
+			out = _burst(out, 0.0, 0.35, "highpass", 2500.0, 0.7, 0.25)
+			out = tone.call(out, "sine", 3900.0, 0.05, 0.0, 0.6)
+			out = tone.call(out, "sine", 5200.0, 0.03, 0.02, 0.5)
+		"thud":
+			out = _zeros(int(RATE * 0.45))
+			out = tone.call(out, "sine", 70.0, 0.4, 0.0, 0.4)
+			out = _burst(out, 0.0, 0.25, "lowpass", 500.0, 0.8, 0.4)
+		"screech":  # tires: a narrow band of noise, sliding down
+			out = _filter(_colour("white", int(RATE * 1.3)), "bandpass", 2300.0, 9.0, func(k: float) -> float: return 2300.0 - 800.0 * minf(1.0, k * 1.3 / 1.2))
+			for i in out.size():
+				out[i] *= 0.5 * exp(log(0.001) * float(i) / out.size())
+		"horn":  # two notes, beeped twice
+			out = _zeros(int(RATE * 1.4))
+			for f: float in [392.0, 494.0]:
+				for i in out.size():
+					var t := float(i) / RATE
+					if (t > 0.05 and t < 0.3) or (t > 0.42 and t < 1.3):
+						out[i] += (1.0 if fmod(t * f, 1.0) < 0.5 else -1.0) * 0.06
+			out = _filter(out, "lowpass", 1400.0, 0.7)
+		"alarm":  # the classic: a whoop, chirps, the two-tone, round again for ten seconds
+			out = _zeros(RATE * 10)
+			var ph := 0.0
+			for i in out.size():
+				var t := float(i) / RATE
+				var c := fmod(t, 3.3)
+				var f := 600.0 + 900.0 * c / 0.9 if c < 0.9 else (900.0 if int((c - 1.0) / 0.16) % 2 else 1300.0) if c < 1.96 else (700.0 if int((c - 2.0) / 0.22) % 2 else 1000.0) if c < 3.32 else 1000.0
+				ph = fmod(ph + f / RATE, 1.0)
+				out[i] = (ph * 2.0 - 1.0) * 0.05
+		_:  # "rattle": down a downspout
+			out = _zeros(int(RATE * 1.6))
+			var tt := 0.0
+			for k in 16:
+				out = tone.call(out, "triangle", 900.0 + randf() * 900.0, 0.07 * (1.0 - k / 20.0), tt, tt + 0.04)
+				tt += 0.05 + k * 0.006
+			out = tone.call(out, "sine", 160.0, 0.12, 1.3, 1.5)
+	for i in out.size():  # (the web game's levels are for its quieter mix: up to ours)
+		out[i] *= 4.0
+	return out
+
+
+func _bag() -> PackedFloat32Array:  # (ambience.js: bag)
+	var out := _zeros(int(RATE * 1.0))
+	for i in 28:  # the plastic crinkling
+		out = _burst(out, randf() * 0.75, 0.01 + randf() * 0.03, "highpass", 2500.0 + randf() * 4000.0, 0.7, 0.2 + randf() * 0.5)
+	return _burst(out, 0.8, 0.08, "lowpass", 500.0, 0.8, 0.5)  # the can rocking back
+
+
+func _chute(bags: int) -> PackedFloat32Array:  # (ambience.js: chute)
+	var out := _zeros(int(RATE * (2.8 + bags * 0.22)))
+	var clank := func(o: PackedFloat32Array, t: float, k: float) -> PackedFloat32Array:
+		o = _burst(o, t, 0.05, "bandpass", 1800.0, 1.2, 0.6 * k)
+		return _modes(o, t, [[310.0, 0.45 * k, 0.05], [742.0, 0.3 * k, 0.04], [1660.0, 0.18 * k, 0.03], [3120.0, 0.08 * k, 0.02]])
+	out = clank.call(out, 0.28, 0.5)  # open, on its stop
+	for i in bags:
+		var tb := 0.38 + i * 0.22
+		out = _burst(out, tb, 0.12, "lowpass", 700.0, 0.8, 0.7)  # onto the hopper's floor
+		var rush := _filter(_colour("brown", int(RATE * 2.0)), "bandpass", 900.0, 1.2, func(k: float) -> float: return 900.0 * pow(110.0 / 900.0, minf(1.0, k * 2.0 / 1.75)))  # sliding off down the duct, falling away
+		var o := int((tb + 0.05) * RATE)
+		for j in mini(rush.size(), out.size() - o):
+			var t := float(j) / RATE
+			out[o + j] += rush[j] * 0.9 * (t / 0.15 if t < 0.15 else exp(-(t - 0.15) / 0.27))
+		for j in 5:  # knocking the duct on the way down
+			out = _modes(out, tb + 0.25 + j * 0.28 + randf() * 0.1, [[180.0 - j * 15.0, 0.25 * (1.0 - j / 6.0), 0.06], [410.0 - j * 30.0, 0.12 * (1.0 - j / 6.0), 0.04]])
+		out = _modes(out, tb + 2.1, [[55.0, 0.25, 0.08], [90.0, 0.15, 0.06]])  # into the dumpster, far below
+	return clank.call(out, 1.3, 1.0)  # shut
 
 
 func _flush() -> PackedFloat32Array:

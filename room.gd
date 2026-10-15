@@ -39,6 +39,7 @@ global uniform vec3 uSunSky; global uniform vec3 uSunGround; global uniform vec3
 global uniform vec3 uMoonSky; global uniform vec3 uMoonGround; global uniform vec3 uMoonC; global uniform vec3 uMoonDir;
 global uniform vec3 uDayC; global uniform vec3 uNightC;
 global uniform float uSunReal;  // 1: the sun's the real light (the moon's a term here); 0: the other way about
+global uniform vec4 uFog;       // from indoors: the weather's fog on what's out there (its colour, how thick). The engine's own is off while you're inside: it would fog the room too
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D tex : source_color, FILTER, repeat_enable;
 uniform bool use_tex = false;
@@ -53,6 +54,7 @@ varying vec3 P;
 varying vec3 wN;
 varying vec3 vAlb;   // the surface's own colour, for light()
 varying float vIn;   // 1 indoors: the sun's not let in (daylight comes through the glass as lights of its own)
+varying float vFog;  // how much of it the fog out there has taken
 
 void vertex() {
 	P = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -70,6 +72,7 @@ void fragment() {
 	float day = uZone.w;
 	vec3 rl;
 	vIn = 1.0;
+	vFog = 0.0;
 	if (P.x > uFloorBox.x && P.x < uFloorBox.y && P.z > -0.05 && P.z < uFloorBox.z && P.y < uFloorBox.w) {
 		// the sales floor: three switch zones along z, blended over ~2 m where they meet; daylight in through the glass
 		float w1 = 1.0 - smoothstep(9.0, 11.0, P.z), w3 = smoothstep(18.0, 20.0, P.z), w2 = max(0.0, 1.0 - w1 - w3);
@@ -91,17 +94,18 @@ void fragment() {
 		vec3 moon = mix(uMoonGround, uMoonSky, 0.5 * rN.y + 0.5) + uMoonC * max(dot(rN, uMoonDir), 0.0) * uSunReal;
 		rl = mix(moon, sun, day);
 		vIn = 0.0;
+		if (uFog.a > 0.0 && !(P.x > 13.0 && P.x < 21.0 && P.z > 0.0 && P.z < 14.0 && P.y < 4.39)) vFog = 1.0 - exp(-uFog.a * length(VERTEX));   // (not in next door, either)
 	}
 	vAlb = a.rgb;
-	ALBEDO = a.rgb * rl * 0.3183099;   // the room's light, as the web game's Lambert has it (over pi): what the white ambient light shows, less what SSAO takes
+	ALBEDO = a.rgb * rl * 0.3183099 * (1.0 - vFog);   // the room's light, as the web game's Lambert has it (over pi): what the white ambient light shows, less what SSAO takes
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
-	EMISSION = emission * (use_emission_tex ? texture(emission_tex, UV).rgb : vec3(1.0));
+	EMISSION = emission * (use_emission_tex ? texture(emission_tex, UV).rgb : vec3(1.0)) * (1.0 - vFog) + uFog.rgb * vFog;
 }
 
 void light() {   // the real lights, on the surface's own colour (ALBEDO's already the room's light on it)
 	if (!(LIGHT_IS_DIRECTIONAL && vIn > 0.5)) {
-		SPECULAR_LIGHT += vAlb * LIGHT_COLOR * ATTENUATION * max(dot(NORMAL, LIGHT), 0.0) * 0.3183099;
+		SPECULAR_LIGHT += vAlb * LIGHT_COLOR * ATTENUATION * max(dot(NORMAL, LIGHT), 0.0) * 0.3183099 * (1.0 - vFog);
 	}
 }
 """
@@ -127,6 +131,7 @@ func _enter_tree() -> void:  # (before anything's _ready: tapes.gd keeps hold of
 		_add(n, RS.GLOBAL_VAR_TYPE_VEC2, Vector2(1, 1))
 	_add("uThSconce", RS.GLOBAL_VAR_TYPE_FLOAT, 1.0)
 	_add("uSunReal", RS.GLOBAL_VAR_TYPE_FLOAT, 1.0)
+	_add("uFog", RS.GLOBAL_VAR_TYPE_VEC4, Vector4.ZERO)
 	var fixed := {  # lin(colour, k), as the web game sets them
 		"uInSky": _lin(0xdfe8ff, 1.15), "uInGround": _lin(0x223355, 1.15), "uInAmb": _lin(0xffffff, 0.32), "uInDirC": _lin(0xffffff, 0.55),
 		"uInDir": Vector3(3, 10, -6).normalized(),

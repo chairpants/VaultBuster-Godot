@@ -33,6 +33,9 @@ func _process(dt: float) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	var pos := get_node_or_null("/root/Main/POS")
+	if pos != null and pos.open:
+		return  # (at the register's keyboard, L is a letter)
 	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_L:
 		skip_hour()
 

@@ -26,7 +26,7 @@ const QUEUE_MAX := 2  # finished chunks allowed to pile up before we stop fetchi
 const RING := 6  # chunk files; must exceed WORKERS + QUEUE_MAX + the one playing
 
 var texture := ImageTexture.create_from_image(Image.create_empty(RES.x, RES.y, false, Image.FORMAT_RGB8))
-var audio := AudioStreamPlayer.new()  # ponytail: plain stereo; an AudioStreamPlayer3D at the screen when there's a screen
+var audio := AudioStreamPlayer3D.new()  # the sound, from the screen it's playing on (tapes.gd puts it there)
 var url := ""  # what's playing ("" when nothing is)
 var position := 0.0  # seconds into it
 var duration := 0.0  # 0 when archive.org doesn't say
@@ -48,6 +48,9 @@ var _http := HTTPRequest.new()
 
 func _ready() -> void:
 	add_child(audio)
+	audio.position = Vector3(0.0, 0.95, 26.242)  # (the lounge TV's, till a tape goes in somewhere)
+	audio.unit_size = 3.0
+	audio.max_db = 3.0
 	add_child(_http)
 	_has_ffmpeg = OS.execute("ffmpeg", ["-version"], []) == 0
 
