@@ -149,6 +149,7 @@ func _climb(dt: float) -> void:  # walk the step to the foot, then up and out (o
 var body: Node3D
 var _body_look := ""
 var _body_was := Vector3.ZERO
+var _head_rest := Vector3(NAN, 0, 0)  # the head's place on the body stood still (the body's own: x, z)
 
 
 func _body_tick(dt: float) -> void:
@@ -186,6 +187,11 @@ func _body_tick(dt: float) -> void:
 		body.set_pose("crouch" if crouched else "idle")
 	_body_was = global_position
 	body.tick(dt, speed)
+	if seat == null and not $"../Things".on_stool:  # the head kept where it stands under the eye: the kneel leans it half a metre forward, which put the eye back over the hips, the chest in the way
+		var head := Vector3(body._head.position.x, 0.0, body._head.position.z)
+		if is_nan(_head_rest.x) or (not crouched and body._st.squat < 0.01 and speed < 0.1):
+			_head_rest = head
+		body.position -= body.global_basis * (head - _head_rest)
 
 
 func _process(dt: float) -> void:
