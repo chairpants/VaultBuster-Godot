@@ -19,7 +19,7 @@ extends Node3D
 const GOLF := { "x": 5.5, "z": 12.0, "R": 0.0214, "SWEET": 0.08, "PURE": 0.015, "CLUB": 1.0, "MAX": 48.0 }  # the tee; the ball; the meter's mark and how close is pure; the club; how far out it can get
 const ROOF_Y := 4.0
 const ROOF_WALL := 0.91
-const ROOFS := [[-7.84, 11.1, -0.1, 33.1], [11.1, 12.7, 27.9, 29.9], [-7.07, 1.33, 33.1, 46.6]]
+const ROOFS := [[-7.84, 11.1, -0.1, 29.6], [2.1, 11.1, 29.6, 35.1]]  # the store's roof, at ROOF_Y (the theater's taller block stands up off it, 6.4 m: weather.gd's ROOFS)
 const TONY := { "x0": 13.0, "x1": 21.0, "z0": 0.0, "z1": 14.0, "y": 4.385, "wall": 4.65 }
 
 var on := false

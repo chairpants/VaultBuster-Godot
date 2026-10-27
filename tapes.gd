@@ -58,6 +58,8 @@ var _arrays: Array = []  # per mesh: its surfaces' arrays
 var _mats: Array = []
 var _hand := Node3D.new()
 var _hand_mesh := MeshInstance3D.new()
+var _focus := CameraAttributesPractical.new()  # a tape held up to read: what's past it goes soft
+const FOCUS_BLUR := 0.1  # how soft the store goes behind it
 var _box := MeshInstance3D.new()
 var _quads: Array[MeshInstance3D] = []
 
@@ -120,6 +122,11 @@ func _ready() -> void:
 	add_child(_box)
 	cam.add_child(_hand)
 	_hand.add_child(_hand_mesh)
+	_hand_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # (it moves with you: a shadow from it, and every light near you would draw its shadows again each frame)
+	_focus.dof_blur_far_distance = 0.6
+	_focus.dof_blur_far_transition = 1.2
+	_focus.dof_blur_amount = 0.0
+	cam.attributes = _focus
 	_hand.visible = false
 	var every: Array = screens.duplicate()
 	every.append_array(JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).get("minis", []))  # ...and the monitors hung over the aisles
@@ -604,6 +611,8 @@ func put_back() -> void:  # back into its own shelf slot
 
 func _process(dt: float) -> void:
 	_saver_tick(dt)
+	_focus.dof_blur_amount = move_toward(_focus.dof_blur_amount, FOCUS_BLUR if held != null and inspecting else 0.0, dt * FOCUS_BLUR * 4.0)
+	_focus.dof_blur_far_enabled = _focus.dof_blur_amount > 0.0
 	if held != null:
 		_hand.transform = _hand.transform.interpolate_with(LOOK if inspecting else HAND, minf(1.0, dt * 14.0))
 	_inv_sync()

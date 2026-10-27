@@ -112,7 +112,7 @@ func _heaps_tick() -> void:  # how full it looks
 		var g: Node3D = _heaps.get(b.id)
 		if g != null:
 			g.visible = b.n > 0
-			g.position.y = 0.02 + (b.rimY - 0.07) * minf(1.0, float(b.n) / b.cap)
+			Level.put(g, "position:y", 0.02 + (b.rimY - 0.07) * minf(1.0, float(b.n) / b.cap))  # (only when it changes: anything moved, every light that sees it draws its shadows again)
 
 
 func chute_use(bags := 1) -> void:  # the hopper door: down, (bags in), back up (chuteUse)
@@ -259,7 +259,8 @@ func mess_clean(m: Dictionary, by := "you") -> void:  # messClean
 	messes.erase(m)
 	checkout.score += 15
 	hud.toast("%s up the %s (+15)" % ["Dana cleaned" if by == "dana" else "Cleaned", MESS[m.kind][0]])
-	trash_add(_bin("lobby" if m.z < 28.0 else "breakroom" if m.x < 8.3 else "restroom"), 1, false)  # (it goes in the nearest bin)
+	var room: String = $"../Lights".zone_at(Vector3(m.x, 0.5, m.z))
+	trash_add(_bin(room if room in ["breakroom", "restroom"] else "lobby"), 1, false)  # (it goes in the nearest bin: the room it's in, else the lobby's)
 
 
 # ---- the trash
@@ -335,7 +336,7 @@ func _process(dt: float) -> void:
 	if _chute_door != null:  # 0.3 s down, held, 0.3 s back up
 		_chute_t = maxf(0.0, _chute_t - dt)
 		var e := 1.3 - _chute_t
-		_chute_door.rotation.x = 0.8 * (e / 0.3 if e < 0.3 else 1.0 if e < 1.0 else (1.3 - e) / 0.3) if _chute_t > 0.0 else 0.0
+		Level.put(_chute_door, "rotation:x", 0.8 * (e / 0.3 if e < 0.3 else 1.0 if e < 1.0 else (1.3 - e) / 0.3) if _chute_t > 0.0 else 0.0)
 	for d: Dictionary in dead:
 		if d.t > 0.0:
 			d.t -= dt

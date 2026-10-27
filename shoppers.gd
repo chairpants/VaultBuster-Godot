@@ -348,7 +348,8 @@ func _find_gate_leds() -> void:  # the level's own: the unshaded green ones (lob
 func _gate_led_tick() -> void:
 	var c := (Color.hex(0x2a0000ff) if int(alarm_t * 5.0) % 2 == 1 else Color.hex(0xff1a1aff)) if alarm_on else Color.hex(0x39ff7aff) if gates_armed else Color.hex(0x151515ff)
 	for m: StandardMaterial3D in _gate_leds:
-		m.albedo_color = c
+		if m.albedo_color != c:  # (only when it changes: see checkout.gd's LED)
+			m.albedo_color = c
 
 
 func start_alarm() -> void:
@@ -1018,10 +1019,10 @@ func _step(cust: Dictionary, dt: float) -> void:  # custStep
 				_tag_tick(cust)
 			"thAisle":
 				cust.state = "thRow"
-			"thRow", "thRowOut":  # sidestep from the center ramp into their stadium row; and back out of it
+			"thRow", "thRowOut":  # sidestep from the aisle into their stadium row; and back out of it
 				var s: Dictionary = cust.th_seat
 				var out: bool = cust.state == "thRowOut"
-				var to := Vector3(-2.87 if out else s.x, s.y, s.z + 0.42) - c.position
+				var to := Vector3(AISLE_X if out else s.x, s.y, s.z + 0.42) - c.position
 				to.y = 0.0
 				if to.length() < 0.05:
 					if out:
@@ -1554,12 +1555,15 @@ func _floor_y(at: Vector3) -> float:
 	return hit.position.y if hit else at.y
 
 
-func _pick_theater_seat(cust: Dictionary) -> bool:  # an open stadium seat; they walk to its row on the center ramp
+const AISLE_X := -6.86  # the theater's aisle, down its side from the door (the seats one block since the remodel: tools/remodel.gd)
+
+
+func _pick_theater_seat(cust: Dictionary) -> bool:  # an open stadium seat; they walk to its row down the aisle
 	if not $"../Shift".owned("theater"):
 		return false
 	var open: Array = interact.seats.filter(func(s: Dictionary) -> bool: return s.kind == "theater" and s != player.seat and not custs.any(func(k: Dictionary) -> bool: return k != cust and k.th_seat == s))
 	if open.is_empty():
 		return false
 	cust.th_seat = open[int(cust.who.rnd.call() * open.size())]
-	go(cust, "thAisle", { "x": -2.87, "z": cust.th_seat.z + 0.42, "ry": 0.0 })
+	go(cust, "thAisle", { "x": AISLE_X, "z": cust.th_seat.z + 0.42, "ry": 0.0 })
 	return true

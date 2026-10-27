@@ -14,7 +14,7 @@ const SET_PATH := "user://settings.json"
 static var slot := 1  # the store file in play (kept across the reload into another)
 static var pending_mode := "sandbox"  # what kind of store a new one is (shift.gd picks it up)
 static var go := false  # (reloading into a file somebody pressed PLAY on: straight in)
-static var settings := { "sound": 100.0, "tv": 100.0, "sens": 100.0, "invert": false, "aa": true, "fx": true, "shift": 21.0 }
+static var settings := { "sound": 100.0, "tv": 100.0, "sens": 100.0, "invert": false, "aa": true, "fx": true, "shift": 21.0, "fov": 60.0, "scale": 100.0, "full": false }
 static var _read := false
 
 var up := false
@@ -74,7 +74,14 @@ func apply() -> void:  # the settings, as they are
 	var p: Node = main.get_node("Player")
 	p.sens_k = settings.sens / 100.0
 	p.invert_y = settings.invert
+	p.fov = settings.fov
 	get_viewport().msaa_3d = Viewport.MSAA_4X if settings.aa else Viewport.MSAA_DISABLED
+	get_viewport().scaling_3d_scale = settings.scale / 100.0  # (under 100: drawn smaller, and FSR brings it back up)
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if settings.scale < 100.0 else Viewport.SCALING_3D_MODE_BILINEAR
+	if _live:  # (not --check and --shot: they leave the window as it is)
+		var w := DisplayServer.WINDOW_MODE_FULLSCREEN if settings.full else DisplayServer.WINDOW_MODE_WINDOWED
+		if DisplayServer.window_get_mode() != w and (settings.full or DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN):
+			DisplayServer.window_set_mode(w)
 	main.get_node("Room").fancy(settings.fx)
 	Clock.HOUR = settings.shift * 60.0 / 14.0
 
@@ -172,8 +179,11 @@ func _render() -> void:
 		_slider("TV volume", "tv", 0, 100, 5, "%d%%")
 		_slider("Mouse sensitivity", "sens", 25, 300, 5, "%d%%")
 		_toggle("Invert look", "invert")
+		_slider("Field of view", "fov", 50, 90, 1, "%d°")
 		_toggle("Smooth edges", "aa")
 		_toggle("Lighting effects", "fx")
+		_slider("Render scale", "scale", 50, 100, 5, "%d%%")
+		_toggle("Full screen (F11)", "full")
 		_slider("Shift length", "shift", 10, 60, 1, "%d min")
 		_box.add_child(_btn("BACK", func() -> void:
 			_page = "main"
@@ -284,7 +294,13 @@ func _toggle(text: String, key: String) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if not _live or not (e is InputEventKey and e.pressed and not e.echo):
 		return
-	if e.physical_keycode == KEY_ESCAPE:
+	if e.physical_keycode == KEY_F11:
+		settings.full = not settings.full
+		_changed()
+		if up and _page == "settings":
+			_render()
+		get_viewport().set_input_as_handled()
+	elif e.physical_keycode == KEY_ESCAPE:
 		if not up:
 			open()
 		elif _page != "main" or _step != "":

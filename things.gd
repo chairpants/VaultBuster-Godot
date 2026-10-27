@@ -46,21 +46,39 @@ var stool_by = null  # one of the staff has it (fetching it, carrying it, sat on
 var carrying := ""  # "stool" | "cutout" | ""
 var cooler_open := false
 var locked := false
+const OPEN_SIGN := preload("res://world/sign_open.png")  # (the level's sign says CLOSED on both faces)
+var _signs: Array = []  # the front door's sign: [its face, faces the street?, its CLOSED picture]
 var cine_on := false
 var flush_t := 0.0
 var tap := false
 var _stream := MeshInstance3D.new()
 var lifting := false  # E's being held on something that lifts (interact.gd)
 
-var _stool: Node3D
-var _stool_top: Node3D
+var _stools: Array = []  # the register's stool, and any more (data's stool.more: the booth's): { n: the stool, top: everything that turns, vel: its spin, angle: where it's turned to }
+var _st := {}  # the one you're on, or carrying, or last looked at
+var _stool: Node3D:  # the register's (the staff's, the save's, the check's)
+	get:
+		return _stools[0].n if _stools.size() else null
+var _stool_top: Node3D:
+	get:
+		return _stools[0].top if _stools.size() else null
 var _cutout: Node3D
 var _cooler: Node3D
 var _turn: Node3D
 var _water: Node3D
 var _water_y := 0.0
-var _vel := 0.0
-var _angle := 0.0
+var _vel: float:  # (the register's)
+	get:
+		return _stools[0].vel if _stools.size() else 0.0
+	set(v):
+		if _stools.size():
+			_stools[0].vel = v
+var _angle: float:
+	get:
+		return _stools[0].angle if _stools.size() else 0.0
+	set(v):
+		if _stools.size():
+			_stools[0].angle = v
 var _spot_ok := true
 var _stood := {}
 var _wake := -1.0  # the hour you'll wake at, asleep on the cardboard
@@ -79,6 +97,8 @@ var _cloth: MeshInstance3D
 
 func _ready() -> void:
 	T = JSON.parse_string(FileAccess.get_file_as_string("res://data/interact.json")).things
+	var spots: Array = [Vector3(T.stool.x, 0, T.stool.z)] + T.stool.get("more", []).map(func(a: Array) -> Vector3: return _v(a))
+	var found: Array = spots.map(func(_s) -> Variant: return null)
 	for n: Node3D in $"../World".find_children("*", "Node3D", true, false):
 		var p := n.global_position
 		if n is MeshInstance3D:
@@ -88,28 +108,35 @@ func _ready() -> void:
 				_water = n
 				_water_y = n.position.y
 		elif n.get_child_count():
-			if p.distance_to(Vector3(T.stool.x, 0, T.stool.z)) < 0.02:
-				if _stool != null:
+			var spot := spots.find_custom(func(s: Vector3) -> bool: return p.distance_to(s) < 0.02)
+			if spot >= 0:
+				if found[spot] != null:
 					continue  # (a part of it with the same origin: the first one found is the whole stool)
-				_stool = n
+				found[spot] = { "n": n, "top": null, "vel": 0.0, "angle": 0.0 }
 				for c in n.get_children():
 					if c is Node3D and not c is MeshInstance3D and absf(c.position.y - T.stool.SEAT) < 0.01:
-						_stool_top = c  # everything that turns
+						found[spot].top = c  # everything that turns
 			elif _cutout == null and p.distance_to(Vector3(T.cutout.x, 0, T.cutout.z)) < 0.02:
 				_cutout = n
 			elif _cooler == null and p.distance_to(_v(T.cooler.pivot)) < 0.02:
 				_cooler = n
-	for what in [["the stool", _stool], ["the standee", _cutout], ["the cooler's door", _cooler], ["the deadbolt", _turn]]:
+	_stools = found.filter(func(st) -> bool: return st != null)
+	_st = _stools[0] if _stools.size() else {}
+	for what in [["a stool", null if found.has(null) else _stool], ["the standee", _cutout], ["the cooler's door", _cooler], ["the deadbolt", _turn]]:
 		if what[1] == null:
 			push_warning("%s isn't where the web game has it in the level (moved, or deleted?)" % what[0])
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(1.9, 2.3, 0.1)
+	box.size = Vector3(3.8, 2.3, 0.1)  # (both leaves: the left one's doorway, to x -1.75, was left open)
 	shape.shape = box
 	shape.disabled = true
-	_block.position = Vector3(0.9, 1.15, 0.1)
+	_block.position = Vector3(0.0, 1.15, 0.1)
 	_block.add_child(shape)
 	add_child(_block)
+	for m: MeshInstance3D in $"../World".find_children("*", "MeshInstance3D", true, false):  # (on the right leaf: one face each way)
+		if Level.texture_of(m) in ["vaultbuster_45.jpg", "vaultbuster_46.jpg"]:
+			_signs.append([m, m.global_basis.z.z < 0.0, m.mesh.surface_get_material(0).albedo_texture])
+	set_locked(locked)  # (open for business: OPEN to the street)
 	if T.sink != null:  # the tap's stream: there while it's running
 		var water := CylinderMesh.new()
 		water.top_radius = 0.006
@@ -146,30 +173,44 @@ func _ready() -> void:
 		add_child(_sheet)
 
 
+func set_locked(on: bool) -> void:  # the deadbolt; the door's sign turned round with it
+	locked = on
+	_block.get_child(0).disabled = not locked
+	if _turn:
+		_turn.rotation.z = PI / 2 if locked else 0.0
+	for s: Array in _signs:  # [face, faces the street?]: the street sees OPEN while it's unlocked, CLOSED once it's locked; in here, the other side
+		var open: bool = s[1] != locked
+		var m: StandardMaterial3D = s[0].mesh.surface_get_material(0).duplicate()  # (a sign: drawn unlit, not the room's)
+		m.albedo_texture = OPEN_SIGN if open else s[2]
+		s[0].set_surface_override_material(0, m)
+
+
 func _v(a: Array) -> Vector3:
 	return Vector3(a[0], a[1], a[2])
 
 
-func _stool_at() -> Vector3:
-	return _stool.global_position if _stool else Vector3(T.stool.x, 0, T.stool.z)
+func _stool_at(st: Dictionary = _st) -> Vector3:
+	return st.n.global_position if st else Vector3(T.stool.x, 0, T.stool.z)
 
 
 func _process(dt: float) -> void:
-	# the stool: bearing friction winds the spin down (a constant drag plus a little that grows with speed); you turn with the seat
-	if _vel > 0.0:
-		var drag: float = (T.stool.DRAG + T.stool.VISC * _vel) * (1.0 if on_stool or stool_by != null else T.stool.EMPTY) * dt
-		var v := maxf(0.0, _vel - drag)
-		var d := (_vel + v) / 2.0 * dt  # averaged over the step, so a stop lands smoothly
-		_vel = v
-		_angle += d
-		if on_stool:
-			player.rotation.y += d
-	if _stool_top:
-		_stool_top.rotation.y = _angle
+	# the stools: bearing friction winds the spin down (a constant drag plus a little that grows with speed); you turn with the seat
+	for st: Dictionary in _stools:
+		var sat: bool = on_stool and st == _st
+		if st.vel > 0.0:
+			var drag: float = (T.stool.DRAG + T.stool.VISC * st.vel) * (1.0 if sat or (stool_by != null and st == _stools[0]) else T.stool.EMPTY) * dt
+			var v := maxf(0.0, st.vel - drag)
+			var d: float = (st.vel + v) / 2.0 * dt  # averaged over the step, so a stop lands smoothly
+			st.vel = v
+			st.angle += d
+			if sat:
+				player.rotation.y += d
+		if st.top:
+			Level.put(st.top, "rotation:y", st.angle)
 	if on_stool and (Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_D)):
 		_stool_stand()  # any move key gets you up
 	if carrying != "":  # carried a little ahead of you; where it would go down, if there's a clear line there
-		var n: Node3D = _stool if carrying == "stool" else _cutout
+		var n: Node3D = _st.n if carrying == "stool" else _cutout
 		var fwd := -player.global_basis.z
 		var spot: Vector3 = player.global_position + fwd * T.stool.CARRY_D
 		n.global_position = Vector3(spot.x, player.global_position.y, spot.z)
@@ -178,7 +219,7 @@ func _process(dt: float) -> void:
 		q.exclude = [player.get_rid()]
 		_spot_ok = player.get_world_3d().direct_space_state.intersect_ray(q).is_empty()
 	if _cooler:
-		_cooler.rotation.y += ((T.cooler.openA if cooler_open else 0.0) - _cooler.rotation.y) * minf(1.0, dt * 5.0)  # swings out ~100 degrees
+		Level.put(_cooler, "rotation:y", Level.ease_to(_cooler.rotation.y, T.cooler.openA if cooler_open else 0.0, dt * 5.0))  # swings out ~100 degrees
 	if flush_t > 0.0 and _water:  # the bowl drains and refills after a flush
 		flush_t = maxf(0.0, flush_t - dt)
 		var t := 6.0 - flush_t
@@ -197,10 +238,11 @@ func _process(dt: float) -> void:
 	var k := (0.06 + 0.9 * pow(1.0 - sky.level, 1.5)) if cine_on else 0.0
 	_blue += ((0.0 if tapes.playing != null and video._shown > 0 else 1.0) - _blue) * minf(1.0, dt * 4.0)
 	_sheet.visible = k > 0.0
-	if _cloth:
+	if _cloth and _cloth.material_overlay != (_sheet_mat if k > 0.0 else null):  # (each only when it changes: a material touched, everything it's on is, and every light that sees them draws its shadows again)
 		_cloth.material_overlay = _sheet_mat if k > 0.0 else null
-	_sheet_mat.set_shader_parameter("uProj", k)
-	_sheet_mat.set_shader_parameter("uBlue", _blue)
+	for p: Array in [["uProj", k], ["uBlue", _blue]]:
+		if _sheet_mat.get_shader_parameter(p[0]) != p[1]:
+			_sheet_mat.set_shader_parameter(p[0], p[1])
 
 
 # ---- what the crosshair's on (called from interact.gd, after the doors); returns the tip, "" if it's nothing of ours
@@ -226,9 +268,11 @@ func take_aim(from: Vector3, dir: Vector3, hit: Dictionary, hit_d: float) -> Str
 		return ""
 	var at: Vector3 = hit.position
 	if hit_d < 2.2:
-		if _stool and stool_by == null and Vector2(at.x - _stool_at().x, at.z - _stool_at().z).length() < 0.34 and at.y < _stool_at().y + 0.9:
-			aim = "stool"
-			return "Lifting…" if lifting else "E — sit on the stool\nHold E — pick it up"
+		for st: Dictionary in _stools:
+			if (st == _st or not on_stool) and (stool_by == null or st != _stools[0]) and Vector2(at.x - _stool_at(st).x, at.z - _stool_at(st).z).length() < 0.34 and at.y < _stool_at(st).y + 0.9 and at.y > _stool_at(st).y - 0.1:
+				_st = st
+				aim = "stool"
+				return "Lifting…" if lifting else "E — sit on the stool\nHold E — pick it up"
 		if at.distance_to(_v(T.lock.at)) < 0.2:
 			aim = "lock"
 			return "E — %s the front doors" % ("unlock" if locked else "lock")
@@ -264,8 +308,8 @@ func pick_up() -> void:  # (the hold came good)
 		return
 	carrying = aim
 	if carrying == "stool":
-		_vel = 0.0
-	_solid(_stool if carrying == "stool" else _cutout, false)
+		_st.vel = 0.0
+	_solid(_st.n if carrying == "stool" else _cutout, false)
 
 
 func _solid(n: Node, on: bool) -> void:  # what's in your arms doesn't bump into things
@@ -275,11 +319,11 @@ func _solid(n: Node, on: bool) -> void:  # what's in your arms doesn't bump into
 
 func on_e_first() -> bool:  # before anything else gets E: on the stool it's a shove; with your arms full it's putting that down
 	if on_stool:
-		_vel = minf(T.stool.MAX, _vel + T.stool.PUSH)
+		_st.vel = minf(T.stool.MAX, _st.vel + T.stool.PUSH)
 		return true
 	if carrying != "":
 		if _spot_ok:
-			_solid(_stool if carrying == "stool" else _cutout, true)
+			_solid(_st.n if carrying == "stool" else _cutout, true)
 			carrying = ""
 		return true
 	return false
@@ -289,7 +333,7 @@ func on_e() -> bool:
 	match aim:
 		"stool":  # sit facing the way you were looking
 			_stood = { "at": player.global_position, "yaw": player.rotation.y }
-			_angle = player.rotation.y
+			_st.angle = player.rotation.y
 			on_stool = true
 			player.sit({ "kind": "stool", "x": _stool_at().x, "y": _stool_at().y, "z": _stool_at().z, "ry": player.rotation.y - PI, "hipY": T.stool.SEAT + 0.05 })
 		"cutout":
@@ -298,10 +342,7 @@ func on_e() -> bool:
 			cooler_open = not cooler_open
 			$"../Ambience".door("cooler", "open" if cooler_open else "close", Vector3(T.cooler.pivot[0], 1.1, T.cooler.pivot[2]))
 		"lock":
-			locked = not locked
-			_block.get_child(0).disabled = not locked
-			if _turn:
-				_turn.rotation.z = PI / 2 if locked else 0.0
+			set_locked(not locked)
 		"flush":
 			if flush_t <= 0.0:
 				flush_t = 6.0

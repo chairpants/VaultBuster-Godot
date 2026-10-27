@@ -1492,7 +1492,7 @@ func fetch_hold(h: Dictionary, copy: Dictionary) -> bool:  # promised on the pho
 
 # ---- lunch in the break room: half an hour, sometime around midday, on a long enough shift (empLunchDue, empLunchStart)
 
-const LUNCH_CHAIRS := [[3.6, 31.05, 0.0], [4.2, 31.1, 0.15], [3.9, 32.45, PI], [4.82, 31.8, -PI / 2.0 + 0.2]]  # x, z, the way it faces
+const LUNCH_CHAIRS := [[7.2, 31.05, 0.0], [7.8, 31.1, 0.15], [7.5, 32.45, PI], [8.42, 31.8, -PI / 2.0 + 0.2]]  # x, z, the way it faces (the break room east of the restroom since the remodel: tools/remodel.gd's swap)
 
 
 func _lunch_due() -> bool:  # (only on a 5-hour shift, when it's not busy)

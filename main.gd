@@ -2,6 +2,8 @@ extends Node3D
 ## The level (world/world.scn) made solid: everything you can see gets a collision shape of its own triangles. Not the
 ## doors you walk through (push doors, the storefront's: see interact.gd), and not things too small to bump into.
 
+const SMALL := 1.0  # things no bigger than this corner to corner throw no shadow: over half the level's meshes, each drawn again for every light with shadows, for shadows too small to see
+
 func _enter_tree() -> void:  # the store's sound (ambience.gd), there before anything that makes a noise
 	# what a fresh store hasn't got out, and so the level hasn't either (world/extras.glb: the library's locked sections'
 	# tapes, the second rewinder, the rewinders as sports cars). In with the level before anything looks through it:
@@ -15,6 +17,7 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 		var extras: Node = load("res://world/extras.glb").instantiate()
 		extras.name = "Extras"
 		$World.add_child(extras)
+		_cut_extras(extras)
 	for n: Node in $World.find_children("*", "Node3D", true, false):  # the cars the level was written with, stood where they were that day: out (cars.gd parks the day's own)
 		if is_instance_valid(n) and n.get_child_count() >= 20 and absf(n.position.y + 0.12) < 0.005 and n.position.z < -8.0 and n.position.z > -20.0:
 			n.free()
@@ -25,6 +28,9 @@ func _enter_tree() -> void:  # the store's sound (ambience.gd), there before any
 	var cars: Node = preload("res://cars.gd").new()  # (the lot's cars and the road's: cars.gd)
 	cars.name = "Cars"
 	add_child(cars)
+	var decor: Node = preload("res://decor.gd").new()  # (balloons, and the season's decorations: decor.gd)
+	decor.name = "Decor"
+	add_child(decor)
 	var golf: Node = preload("res://golf.gd").new()  # (golf off the roof: golf.gd)
 	golf.name = "Golf"
 	add_child(golf)
@@ -84,7 +90,9 @@ func _ready() -> void:
 		if size.x > 100.0 and m.global_position.y + m.get_aabb().position.y > 8.0:
 			m.queue_free()  # the web game's clouds, caught mid-drift by an older export: sky.gd has the real ones
 			continue
-		if _walk_through(m) or m.get_aabb().get_longest_axis_size() < 0.2:
+		if (m.global_transform * m.get_aabb()).size.length() < SMALL:
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if _walk_through(m) or m.has_meta("walk_through") or m.get_aabb().get_longest_axis_size() < 0.2:  # (walk_through: set in the level, the theater's seats, whose backs have colliders of their own)
 			continue
 		var key := str($World.get_path_to(m))
 		if shapes.has(key):
@@ -107,7 +115,7 @@ func _ready() -> void:
 		for f in DirAccess.get_files_at("user://"):  # (and the ones from an older level go)
 			if f.begins_with("collision_") and f != cache_path.get_file():
 				DirAccess.remove_absolute("user://" + f)
-	print("world: %d meshes solid" % solid)
+	print("world: %d meshes solid, %d of them hiding what's behind them" % [solid, _occluders()])
 	print("lights: ceiling panels by zone %s" % [$Lights._panels.keys().map(func(z: String) -> String: return "%s %d" % [z, $Lights._panels[z].size()])])
 	var args := OS.get_cmdline_user_args()
 	if "--check" in args:  # godot --path . -- --check: the clock, the sky, a door and a seat, then quits (non-zero if any's off)
@@ -116,6 +124,86 @@ func _ready() -> void:
 		_video(args[0].trim_prefix("--video=").split("|"))
 	elif "--shot" in args:  # godot --path . -- --shot [--at=x,y,z,yaw] [--hour=h]: shot.png from there, then quits
 		_shot(args)
+
+
+const EXTRAS_CUT := [Vector3(3.8, -0.1, 26.9), Vector3(5.5, 2.7, 28.0)]  # the back wall's shelf unit the hall's new way in goes through (tools/remodel.gd's DOORWAY): the locked sections' copies there too
+
+
+func _cut_extras(extras: Node) -> void:  # (before anything looks through it: tapes.gd keeps the shelves' vertices by their slots. Not in the tree yet: the transforms put together by hand)
+	var lo: Vector3 = EXTRAS_CUT[0]
+	var hi: Vector3 = EXTRAS_CUT[1]
+	for m: MeshInstance3D in extras.find_children("*", "MeshInstance3D", true, false):
+		var xf := Transform3D.IDENTITY
+		var n: Node = m
+		while n != null and n != self:
+			if n is Node3D:
+				xf = n.transform * xf
+			n = n.get_parent()
+		if not (xf * m.get_aabb()).intersects(AABB(lo, hi - lo)):
+			continue
+		var mesh := ArrayMesh.new()
+		for s in m.mesh.get_surface_count():
+			var a := m.mesh.surface_get_arrays(s)
+			var vs: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+			var tri: PackedInt32Array = a[Mesh.ARRAY_INDEX] if a[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(vs.size()))
+			var keep := PackedInt32Array()
+			for k in range(0, tri.size() - 2, 3):
+				var inside := true
+				for j in 3:
+					var p := xf * vs[tri[k + j]]
+					inside = inside and p.x >= lo.x and p.x <= hi.x and p.y >= lo.y and p.y <= hi.y and p.z >= lo.z and p.z <= hi.z
+				if not inside:
+					keep.append_array([tri[k], tri[k + 1], tri[k + 2]])
+			if keep.is_empty():
+				continue
+			a[Mesh.ARRAY_INDEX] = keep
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+			mesh.surface_set_material(mesh.get_surface_count() - 1, m.mesh.surface_get_material(s))
+		m.mesh = mesh
+
+
+func _occluders() -> int:  # what's behind a wall isn't drawn: the store's back rooms from the sales floor, the outside from them, and so on (JellyVault's).
+	# Only the solid slabs: walls, floors and ceilings that are one piece (their triangles cover the whole of their box: nothing cut out of them), opaque, and don't move
+	get_viewport().use_occlusion_culling = true
+	var doors := {}
+	for d: Dictionary in $Interact.doors:
+		doors[d.pivot] = true
+	var n := 0
+	for m: MeshInstance3D in $World.find_children("*", "MeshInstance3D", true, false):
+		if m.is_queued_for_deletion() or m.mesh == null or _walk_through(m):
+			continue
+		var up := m.get_parent()
+		while up != $World and not doors.has(up):
+			up = up.get_parent()
+		if up != $World:
+			continue  # (a door)
+		var b := m.get_aabb()
+		var dims := [b.size.x, b.size.y, b.size.z]
+		dims.sort()
+		if dims[0] > 0.35 or dims[1] < 1.0 or dims[1] * dims[2] < 2.0:
+			continue  # (not a slab, or too small to hide much)
+		var see_through := false
+		for i in m.mesh.get_surface_count():
+			var mat := m.get_active_material(i)
+			if mat is ShaderMaterial and mat.shader and ("blend_mix" in mat.shader.code or "ALPHA =" in mat.shader.code) or mat is BaseMaterial3D and mat.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+				see_through = true
+		if see_through:
+			continue
+		var faces := m.mesh.get_faces()
+		var area := 0.0
+		for i in range(0, faces.size(), 3):
+			area += (faces[i + 1] - faces[i]).cross(faces[i + 2] - faces[i]).length() / 2.0
+		var whole: float = dims[1] * dims[2] * (1.0 if dims[0] < 0.005 else 2.0) + 2.0 * dims[0] * (dims[1] + dims[2])  # (a plane: one face; a box: all six)
+		if area < whole * 0.98:
+			continue  # (something cut out of it: a window, a doorway)
+		var o := OccluderInstance3D.new()
+		var box := BoxOccluder3D.new()
+		box.size = b.size.max(Vector3.ONE * 0.01)
+		o.occluder = box
+		o.position = b.get_center()
+		m.add_child(o)
+		n += 1
+	return n
 
 
 func _walk_through(n: Node) -> bool:
@@ -259,9 +347,10 @@ func _shot(args: PackedStringArray) -> void:
 			if "--lamps-off" in args:
 				for l in $Lights.lamps:
 					$Lights.set_lamp(l, false)
-		elif a.begins_with("--weather="):  # rain | snow | fog | clear, straight to it
-			var w := a.trim_prefix("--weather=")
-			$Weather.set_now("clear" if w == "fog" else w, 0.9, 0.8 if w == "fog" else 0.0)
+		elif a.begins_with("--weather="):  # rain | snow | fog | clear, straight to it (rain,1: a thunderstorm; snow,1: a blizzard)
+			var wx := a.trim_prefix("--weather=").split(",")
+			var w := wx[0]
+			$Weather.set_now("clear" if w == "fog" else w, 0.9, 0.8 if w == "fog" else 0.0, wx[1].to_float() if wx.size() > 1 else 0.0)
 		elif a == "--gaits":  # one of each gait, walking on the spot side-on, at the pace they'd walk (--gaits --mocap: the 100STYLE captures, to compare)
 			var gaits: Array = preload("res://person.gd").GAITS.keys()
 			for i in gaits.size():
@@ -323,6 +412,18 @@ func _shot(args: PackedStringArray) -> void:
 	for w in args:  # --wait=seconds first (for things that take a while: lamps warming up)
 		if w.begins_with("--wait="):
 			await get_tree().create_timer(w.trim_prefix("--wait=").to_float()).timeout
+	for w in args:  # --walk=seconds: walk forward that long (with --feet: solid, up stairs and all), and say where it got to
+		if w.begins_with("--walk="):  # (as W held: a key pressed from here doesn't stay down in a window that can't take the keyboard)
+			$Player.walking = true
+			var t0 := Time.get_ticks_msec()
+			var said := 0
+			while Time.get_ticks_msec() - t0 < w.trim_prefix("--walk=").to_float() * 1000.0:
+				await get_tree().physics_frame
+				if (Time.get_ticks_msec() - t0) / 1000 > said:
+					said = (Time.get_ticks_msec() - t0) / 1000
+					print("walk: %d s, at %s" % [said, $Player.global_position])
+			$Player.walking = false
+			print("walk: got to %s, the view %.2f over your feet" % [$Player.global_position, $Player.cam.position.y])
 	for i in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://shot.png")
@@ -372,8 +473,8 @@ func _check() -> void:
 	await get_tree().process_frame
 	if $Sky.level > 0.01:
 		bad.append("11 PM isn't dark")
-	if I.doors.size() != 5 or I.front.is_empty():
-		bad.append("doors: found %d of 5, the front door %s" % [I.doors.size(), not I.front.is_empty()])
+	if I.doors.size() != 6 or I.front.is_empty():  # (the sixth: the booth's stairs, tools/remodel.gd)
+		bad.append("doors: found %d of 6, the front door %s" % [I.doors.size(), not I.front.is_empty()])
 	for d in I.doors:
 		if not d.push and not d.locked:
 			P.global_position = Vector3(0, 0, 10)  # (out of its way)

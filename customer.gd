@@ -202,11 +202,13 @@ func sees(e: Node3D) -> bool:  # can they see you? Looking your way (or right ne
 
 func staff_only() -> String:  # where a customer has no business being ("" if you're fine)
 	var p := player.global_position
+	var z: String = lights.zone_at(p)
+	if z in ["booth", "stairwell"]:
+		return "in the %s" % lights.names.get(z, z)  # (the projection booth and the stairs up: staff only, behind their EMPLOYEES ONLY door)
 	if p.y > 3.3:
 		return ""  # (nobody's up there to see)
 	if p.x < -2.6 and p.z > 0.0 and p.z < 3.65:
 		return "behind the counter"
-	var z: String = lights.zone_at(p)
 	return "in the %s" % lights.names.get(z, z) if z in ["breakroom", "closet"] else ""
 
 
@@ -311,7 +313,7 @@ func _process(dt: float) -> void:  # cmTick
 		things.on_e()
 		things.aim = ""
 		hud.toast("10:00 AM — %s flips the sign: they're open" % (preload("res://staff.gd").speaker if _who() != null else "somebody"))
-	var inside := p.y > 3.3 or (p.z > 0.05 and p.z < 46.0 and absf(p.x) < 12.7)
+	var inside := p.y > 3.3 or (p.z > 0.05 and p.z < 48.6 and absf(p.x) < 12.7)
 	if _inside and not inside and (not _unpaid().is_empty() or _snack_due() or tab > 0.0):  # out through the doors with something you haven't paid for
 		if seen():
 			caught("theft")

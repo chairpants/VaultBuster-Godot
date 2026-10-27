@@ -24,7 +24,7 @@ const SUN_LOW := Color(0.95, 0.475, 0.209)  # sun on the horizon
 const CITY := Color(0.035, 0.024, 0.012)  # the town's glow on the low sky at night
 const CLOUD_LOW := Color(0.5, 0.52, 0.56)
 const GLOWS := [0xff6f9a, 0xff8a3c, 0xff7466]
-const INDOORS := [[-7.84, 11.1, -0.1, 33.1, 4.05], [11.1, 12.7, 27.9, 29.9, 4.05], [-7.07, 1.33, 33.1, 46.6, 4.05], [13.0, 21.0, 0.0, 14.0, 4.39]]  # under a roof: the store, its closet, the theater, next door (x0, x1, z0, z1, the ceiling)
+const INDOORS := [[-7.84, 11.1, -0.1, 35.1, 4.05], [-7.99, 2.25, 29.45, 48.75, 6.45], [13.0, 21.0, 0.0, 14.0, 4.39]]  # under a roof: the store and its back rooms, the theater's taller block (and the booth), next door (x0, x1, z0, z1, the ceiling)
 const N := 56  # clouds; they wrap round inside this box
 const X0 := -110.0
 const X1 := 120.0
@@ -161,9 +161,9 @@ func _sky(dt: float) -> void:  # wxSky.tick
 	# room), and what's out past the glass is fogged by the room's own shader instead (room.gd: uFog)
 	var cam := get_viewport().get_camera_3d()
 	var at := cam.global_position if cam != null else Vector3.ZERO
-	var inside := INDOORS.any(func(b: Array) -> bool: return at.x > b[0] and at.x < b[1] and at.z > b[2] and at.z < b[3] and at.y < b[4])
+	var inside := indoors(at)
 	_inside += ((1.0 if inside else 0.0) - _inside) * minf(1.0, dt * 4.0)  # (eased through the doorway)
-	RenderingServer.global_shader_parameter_set("uFog", Vector4(fog_c.r, fog_c.g, fog_c.b, density * _inside))
+	preload("res://room.gd").glob("uFog", Vector4(fog_c.r, fog_c.g, fog_c.b, density * _inside))
 	env.fog_enabled = density * (1.0 - _inside) > 0.0005
 	env.fog_light_color = fog_c.linear_to_srgb()
 	env.fog_density = density * (1.0 - _inside)
@@ -203,6 +203,10 @@ func _drift(dt: float) -> void:  # wxClouds.tick: a few to a sky full, as the da
 			_mm.set_instance_transform(k, Transform3D(Basis.from_scale(Vector3(r, r * (0.55 - 0.15 * over), r)), at))
 			k += 1
 	_mm.visible_instance_count = k
+
+
+static func indoors(p: Vector3) -> bool:  # under a roof: the store's, or next door's (ambience.gd: steps, and what's heard through the glass)
+	return INDOORS.any(func(b: Array) -> bool: return p.x > b[0] and p.x < b[1] and p.z > b[2] and p.z < b[3] and p.y < b[4])
 
 
 func wx_plan(day: int) -> Dictionary:  # the day's weather, worked out from the date so it's the same every time (wxPlan)
@@ -253,4 +257,11 @@ func wx_plan(day: int) -> Dictionary:  # the day's weather, worked out from the 
 	p.glowAM = 0.4 + r2.call() * 0.6 if r2.call() < 0.35 else r2.call() * 0.25
 	p.glowPM = 0.4 + r2.call() * 0.6 if r2.call() < 0.4 else r2.call() * 0.25
 	p.glowHue = int(floor(r2.call() * 3.0))
+	var s3 := [2861 * day + 53]  # (a stream of its own: the rest of the day's weather stays as the web game has it)
+	var r3 := func() -> float:
+		s3[0] = (s3[0] * 16807) % 2147483647
+		return s3[0] / 2147483647.0
+	r3.call()
+	var odds: float = 0.0 if p.k < 0.75 else (0.6 if summer else 0.15) if p.kind == "rain" else 0.4 if winter else 0.0
+	p.wild = 1.0 if r3.call() < odds else 0.0  # a heavy spell turned wild: a thunderstorm (most heavy summer rain), a blizzard (weather.gd)
 	return p

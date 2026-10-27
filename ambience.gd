@@ -17,8 +17,8 @@ extends Node
 
 const RATE := 22050
 const HEAD := 0.5  # what's baked is kept at half, for room: the player makes it up
-const ZONES := [["front", 0.0, 3.45, 3.5], ["aisles", -4.0, 3.45, 13.0], ["aisles", 5.0, 3.45, 16.0], ["lounge", 0.0, 3.45, 22.5], ["hall", 6.0, 2.6, 29.0],
-	["breakroom", 5.0, 2.6, 31.5], ["restroom", 9.6, 2.6, 31.5], ["lobby", -2.5, 3.0, 30.5], ["theater", -3.0, 5.0, 38.0]]  # a hum over each light zone
+const ZONES := [["front", 0.0, 3.45, 3.5], ["aisles", -4.0, 3.45, 13.0], ["aisles", 5.0, 3.45, 16.0], ["lounge", 0.0, 3.45, 22.5], ["hall", 5.7, 2.6, 29.0],
+	["restroom", 3.9, 2.6, 32.4], ["breakroom", 8.35, 2.6, 32.4], ["lobby", -2.5, 3.0, 31.5], ["booth", -3.5, 5.9, 32.3], ["stairwell", 0.6, 5.9, 32.3], ["theater", -3.0, 5.0, 40.0]]  # a hum over each light zone
 
 var muted := false
 
@@ -38,23 +38,98 @@ var _swings := {}  # a swinging door's leaf -> { p: its air, speed } (by the nod
 const VOICES := 6
 const VOWELS := [[730.0, 1090.0], [530.0, 1840.0], [270.0, 2290.0], [570.0, 840.0], [300.0, 870.0], [660.0, 1720.0], [490.0, 1350.0]]
 const UNITS := [[-2.6, 9.5, 0.0], [4.6, 19.5, 120.0]]  # the rooftop units: x, z, where each is in its cycle (roof.js)
+const GLASS_HZ := 650.0  # what of the road gets through the storefront glass (out there, all of it: OPEN_HZ)
+const OPEN_HZ := 9000.0
+var _out := 0.0  # 0 under a roof, 1 out in the open (eased: the door's a second's walk)
+var _glass: AudioEffectLowPassFilter
+const FILM_THRESHOLD := -30.0  # the Film bus's squeeze (dB): louder than this is turned down by the ratio, then all of it brought up by the gain
+const FILM_RATIO := 4.0  # (20 dB louder in comes out 5 louder: lower the threshold or raise this for films more alike, at the cost of the bangs' punch)
+const FILM_GAIN := 10.0  # (dB: what the squeeze takes off a typical film's loud parts, given back to all of it)
+const FILM_HZ := 16000.0  # the film up close: all of it
+const WALL_HZ := 0.025  # each shut door between: what's left of the top end (one: ~450 Hz, the bass and the thump; a doorway wide open: ~5 kHz, muffled)
+const WALL_DB := -14.0  # and how much quieter, each (two rooms off, -28: next to nothing)
+var _walls := 0.0  # lights.gd's walls(), from the screen to your ear (eased)
 
 
-func _init() -> void:  # two buses of its own: Store (so M can shut it all up), and Room into it (a little of the room on the chime, steps and doors)
+func _init() -> void:  # buses of its own: Store (so M can shut it all up); Room into it (a little of the room on the chime, steps and doors);
+	# Outside into it (what's out front: through the glass from in here, a lowpass that opens up when you're out there);
+	# and Film, the screen's sound (video.gd), squeezed toward one loudness: tapes are mixed anywhere from whisper-quiet
+	# to loud, and their own quiet and loud parts far apart, so the quiet ones come up and the bangs come down
+	# (not under M: it's the tape). Master ends in a limiter: nothing past full scale, however loud, can crackle.
+	# From JellyVault's
 	if AudioServer.get_bus_index("Store") >= 0:
 		return
+	var level := AudioEffectCompressor.new()
+	level.threshold = FILM_THRESHOLD
+	level.ratio = FILM_RATIO
+	level.gain = FILM_GAIN
+	level.attack_us = 2000.0  # (as slow as it goes: the crack of a gunshot gets through, the boom after it is held down)
+	level.release_ms = 1200.0  # (eases back over a second or so: the dialogue after an explosion isn't left ducked, and it doesn't pump)
+	_bus("Film", "Master", AudioEffectAmplify.new())  # first, the tape's own trim: how far off TARGET_LUFS it's measured (video.gd rides it)
+	AudioServer.add_bus_effect(AudioServer.bus_count - 1, level)
+	var muffle := AudioEffectLowPassFilter.new()  # then, after the squeeze (so it can't bring them back up): the walls and the distance (_hear)
+	AudioServer.add_bus_effect(AudioServer.bus_count - 1, muffle)
+	AudioServer.add_bus_effect(AudioServer.bus_count - 1, AudioEffectAmplify.new())
+	var ceiling := AudioEffectHardLimiter.new()
+	ceiling.ceiling_db = -1.0
+	AudioServer.add_bus_effect(0, ceiling)
+	_bus("Store", "Master")
+	_bus("Room", "Store", _verb(0.35, 0.7, 0.15, 15.0))  # a small store: short, darker as it decays
+	var glass := AudioEffectLowPassFilter.new()
+	glass.cutoff_hz = GLASS_HZ
+	_bus("Outside", "Store", glass)
+
+
+func _bus(nm: String, to: String, fx: AudioEffect = null) -> void:
 	AudioServer.add_bus()
-	AudioServer.set_bus_name(AudioServer.bus_count - 1, "Store")
-	AudioServer.add_bus()
-	AudioServer.set_bus_name(AudioServer.bus_count - 1, "Room")
-	AudioServer.set_bus_send(AudioServer.bus_count - 1, "Store")
-	var verb := AudioEffectReverb.new()  # a small store: short, darker as it decays
-	verb.room_size = 0.35
-	verb.damping = 0.7
-	verb.wet = 0.15
+	AudioServer.set_bus_name(AudioServer.bus_count - 1, nm)
+	AudioServer.set_bus_send(AudioServer.bus_count - 1, to)
+	if fx != null:
+		AudioServer.add_bus_effect(AudioServer.bus_count - 1, fx)
+
+
+func _verb(size: float, damping: float, wet: float, predelay: float) -> AudioEffectReverb:
+	var verb := AudioEffectReverb.new()
+	verb.room_size = size
+	verb.damping = damping
+	verb.wet = wet
 	verb.dry = 1.0
-	verb.predelay_msec = 15.0
-	AudioServer.add_bus_effect(AudioServer.bus_count - 1, verb)
+	verb.predelay_msec = predelay
+	return verb
+
+
+func _hear(main: Node, lights: Node, dt: float) -> void:  # the tape, as heard from where you are: quieter and duller the further from
+	# the screen, and through a doorway or a shut door only its low end, quietly; two rooms off, next to nothing. (Not the player's
+	# own falloff: that's before the Film bus's squeeze, which turned it back up. The player only pans it: video.gd)
+	var audio: AudioStreamPlayer3D = main.get_node("Video").audio
+	var ear: Vector3 = get_viewport().get_camera_3d().global_position
+	var best := -INF  # the tape's on every screen: its sound from whichever you'd hear best (they're rooms apart: where one's loud the other's next to nothing)
+	var w := 0.0
+	var screens: Array = main.get_node("Tapes").screens.duplicate()
+	var things: Node = main.get_node("Things")
+	if things.cine_on:  # the movie on the roof: from the bedsheet, heard in the open up there; from in the building, not at all
+		var sheet: Array = things.T.cine.sheet.p
+		screens.append({ "kind": "roof", "x": sheet[0], "y": sheet[1], "z": sheet[2] })
+	for sc: Dictionary in screens:
+		var at := Vector3(sc.x, sc.y, sc.z)
+		var u := 8.0 if sc.kind == "theater" else 3.0  # (clear out to here: the theater's speakers, the TV's)
+		var sw: float = (0.0 if lights.outdoors(ear) else lights.SHUT) if sc.kind == "roof" else lights.walls(ear, at)  # (the booth's window down to the screen: lights.gd's THROUGH)
+		var db := 20.0 * log(u / maxf(ear.distance_to(at), u * 0.7)) / log(10.0) + WALL_DB * sw
+		if db > best:
+			best = db
+			w = sw
+			audio.position = at
+			audio.unit_size = u
+	var r := audio.unit_size
+	var near := r / maxf(ear.distance_to(audio.global_position), r * 0.7)
+	_walls = lerpf(_walls, w, minf(1.0, dt * 4.0))  # (eased: a door swinging, a step through it)
+	var bus := AudioServer.get_bus_index("Film")
+	var hz := clampf(FILM_HZ * pow(near, 1.2) * pow(WALL_HZ, _walls), 150.0, FILM_HZ)
+	AudioServer.set_bus_effect_enabled(bus, 2, hz < FILM_HZ * 0.9)  # (up close, in the room: no filter at all)
+	var muffle := AudioServer.get_bus_effect(bus, 2) as AudioEffectLowPassFilter
+	if absf(hz / muffle.cutoff_hz - 1.0) > 0.08:  # retuned in steps, not every frame: a filter swept nonstop can blow up, and the tape's sound with it
+		muffle.cutoff_hz = hz
+	(AudioServer.get_bus_effect(bus, 3) as AudioEffectAmplify).volume_db = 20.0 * log(near) / log(10.0) + WALL_DB * _walls
 
 
 func _ready() -> void:
@@ -75,8 +150,11 @@ func _unhandled_input(e: InputEvent) -> void:
 
 # ---- setting them off
 
-func step(at: Vector3, weight := 1.0) -> void:  # heel strike + sole scuff: tile at the front and in back of house, carpet elsewhere
-	var tile := at.z < 4.35 or (at.z > 28.0 and at.x > 2.0 and at.z < 33.0)
+func step(at: Vector3, weight := 1.0) -> void:  # heel strike + sole scuff: tile at the front and in back of house, carpet elsewhere; outside, grit on asphalt (a slap, wet)
+	if not preload("res://sky.gd").indoors(at + Vector3(0, 0.5, 0)):
+		_shot("step_wet" if $"../Weather".wet > 0.35 else "step_out", at + Vector3(0, 0.05, 0), 0.13 * weight * randf_range(0.8, 1.2), 1.2)
+		return
+	var tile := at.z < 4.35 or (at.z > 28.0 and at.x > 2.0 and at.z < 35.0)
 	_shot("step_tile" if tile else "step_carpet", at + Vector3(0, 0.05, 0), (0.16 if tile else 0.09) * weight * randf_range(0.8, 1.2), 1.2)
 
 
@@ -194,14 +272,14 @@ func _shot(sound: String, at: Vector3, gain: float, ref := 1.5) -> void:
 	p.play()
 
 
-func _loop(sound: String, at = null, ref := 2.0) -> Node:
+func _loop(sound: String, at = null, ref := 2.0, bus := "Store") -> Node:
 	var p: Node = AudioStreamPlayer.new() if at == null else AudioStreamPlayer3D.new()
 	if at != null:
 		p.position = at
 		p.unit_size = ref
 		p.max_db = 0.0
 	p.stream = _baked[sound][0]
-	p.bus = "Store"
+	p.bus = bus
 	p.volume_db = -80.0
 	p.set_meta("g", 0.0)
 	add_child(p)
@@ -223,11 +301,15 @@ func _process(dt: float) -> void:
 			_task = -1
 			for z: Array in ZONES:
 				_hums.append(_loop("hum", Vector3(z[1], z[2], z[3]), 1.5))
-			for s in ["room", "rain_roof", "wind", "crowd"]:
+			for s in ["room", "rain_roof", "crowd"]:
 				_loop(s)
-			_loop("traffic", Vector3(0, 1.5, -20), 6.0)
+			_loop("wind", null, 2.0, "Outside")
+			_loop("rain_out", null, 2.0, "Outside")
+			_loop("traffic", Vector3(0, 1.5, -20), 6.0, "Outside")
 			_loop("rain_pat", Vector3(1.5, 1.6, -0.3), 3.0)
-			_loop("car", Vector3(0, 0.6, -15.45), 5.0)
+			_loop("car", Vector3(0, 0.6, -15.45), 5.0, "Outside")
+			_loop("hiss", Vector3(0, 0.3, -15.45), 4.0, "Outside")
+			_glass = AudioServer.get_bus_effect(AudioServer.get_bus_index("Outside"), 0)
 			_loop("comp", Vector3.ZERO, 1.2)
 			_loop("tap", Vector3.ZERO, 1.2)
 			for i in VOICES:
@@ -245,13 +327,18 @@ func _process(dt: float) -> void:
 	var outdoors := you.y > 3.3
 	var rain: float = weather.k if weather.kind == "rain" else 0.0
 	var snow: float = weather.k if weather.kind == "snow" else 0.0
+	_out = move_toward(_out, 1.0 if outdoors or not main.get_node("Sky").indoors(you + Vector3(0, 1.0, 0)) else 0.0, dt * 1.5)  # out the door (or up on the roof): the road's no longer through the glass, and the store's own sounds are behind you
+	_glass.cutoff_hz = GLASS_HZ * pow(OPEN_HZ / GLASS_HZ, _out)
+	_hear(main, lights, dt)
+	var indoors := 1.0 - 0.8 * _out
 	for i in ZONES.size():
-		_level(_hums[i], lights.zone_lvl.get(ZONES[i][0], 0.0) * 0.0045, dt, 12.0)  # follows the switch (and the flicker as it strikes)
-	_level(_loops.room, 0.02, dt)
-	_level(_loops.traffic, (0.05 + 0.08 * (1.0 - night)) * (1.0 - 0.6 * snow) * 0.45, dt, 1.0)  # (snow hushes the road)
-	_level(_loops.wind, weather.wind * (0.55 + 0.9 * weather.gust) * (0.11 if outdoors else 0.012), dt)
-	_level(_loops.rain_roof, 0.05 * rain, dt, 1.2)
-	_level(_loops.rain_pat, 0.02 * rain * rain, dt, 1.2)
+		_level(_hums[i], lights.zone_lvl.get(ZONES[i][0], 0.0) * 0.0045 * indoors, dt, 12.0)  # follows the switch (and the flicker as it strikes)
+	_level(_loops.room, 0.02 * indoors, dt)
+	_level(_loops.traffic, (0.05 + 0.08 * (1.0 - night)) * (1.0 - 0.6 * snow) * 0.45 * (1.0 + 1.2 * _out), dt, 1.0)  # (snow hushes the road)
+	_level(_loops.wind, weather.wind * (0.55 + 0.9 * weather.gust) * lerpf(0.012, 0.11, _out), dt)
+	_level(_loops.rain_roof, 0.05 * rain * indoors, dt, 1.2)
+	_level(_loops.rain_pat, 0.02 * rain * rain * indoors, dt, 1.2)
+	_level(_loops.rain_out, 0.09 * rain * _out, dt, 1.2)
 	_level(_loops.crowd, minf(0.012, maxf(0.0, main.get_node("Shoppers").custs.size() - 1) * 0.0022), dt, 0.7)
 	var cooler: Array = main.get_node("Things").T.cooler.pivot
 	_loops.comp.position = Vector3(cooler[0], 0.3, cooler[2])
@@ -290,12 +377,17 @@ func _process(dt: float) -> void:
 		var lane := -15.45 if _pass.dir > 0.0 else -18.75  # right-hand lanes
 		var away := Vector2(x, lane - 8.0).length()  # heard from about the middle of the store
 		_loops.car.position = Vector3(x, 0.6, lane)
-		_loops.car.pitch_scale = 343.0 / (343.0 + _pass.dir * _pass.v * x / away)  # the Doppler shift
+		_loops.hiss.position = Vector3(x, 0.3, lane)
+		var doppler: float = 343.0 / (343.0 + _pass.dir * _pass.v * x / away)
+		_loops.car.pitch_scale = doppler  # the Doppler shift
+		_loops.hiss.pitch_scale = doppler
 		_level(_loops.car, _pass.g * 0.45, dt, 20.0)
+		_level(_loops.hiss, _pass.g * 0.5 * maxf(weather.wet, rain), dt, 20.0)  # (a wet road: the tyres' spray)
 		if _pass.t > 70.0 / _pass.v:
 			_pass = {}
 	else:
 		_level(_loops.car, 0.0, dt, 20.0)
+		_level(_loops.hiss, 0.0, dt, 20.0)
 
 
 # ---- making them (on a worker thread)
@@ -359,7 +451,12 @@ func _bake() -> void:
 	eng = _filter(eng, "lowpass", 180.0, 1.0)
 	for i in car.size():
 		car[i] += eng[i] * 0.35
-	_baked.car = [_wav(_looped(_filter(car, "lowpass", 650.0, 0.5), RATE * 3), true)]  # (through the glass)
+	_baked.car = [_wav(_looped(_filter(car, "lowpass", 3500.0, 0.5), RATE * 3), true)]  # (the glass is the Outside bus's)
+	_baked.hiss = [_wav(_looped(_filter(_filter(_colour("white", RATE * 2 + F), "highpass", 1800.0, 0.5), "bandpass", 3600.0, 0.6), RATE * 2), true)]  # tyres on a wet road
+	var open := _looped(_filter(_colour("pink", RATE * 3 + F), "highpass", 900.0, 0.5), RATE * 3)  # rain out in the open: a wide bright hiss, with drops in it
+	for k in 500:
+		open = _burst(open, randf() * (RATE * 3 - 400) / RATE, 0.008, "bandpass", 2000.0 + randf() * 3000.0, 1.0, 0.4 + randf() * 0.6)
+	_baked.rain_out = [_wav(open, true)]
 	var comp := _wave(RATE, 60.0, [1.0, 0.7, 0.35, 0.22, 0.1, 0.06])  # an induction motor's hum and harmonics, and its fan
 	var fan := _looped(_filter(_colour("pink", RATE + F), "bandpass", 850.0, 0.6), RATE)
 	for i in RATE:
@@ -370,6 +467,8 @@ func _bake() -> void:
 	for i in tap.size():
 		tap[i] += splash[i] * (0.35 + 0.15 * sin(TAU * 7.5 * i / RATE))
 	_baked.tap = [_wav(tap, true)]
+	_baked.thunder_near = range(5).map(func(_i: int) -> AudioStreamWAV: return _wav(_thunder(true)))
+	_baked.thunder_far = range(5).map(func(_i: int) -> AudioStreamWAV: return _wav(_thunder(false)))
 	_baked.swing = [_wav(_looped(_filter(_colour("pink", RATE * 2 + F), "bandpass", 700.0, 0.9), RATE * 2), true)]  # the air off a swinging leaf
 	for u in UNITS.size():  # a rooftop unit: the compressor's drone (a sawtooth near 59 Hz, the highs off it) under the fan's rush, beating with the blades
 		var u_saw := _zeros(n)
@@ -387,6 +486,8 @@ func _bake() -> void:
 	# the one-offs, a few of each
 	_baked.step_tile = range(4).map(func(_i: int) -> AudioStreamWAV: return _wav(_step(true)))
 	_baked.step_carpet = range(4).map(func(_i: int) -> AudioStreamWAV: return _wav(_step(false)))
+	_baked.step_out = range(4).map(func(_i: int) -> AudioStreamWAV: return _wav(_step_out(false)))
+	_baked.step_wet = range(4).map(func(_i: int) -> AudioStreamWAV: return _wav(_step_out(true)))
 	_baked.wood_open = [_wav(_latch(_zeros(RATE / 4), 0.0)), _wav(_creak(_latch(_zeros(RATE), 0.0), 0.08, 0.45)), _wav(_creak(_latch(_zeros(RATE), 0.0), 0.08, 0.7))]  # a latch, and about half the time the hinge
 	_baked.wood_close = [_wav(_latch(_panel(_zeros(RATE / 2), 0.0, 1.0), 0.018, 1.1))]
 	var rattle := _zeros(RATE)
@@ -434,6 +535,36 @@ func _bake() -> void:
 
 func main_roof_y() -> float:
 	return get_parent().get_node("Fixtures").ladders.roofY
+
+
+func _thunder(near: bool) -> PackedFloat32Array:  # close: a dull crack, then the boom rolling round; far: only the roll, low and long. Mostly bass
+	var n := RATE * (6 if near else 8)
+	var roll := _filter(_filter(_colour("brown", n), "lowpass", randf_range(95.0, 140.0) if near else randf_range(55.0, 85.0), 0.7), "lowpass", 160.0, 0.5)
+	var crack := _filter(_colour("white", n), "lowpass", 900.0, 0.5)
+	var lfo := [[randf_range(0.6, 1.6), randf() * TAU], [randf_range(1.8, 3.5), randf() * TAU], [randf_range(0.2, 0.5), randf() * TAU]]  # (the roll swelling and fading as it bounces off things)
+	var d := _zeros(n)
+	for i in n:
+		var t := float(i) / RATE
+		var swell := 0.55 + 0.25 * sin(TAU * lfo[0][0] * t + lfo[0][1]) + 0.12 * sin(TAU * lfo[1][0] * t + lfo[1][1]) + 0.18 * sin(TAU * lfo[2][0] * t + lfo[2][1])
+		var env := minf(1.0, t / (0.05 if near else 0.6)) * exp(-t / (1.6 if near else 2.6))
+		d[i] = roll[i] * 2.6 * env * maxf(0.0, swell)
+		if near:
+			d[i] += crack[i] * 0.3 * exp(-t / 0.09) * (0.6 + 0.4 * randf())  # (the crack: ragged, and dull)
+	return d
+
+
+func thunder(near: bool) -> void:  # out there: through the glass when you're in (the Outside bus), the whole of it when you're out
+	if not _live or muted:
+		return
+	var p := AudioStreamPlayer.new()
+	p.stream = _baked["thunder_near" if near else "thunder_far"].pick_random()
+	var deep: bool = $"../Lights".zone_at(get_viewport().get_camera_3d().global_position) in ["theater", "booth"]  # (no windows: only the low end, through the walls and the roof)
+	p.volume_db = linear_to_db((0.5 if near else 0.25) * randf_range(0.45, 1.0) * (0.35 if deep else 1.0) * 0.9 / HEAD)  # (quiet, and never twice the same)
+	p.pitch_scale = randf_range(0.65, 0.8) if deep else randf_range(0.8, 1.0)
+	p.bus = "Outside"
+	p.finished.connect(p.queue_free)
+	add_child(p)
+	p.play()
 
 
 func _voice() -> PackedFloat32Array:  # one talker: a few seconds of syllables and pauses (ambience.js: voice, talk), to go round
@@ -621,6 +752,17 @@ func _creak(out: PackedFloat32Array, t0: float, dur: float) -> PackedFloat32Arra
 			d[i] = 0.9 * (0.6 + randf() * 0.4) * sin(PI * i / n)
 	for r: Array in [[720.0 + randf() * 200.0, 18.0, 1.0], [1580.0 + randf() * 300.0, 22.0, 0.6], [2900.0, 25.0, 0.3]]:
 		out = _mix(out, _filter(d.duplicate(), "bandpass", r[0], r[1]), t0, r[2] * 4.0)
+	return out
+
+
+func _step_out(wet: bool) -> PackedFloat32Array:  # a duller heel on asphalt; then grit under the sole (a few tiny clicks), or the slap and spatter of a wet one
+	var out := _ring(_zeros(int(RATE * 0.22)), 0.0, 105.0, 0.7, 0.004, 0.08, 60.0, 0.05)
+	if wet:
+		out = _burst(out, 0.004, 0.05, "lowpass", 700.0, 0.8, 0.5)
+		return _burst(out, 0.012, 0.16, "bandpass", 3200.0 + randf() * 900.0, 0.7, 0.45)
+	out = _mix(out, _env(_filter(_colour("white", int(RATE * 0.12)), "bandpass", 1500.0 + randf() * 500.0, 0.8), 0.45, 0.005, 0.09), 0.0)
+	for k in 5:
+		out = _burst(out, 0.01 + randf() * 0.09, 0.006, "highpass", 4000.0, 0.7, 0.25 + randf() * 0.3)
 	return out
 
 

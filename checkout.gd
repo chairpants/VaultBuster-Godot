@@ -326,8 +326,9 @@ func _led_find() -> void:  # the level's own: the little red light on the pad
 
 func _printer_tick(dt: float) -> void:
 	_led_t = maxf(0.0, _led_t - dt)
-	if _led != null:
-		_led.albedo_color = Color("#2bff6a") if _led_t > 0.0 else Color("#ff3020")  # the slip feeds out; a sale that fell through leaves nothing hanging. The drawer eases in and out
+	var led := Color("#2bff6a") if _led_t > 0.0 else Color("#ff3020")
+	if _led != null and _led.albedo_color != led:  # (only when it changes: a material touched, every light that sees what it's on draws its shadows again)
+		_led.albedo_color = led  # the slip feeds out; a sale that fell through leaves nothing hanging. The drawer eases in and out
 	if co == null:
 		_strip.visible = false
 		drawer_open = 0.0

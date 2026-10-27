@@ -17,7 +17,7 @@ extends Node3D
 const ITEMS := { "breakKey": "Break room key", "closetKey": "Janitor's key", "comboNote": "Folded note", "badge": "Ray's employee badge", "pinNote": "Post-it", "printout": "Register printout" }
 const NOTHING := ["Nothing. A gum wrapper", "Nothing but lint", "Nothing there", "Just dust", "A bottle cap. Nothing useful", "Nothing. Somebody's old receipt"]
 const MONEY_SPOTS := [[-9, -3], [5.5, -2.5], [-3, -6.4], [9, -6.8], [12, -1.1], [-6, -0.9], [-3.6, 13.5], [4.2, 17], [7.8, 21.6], [-1.4, 24.6], [6.5, 9.4], [-4.8, 26.4], [3.2, 26.2], [9.6, 12.8]]
-const LOCKER := Vector3(2.49, 0.93, 31.32)  # the padlock on Ray's locker
+const LOCKER := Vector3(6.29, 0.93, 31.32)  # the padlock on Ray's locker
 
 var seed_ := 0
 var items: Array = []  # what's in your pockets (ids)
@@ -85,9 +85,9 @@ func setup() -> void:  # from the store file's seed: the codes, and which spot h
 	var reg: Dictionary = T.register
 	_spots = {
 		"cushions": ["public", "between the couch cushions", Vector3(0.0, 0.5, 23.3), 0.6], "coffee": ["public", "under the coffee table", Vector3(0.0, 0.22, 24.44), 0.3],
-		"tank": ["public", "under the toilet tank lid", Vector3(10.25, 0.82, 32.79), 0.22], "bin:restroom": ["public", "", Vector3.ZERO, 0.0], "bin:lobby": ["public", "", Vector3.ZERO, 0.0],
-		"jacket": ["break", "the jean jacket's pockets", Vector3(2.17, 1.3, 31.97), 0.22], "vest": ["break", "the spare vest's pocket", Vector3(2.17, 1.38, 32.66), 0.2],
-		"pizza": ["break", "under the empty Tony's box", Vector3(4.22, 0.79, 31.67), 0.22], "timecard": ["break", "the time cards in the rack", Vector3(6.88, 1.32, 30.0), 0.24],
+		"tank": ["public", "under the toilet tank lid", Vector3(5.05, 0.82, 34.79), 0.22], "bin:restroom": ["public", "", Vector3.ZERO, 0.0], "bin:lobby": ["public", "", Vector3.ZERO, 0.0],
+		"jacket": ["break", "the jean jacket's pockets", Vector3(5.97, 1.3, 31.97), 0.22], "vest": ["break", "the spare vest's pocket", Vector3(5.97, 1.38, 34.66), 0.2],
+		"pizza": ["break", "under the empty Tony's box", Vector3(7.82, 0.79, 31.67), 0.22], "timecard": ["break", "the time cards in the rack", Vector3(10.08, 1.32, 30.0), 0.24],
 		"keyboard": ["counter", "under the register keyboard", Vector3(-5.45, 1.14, 3.72), 0.16], "pad": ["counter", "under the desensitizer pad", Vector3(reg.pad[0], reg.pad[1], reg.pad[2]), 0.15],
 		"printer": ["counter", "around the receipt printer", Vector3(reg.printer[0], reg.printer[1], reg.printer[2]), 0.15],
 	}
@@ -178,9 +178,9 @@ func _keyed() -> Dictionary:  # the doors you need a key for (staff walk through
 		if d.push:
 			continue
 		var mid := Vector2((d.shut.x0 + d.shut.x1) / 2.0, (d.shut.z0 + d.shut.z1) / 2.0)
-		if mid.distance_to(Vector2(5.0, 29.8)) < 0.6:
+		if mid.distance_to(Vector2(8.55, 29.8)) < 0.6:  # (the break room's: the second door off the hall since the remodel; the restroom's is first)
 			out["breakKey"] = d
-		elif mid.distance_to(Vector2(11.0, 28.9)) < 0.6:
+		elif mid.distance_to(Vector2(9.4, 28.9)) < 0.6:  # (the closet's, at the hall's end)
 			out["closetKey"] = d
 	return out
 
